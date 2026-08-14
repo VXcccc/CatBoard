@@ -24,6 +24,7 @@ FetchContent_MakeAvailable(json)
 
 add_executable(${PROJECT_NAME}
     src/main.cpp
+    src/SystemTray.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
@@ -48,8 +49,12 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/src/layouts"
-        "$<TARGET_FILE_DIR:CatBoard>/layouts"
+    "${CMAKE_SOURCE_DIR}/src/Layouts"
+    "$<TARGET_FILE_DIR:CatBoard>/Layouts"
+
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+        "${CMAKE_SOURCE_DIR}/Images"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Images"
 )
 
 if(MINGW)

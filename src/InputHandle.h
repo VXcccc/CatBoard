@@ -25,7 +25,7 @@ struct Layout {
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Layout, windowWidth, windowHeight, keys)
 
-inline std::ifstream file{"layouts/layout7tNoMouse.json"};
+inline std::ifstream file{"Layouts/layout7tNoMouse.json"};
 
 inline Layout layout {json::parse(file).get<Layout>()};
 

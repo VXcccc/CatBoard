@@ -6,13 +6,21 @@
 // - Documentation        https://dearimgui.com/docs (same as your local docs/
 // folder).
 // - Introduction, links and more at the top of imgui.cpp
+//
 
+#include "Constants.h"
+#include "Helpers.h"
+#include "SystemTray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include <InputHandle.h>
+#include <conio.h>
 #include <d3d11.h>
+#include <iostream>
+#include <shellapi.h>
 #include <tchar.h>
+#include <strsafe.h>
 #include <windows.h>
 #include <winuser.h>
 
@@ -30,6 +38,7 @@ void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
 
 // Main code
 int main(int, char **) {
@@ -52,13 +61,14 @@ int main(int, char **) {
                     L"CatBoard Overlay",
                     nullptr};
   ::RegisterClassExW(&wc);
-  HWND hwnd =
-      ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
-                            WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                        wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0,
-                        600, (int)(Input::layout.windowWidth * main_scale),
-                        (int)(Input::layout.windowHeight * main_scale), nullptr,
-                        nullptr, wc.hInstance, nullptr);
+  HWND hwnd = ::CreateWindowExW(
+      WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW |
+          WS_EX_NOACTIVATE,
+      wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0, 600,
+      (int)(Input::layout.windowWidth * main_scale),
+      (int)(Input::layout.windowHeight * main_scale), nullptr, nullptr,
+      wc.hInstance, nullptr); // i need to make dynamic res &
+                              // make user drag the window
   ::SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
   // Initialize Direct3D
@@ -126,6 +136,9 @@ int main(int, char **) {
   // ImFont* font =
   // io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
   // IM_ASSERT(font != nullptr);
+  
+  // creating tray icon
+  Tray::g_nid = Tray::init(hwnd);
 
   // Our state
   bool show_demo_window = true;
@@ -164,7 +177,7 @@ int main(int, char **) {
       g_ResizeWidth = g_ResizeHeight = 0;
       CreateRenderTarget();
     }
-    //
+
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
@@ -179,8 +192,9 @@ int main(int, char **) {
       ImVec2 bottomRight{key.x + key.w, key.y + key.h};
 
       ImU32 fill{down ? IM_COL32(255, 255, 255, 255) : IM_COL32(1, 1, 1, 255)};
-      ImU32 textColor{down ? IM_COL32(1, 1, 1, 255)
-                           : IM_COL32(255, 255, 255, 255)}; // oposite the fill color
+      ImU32 textColor{
+          down ? IM_COL32(1, 1, 1, 255)
+               : IM_COL32(255, 255, 255, 255)}; // oposite the fill color
       ImU32 border{IM_COL32(1, 1, 1, 255)};
 
       draw->AddRectFilled(topLeft, bottomRight, fill, 0.0f);
@@ -220,6 +234,8 @@ int main(int, char **) {
   ::DestroyWindow(hwnd);
   ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
+  // tray test
+  Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
   return 0;
 }
 
@@ -301,6 +317,8 @@ void CleanupRenderTarget() {
   }
 }
 
+
+
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -331,6 +349,14 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if ((wParam & 0xfff0) == SC_KEYMENU) // Disable ALT application menu
       return 0;
     break;
+  // handle tray icon
+  case Consts::WM_TRAYICON:
+    Tray::On_TrayWM_NOTIFYICON(wParam, lParam, hWnd);
+    return 0;
+  // handle menu 
+  case WM_COMMAND:
+    Tray::On_WM_COMMAND(wParam, lParam);
+    return 0;
   case WM_DESTROY:
     ::PostQuitMessage(0);
     return 0;
