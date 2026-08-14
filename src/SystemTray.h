@@ -15,8 +15,7 @@ VOID APIENTRY DisplayContextMenu(HWND hWnd);
 void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd);
 void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd);
 
-void RequestInteractive(HWND hwnd);
-void ReleaseInteractive(HWND hwnd);
+void SetDragMode(HWND hWnd, bool enabled);
 }
 
 #endif // !TRAY_H

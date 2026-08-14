@@ -71,6 +71,8 @@ int main(int, char **) {
 
   ::SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
+
+
   // Initialize Direct3D
   if (!CreateDeviceD3D(hwnd)) {
     CleanupDeviceD3D();
@@ -110,6 +112,8 @@ int main(int, char **) {
   // Setup Platform/Renderer backends
   ImGui_ImplWin32_Init(hwnd);
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
+
+  SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext);
 
   // Load Fonts
   // - If fonts are not explicitly loaded, Dear ImGui will select an embedded
@@ -207,20 +211,6 @@ int main(int, char **) {
       draw->AddText(textPos, textColor, key.label.c_str());
     }
 
-    bool settingsWasOpen = Tray::g_showSettings;
-
-    if (Tray::g_showSettings) {
-      // ImGui::SetNextWindowSize(ImVec2(Input::layout.windowWidth, Input::layout.windowHeight));
-      ImGui::Begin("Settings", &Tray::g_showSettings);
-      ImGui::Text("Test");
-
-      ImGui::End();
-    }
-
-    if (settingsWasOpen && !Tray::g_showSettings) {
-                                                    
-      Tray::ReleaseInteractive(hwnd);
-    }
     // Rendering
     ImGui::Render();
     const float clear_color_with_alpha[4] = {
@@ -232,15 +222,20 @@ int main(int, char **) {
                                                clear_color_with_alpha);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
+
     // Present
     HRESULT hr = g_pSwapChain->Present(1, 0); // Present with vsync
     // HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
+    
+    SettingsWindow::RenderFrame();
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
+
   }
 
   // Cleanup
   ImGui_ImplDX11_Shutdown();
   ImGui_ImplWin32_Shutdown();
+  SettingsWindow::Shutdown();
   ImGui::DestroyContext();
 
   CleanupDeviceD3D();

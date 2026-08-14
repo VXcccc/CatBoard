@@ -11,7 +11,7 @@ include(FetchContent)
 FetchContent_Declare(
     imgui
     GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.92.8
+    GIT_TAG v1.92.8-docking
 )
 FetchContent_MakeAvailable(imgui)
 
@@ -25,7 +25,7 @@ FetchContent_MakeAvailable(json)
 add_executable(${PROJECT_NAME} 
     src/main.cpp
     src/SystemTray.cpp
-    stc/SettingsWindow.cpp
+    src/SettingsWindow.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp

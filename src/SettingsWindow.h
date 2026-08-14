@@ -6,18 +6,17 @@
 
 namespace SettingsWindow {
 
-// , ID3D11Device* device, ID3D11DeviceContext* deviceContext)
-bool create(HINSTANCE hInstance);
+bool Create(HINSTANCE hInstance, ID3D11Device* device, ID3D11DeviceContext* deviceContext);
 
-void show();
-void hide();
-bool isVisible();
+void Show();
+void Hide();
+bool IsVisible();
 
-void renderFrame();
+void RenderFrame();
 
-void shutdown();
+void Shutdown();
 
-HWND getHWND();
+HWND GetHWND();
 
 } // namespace SettingsWindow
 

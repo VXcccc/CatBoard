@@ -1,21 +1,17 @@
 #include "SystemTray.h"
-#include "SettingsWindow.h"
 #include "Constants.h"
+#include "SettingsWindow.h"
 #include <basetsd.h>
-#include <ios>
 #include <shellapi.h>
 #include <strsafe.h>
 #include <windows.h>
 #include <winuser.h>
 
-#include <iomanip>
-#include <iostream>
-
 namespace Tray {
 NOTIFYICONDATA g_nid{};
 bool g_dragMode{false};
 bool g_showSettings{false};
-static int g_interactiveRequests{0};
+// static int g_interactiveRequests{0};
 
 class TrayMenu {
 public:
@@ -94,26 +90,41 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd) {
 
   return;
 }
-void RequestInteractive(HWND hwnd) {
-  g_interactiveRequests++;
-  if (g_interactiveRequests == 1) {
-    LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
-    exStyle &= ~WS_EX_TRANSPARENT;
-    SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
-    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-  }
-}
+// void RequestInteractive(HWND hwnd) {
+//   g_interactiveRequests++;
+//   if (g_interactiveRequests == 1) {
+//     LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+//     exStyle &= ~WS_EX_TRANSPARENT;
+//     SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
+//     SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+//                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+//   }
+// }
 
-void ReleaseInteractive(HWND hwnd) {
-  g_interactiveRequests--;
-  if (g_interactiveRequests == 0) {
-    LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+// void ReleaseInteractive(HWND hwnd) {
+//   g_interactiveRequests--;
+//   if (g_interactiveRequests == 0) {
+//     LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+//     exStyle |= WS_EX_TRANSPARENT;
+//     SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
+//     SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+//                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+//   }
+// }
+//
+// Reverted to the old version of the fucntion cuz the g_interactiveRequests is
+// no longer needed
+//
+void SetDragMode(HWND hWnd, bool enabled) {
+  LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
+  if (enabled) {
+    exStyle &= ~WS_EX_TRANSPARENT;
+  } else {
     exStyle |= WS_EX_TRANSPARENT;
-    SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
-    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
   }
+  SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
+  SetWindowPos(hWnd, nullptr, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
 void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd) {
@@ -121,18 +132,11 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd) {
 
   switch (uId) {
   case Consts::ID_SETTINGS:
-    if (!g_showSettings) {
-      g_showSettings = true;
-      RequestInteractive(hWnd);
-    }
+    SettingsWindow::Show();
     return;
   case Consts::ID_DRAGMODE:
     g_dragMode = !g_dragMode;
-    if (g_dragMode) {
-      RequestInteractive(hWnd);
-    } else {
-      ReleaseInteractive(hWnd);
-    }
+    SetDragMode(hWnd, g_dragMode);
     return;
   case Consts::ID_EXIT:
     Shell_NotifyIcon(NIM_DELETE, &g_nid);
