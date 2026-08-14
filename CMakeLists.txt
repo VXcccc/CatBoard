@@ -22,9 +22,10 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-add_executable(${PROJECT_NAME} WIN32
+add_executable(${PROJECT_NAME} 
     src/main.cpp
     src/SystemTray.cpp
+    stc/SettingsWindow.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp

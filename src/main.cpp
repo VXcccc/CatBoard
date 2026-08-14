@@ -9,6 +9,7 @@
 //
 
 #include "Constants.h"
+#include "SettingsWindow.h"
 #include "Helpers.h"
 #include "SystemTray.h"
 #include "imgui.h"
@@ -182,7 +183,6 @@ int main(int, char **) {
     ImGui_ImplWin32_NewFrame();
 
     ImGui::NewFrame();
-
     ImDrawList *draw{ImGui::GetBackgroundDrawList()};
     for (const auto &key : Input::layout.keys) {
       bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
@@ -207,6 +207,20 @@ int main(int, char **) {
       draw->AddText(textPos, textColor, key.label.c_str());
     }
 
+    bool settingsWasOpen = Tray::g_showSettings;
+
+    if (Tray::g_showSettings) {
+      // ImGui::SetNextWindowSize(ImVec2(Input::layout.windowWidth, Input::layout.windowHeight));
+      ImGui::Begin("Settings", &Tray::g_showSettings);
+      ImGui::Text("Test");
+
+      ImGui::End();
+    }
+
+    if (settingsWasOpen && !Tray::g_showSettings) {
+                                                    
+      Tray::ReleaseInteractive(hwnd);
+    }
     // Rendering
     ImGui::Render();
     const float clear_color_with_alpha[4] = {
@@ -359,7 +373,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       LRESULT position = DefWindowProc(hWnd, msg, wParam, lParam);
       return position == HTCLIENT ? HTCAPTION : position;
     }
-    return 0;
+    break;
   case WM_DESTROY:
     ::PostQuitMessage(0);
     return 0;

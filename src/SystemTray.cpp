@@ -1,16 +1,48 @@
 #include "SystemTray.h"
+#include "SettingsWindow.h"
 #include "Constants.h"
 #include <basetsd.h>
+#include <ios>
 #include <shellapi.h>
 #include <strsafe.h>
 #include <windows.h>
 #include <winuser.h>
 
+#include <iomanip>
 #include <iostream>
 
 namespace Tray {
-NOTIFYICONDATA g_nid{}; 
+NOTIFYICONDATA g_nid{};
 bool g_dragMode{false};
+bool g_showSettings{false};
+static int g_interactiveRequests{0};
+
+class TrayMenu {
+public:
+  TrayMenu() : m_hMenu{CreatePopupMenu()} {}
+  ~TrayMenu() { DestroyMenu(m_hMenu); }
+
+  void addItem(UINT id, const wchar_t *label, bool hasState = false,
+               bool checked = false) {
+    MENUITEMINFO mii{};
+    mii.cbSize = sizeof(mii);
+    mii.fMask = MIIM_ID | MIIM_STRING | (hasState ? MIIM_STATE : 0);
+    mii.wID = id;
+    mii.fState = checked ? MFS_CHECKED : MFS_UNCHECKED;
+    mii.dwTypeData = const_cast<LPWSTR>(label);
+    InsertMenuItem(m_hMenu, GetMenuItemCount(m_hMenu), true, &mii);
+  }
+
+  void showAt(HWND hWnd, POINT pt) {
+    SetForegroundWindow(hWnd);
+    TrackPopupMenuEx(m_hMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON, pt.x, pt.y, hWnd,
+                     NULL);
+    PostMessage(hWnd, WM_NULL, 0, 0);
+  }
+
+private:
+  HMENU m_hMenu;
+};
 
 NOTIFYICONDATA init(HWND hwnd) {
   NOTIFYICONDATA nid{};
@@ -34,40 +66,11 @@ VOID APIENTRY DisplayContextMenu(HWND hWnd) {
   POINT pt{};
   GetCursorPos(&pt);
 
-  HMENU hMenu{CreatePopupMenu()};
-  HMENU hSettingsMenu {CreatePopupMenu()};
-
-  MENUITEMINFO s_drag{};
-  s_drag.cbSize = sizeof(s_drag);
-  s_drag.fMask = MIIM_ID | MIIM_STRING | MIIM_STATE;
-  s_drag.wID = Consts::ID_DRAGMODE;
-  s_drag.fState = g_dragMode ? MFS_CHECKED : MFS_UNCHECKED;
-  s_drag.dwTypeData = const_cast<LPWSTR>(L"Drag mode");
-  InsertMenuItem(hMenu, 0, true, &s_drag);
-
-  MENUITEMINFO settings{};
-  settings.cbSize = sizeof(settings);
-  settings.fMask =  MIIM_STRING | MIIM_SUBMENU;
-  settings.hSubMenu = hSettingsMenu;
-  settings.dwTypeData = const_cast<LPWSTR>(L"Settings");
-  InsertMenuItem(hMenu, 1, true, &settings);
-
-  MENUITEMINFO exit{};
-  exit.cbSize = sizeof(exit);
-  exit.fMask = MIIM_ID | MIIM_STRING;
-  exit.wID = Consts::ID_EXIT;
-  exit.dwTypeData = const_cast<LPWSTR>(L"Exit");
-  InsertMenuItem(hMenu, 2, true, &exit);
-
-  SetForegroundWindow(hWnd);
-
-  TrackPopupMenuEx(hMenu, TPM_LEFTALIGN | TPM_LEFTBUTTON, pt.x, pt.y, hWnd,
-                   NULL);
-
-  PostMessage(hWnd, WM_NULL, 0, 0);
-  // Destroy the menu.
-
-  DestroyMenu(hMenu);
+  TrayMenu menu;
+  menu.addItem(Consts::ID_DRAGMODE, L"Drag mode", true, g_dragMode);
+  menu.addItem(Consts::ID_SETTINGS, L"Settings");
+  menu.addItem(Consts::ID_EXIT, L"Exit");
+  menu.showAt(hWnd, pt);
 }
 
 // On_MYWM_NOTIFYICON - processes callback messages for taskbar icons.
@@ -91,24 +94,45 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd) {
 
   return;
 }
-void SetDragMode(HWND hWnd, bool enabled){
-  LONG_PTR exStyle {GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
-  if(enabled){
+void RequestInteractive(HWND hwnd) {
+  g_interactiveRequests++;
+  if (g_interactiveRequests == 1) {
+    LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
     exStyle &= ~WS_EX_TRANSPARENT;
-  }else{
-    exStyle |= WS_EX_TRANSPARENT;
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
+    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
   }
-  SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
-  SetWindowPos(hWnd, nullptr, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+}
+
+void ReleaseInteractive(HWND hwnd) {
+  g_interactiveRequests--;
+  if (g_interactiveRequests == 0) {
+    LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
+    exStyle |= WS_EX_TRANSPARENT;
+    SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
+    SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+  }
 }
 
 void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd) {
-  UINT uId { static_cast<UINT>(LOWORD(wParam))};
-  std::cout << uId;
+  UINT uId{static_cast<UINT>(LOWORD(wParam))};
+
   switch (uId) {
+  case Consts::ID_SETTINGS:
+    if (!g_showSettings) {
+      g_showSettings = true;
+      RequestInteractive(hWnd);
+    }
+    return;
   case Consts::ID_DRAGMODE:
     g_dragMode = !g_dragMode;
-    SetDragMode(hWnd, g_dragMode);
+    if (g_dragMode) {
+      RequestInteractive(hWnd);
+    } else {
+      ReleaseInteractive(hWnd);
+    }
     return;
   case Consts::ID_EXIT:
     Shell_NotifyIcon(NIM_DELETE, &g_nid);
