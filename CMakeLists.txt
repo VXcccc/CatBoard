@@ -22,7 +22,7 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-add_executable(${PROJECT_NAME}
+add_executable(${PROJECT_NAME} WIN32
     src/main.cpp
     src/SystemTray.cpp
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -33,6 +33,8 @@ add_executable(${PROJECT_NAME}
     ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
 )
+
+target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src
@@ -56,6 +58,7 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
         "${CMAKE_SOURCE_DIR}/Images"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Images"
 )
+
 
 if(MINGW)
     target_link_options(${PROJECT_NAME} PRIVATE

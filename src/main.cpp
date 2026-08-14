@@ -39,7 +39,6 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-
 // Main code
 int main(int, char **) {
   // Make process DPI aware and obtain main monitor scale
@@ -61,14 +60,14 @@ int main(int, char **) {
                     L"CatBoard Overlay",
                     nullptr};
   ::RegisterClassExW(&wc);
-  HWND hwnd = ::CreateWindowExW(
-      WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_TOOLWINDOW |
-          WS_EX_NOACTIVATE,
-      wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0, 600,
-      (int)(Input::layout.windowWidth * main_scale),
-      (int)(Input::layout.windowHeight * main_scale), nullptr, nullptr,
-      wc.hInstance, nullptr); // i need to make dynamic res &
-                              // make user drag the window
+  HWND hwnd =
+      ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
+                            WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+                        wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0, 600,
+                        (int)(Input::layout.windowWidth * main_scale),
+                        (int)(Input::layout.windowHeight * main_scale), nullptr,
+                        nullptr, wc.hInstance, nullptr);
+
   ::SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
   // Initialize Direct3D
@@ -136,7 +135,7 @@ int main(int, char **) {
   // ImFont* font =
   // io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
   // IM_ASSERT(font != nullptr);
-  
+
   // creating tray icon
   Tray::g_nid = Tray::init(hwnd);
 
@@ -317,8 +316,6 @@ void CleanupRenderTarget() {
   }
 }
 
-
-
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -353,9 +350,15 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   case Consts::WM_TRAYICON:
     Tray::On_TrayWM_NOTIFYICON(wParam, lParam, hWnd);
     return 0;
-  // handle menu 
+  // handle menu
   case WM_COMMAND:
-    Tray::On_WM_COMMAND(wParam, lParam);
+    Tray::On_WM_COMMAND(wParam, lParam, hWnd);
+    return 0;
+  case WM_NCHITTEST:
+    if (Tray::g_dragMode) {
+      LRESULT position = DefWindowProc(hWnd, msg, wParam, lParam);
+      return position == HTCLIENT ? HTCAPTION : position;
+    }
     return 0;
   case WM_DESTROY:
     ::PostQuitMessage(0);
