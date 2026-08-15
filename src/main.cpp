@@ -9,21 +9,24 @@
 //
 
 #include "Constants.h"
-#include "SettingsWindow.h"
 #include "Helpers.h"
+#include "SettingsWindow.h"
 #include "SystemTray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include <InputHandle.h>
+#include <array>
 #include <conio.h>
 #include <d3d11.h>
+#include <dxgi.h>
 #include <iostream>
 #include <shellapi.h>
 #include <tchar.h>
-#include <strsafe.h>
 #include <windows.h>
 #include <winuser.h>
+
+#include <strsafe.h>
 
 // Data
 static ID3D11Device *g_pd3dDevice = nullptr;
@@ -32,6 +35,16 @@ static IDXGISwapChain *g_pSwapChain = nullptr;
 static bool g_SwapChainOccluded = false;
 static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
+
+// Forward declarations of main functions
+void renderKeyboard(const Input::Layout &layout,
+                    const std::array<bool, 256> &currentDown);
+bool detectAnyKeyChanged(const Input::Layout &layout,
+                         const std::array<bool, 256> &prevKeyState,
+                         std::array<bool, 256> &outCurrentDown);
+void commitKeyState(const Input::Layout &layout,
+                    const std::array<bool, 256> &currentDown,
+                    std::array<bool, 256> &outPrevKeyState);
 
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
@@ -70,8 +83,6 @@ int main(int, char **) {
                         nullptr, wc.hInstance, nullptr);
 
   ::SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
-
-
 
   // Initialize Direct3D
   if (!CreateDeviceD3D(hwnd)) {
@@ -151,6 +162,11 @@ int main(int, char **) {
 
   // Main loop
   bool done = false;
+  // prevKeyState holding previous frame state
+  static std::array<bool, 256> prevKeyState{};
+  static std::array<bool, 256> currentDown{};
+  static bool firstFrame = true;
+
   while (!done) {
     // Poll and handle messages (inputs, window resize, etc.)
     // See the WndProc() function below for our to dispatch events to the Win32
@@ -182,34 +198,28 @@ int main(int, char **) {
       CreateRenderTarget();
     }
 
+    bool anyKeyChanged{
+        detectAnyKeyChanged(Input::layout, prevKeyState, currentDown)};
+
+    bool needsRender = anyKeyChanged || firstFrame ||
+                       (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
+                       SettingsWindow::IsVisible();
+    if (!needsRender) {
+      SettingsWindow::RenderFrame();
+      ::Sleep(1);
+      continue;
+    }
+    firstFrame = false;
+
+    commitKeyState(Input::layout, currentDown, prevKeyState);
+
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
 
     ImGui::NewFrame();
-    ImDrawList *draw{ImGui::GetBackgroundDrawList()};
-    for (const auto &key : Input::layout.keys) {
-      bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
 
-      ImVec2 topLeft{key.x, key.y};
-      ImVec2 bottomRight{key.x + key.w, key.y + key.h};
-
-      ImU32 fill{down ? IM_COL32(255, 255, 255, 255) : IM_COL32(1, 1, 1, 255)};
-      ImU32 textColor{
-          down ? IM_COL32(1, 1, 1, 255)
-               : IM_COL32(255, 255, 255, 255)}; // oposite the fill color
-      ImU32 border{IM_COL32(1, 1, 1, 255)};
-
-      draw->AddRectFilled(topLeft, bottomRight, fill, 0.0f);
-
-      // outline
-      //  draw->AddRect(topLeft, bottomRight, border, 6.0f, 0, 3.0f);
-
-      ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-      ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
-                     key.y + (key.h - textSize.y) * 0.5f};
-      draw->AddText(textPos, textColor, key.label.c_str());
-    }
+    renderKeyboard(Input::layout, currentDown);
 
     // Rendering
     ImGui::Render();
@@ -222,14 +232,12 @@ int main(int, char **) {
                                                clear_color_with_alpha);
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
-
     // Present
     HRESULT hr = g_pSwapChain->Present(1, 0); // Present with vsync
     // HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
-    
+
     SettingsWindow::RenderFrame();
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
-
   }
 
   // Cleanup
@@ -245,6 +253,59 @@ int main(int, char **) {
   // tray test
   Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
   return 0;
+}
+
+// Main functions
+
+void renderKeyboard(const Input::Layout &layout,
+                    const std::array<bool, 256> &currentDown) {
+  ImDrawList *draw{ImGui::GetBackgroundDrawList()};
+  for (const auto &key : Input::layout.keys) {
+    bool down{currentDown[key.keyCode]};
+    // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
+
+    ImVec2 topLeft{key.x, key.y};
+    ImVec2 bottomRight{key.x + key.w, key.y + key.h};
+
+    ImU32 fill{down ? IM_COL32(255, 255, 255, 255) : IM_COL32(1, 1, 1, 255)};
+    ImU32 textColor{
+        down ? IM_COL32(1, 1, 1, 255)
+             : IM_COL32(255, 255, 255, 255)}; // oposite the fill color
+    ImU32 border{IM_COL32(1, 1, 1, 255)};
+
+    draw->AddRectFilled(topLeft, bottomRight, fill, 0.0f);
+
+    // outline
+    //  draw->AddRect(topLeft, bottomRight, border, 6.0f, 0, 3.0f);
+
+    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
+    ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
+                   key.y + (key.h - textSize.y) * 0.5f};
+    draw->AddText(textPos, textColor, key.label.c_str());
+  }
+}
+
+bool detectAnyKeyChanged(const Input::Layout &layout,
+                         const std::array<bool, 256> &prevKeyState,
+                         std::array<bool, 256> &outCurrentDown) {
+  bool anyKeyChanged = false;
+  for (const auto &key : Input::layout.keys) {
+    bool down = (GetAsyncKeyState(key.keyCode) & 0x8000) != 0;
+    outCurrentDown[key.keyCode] = down;
+    if (down != prevKeyState[key.keyCode]) {
+      anyKeyChanged = true;
+    }
+  }
+
+  return anyKeyChanged;
+}
+
+void commitKeyState(const Input::Layout &layout,
+                    const std::array<bool, 256> &currentDown,
+                    std::array<bool, 256> &outPrevKeyState) {
+  for (const auto &key : Input::layout.keys) {
+    outPrevKeyState[key.keyCode] = currentDown[key.keyCode];
+  }
 }
 
 // Helper functions
