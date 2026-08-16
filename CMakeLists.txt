@@ -22,15 +22,17 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-add_executable(${PROJECT_NAME} 
+add_executable(${PROJECT_NAME}  WIN32
     src/main.cpp
     src/SystemTray.cpp
     src/SettingsWindow.cpp
+    src/Resource/app.o
+    src/Resource/app.rc
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/imgui_demo.cpp  
+    ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
 )
@@ -47,22 +49,18 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
   nlohmann_json::nlohmann_json
-  d3d11 dxgi d3dcompiler dwmapi 
+  d3d11 dxgi d3dcompiler dwmapi
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
     "${CMAKE_SOURCE_DIR}/src/Layouts"
     "$<TARGET_FILE_DIR:CatBoard>/Layouts"
-
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/Images"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Images"
 )
 
 
 if(MINGW)
-    target_link_options(${PROJECT_NAME} PRIVATE
+  target_link_options(${PROJECT_NAME} PRIVATE
         -static-libgcc
         -static-libstdc++
     )

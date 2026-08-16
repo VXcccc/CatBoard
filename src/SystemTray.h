@@ -7,8 +7,7 @@ extern NOTIFYICONDATA g_nid;
 extern bool g_dragMode;
 extern bool g_showSettings;
 
-
-NOTIFYICONDATA init(HWND hwnd);
+NOTIFYICONDATA init(HWND hwnd, HINSTANCE hInstance);
 
 VOID APIENTRY DisplayContextMenu(HWND hWnd);
 
@@ -16,6 +15,6 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd);
 void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd);
 
 void SetDragMode(HWND hWnd, bool enabled);
-}
+} // namespace Tray
 
-#endif // !TRAY_H
+#endif // !SYSTEM_TRAY_H

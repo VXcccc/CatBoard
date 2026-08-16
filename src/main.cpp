@@ -153,7 +153,7 @@ int main(int, char **) {
   // IM_ASSERT(font != nullptr);
 
   // creating tray icon
-  Tray::g_nid = Tray::init(hwnd);
+  Tray::g_nid = Tray::init(hwnd, wc.hInstance);
 
   // Our state
   bool show_demo_window = true;

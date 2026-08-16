@@ -1,7 +1,9 @@
 #include "SystemTray.h"
 #include "Constants.h"
+#include "Resource.h"
 #include "SettingsWindow.h"
 #include <basetsd.h>
+#include <minwindef.h>
 #include <shellapi.h>
 #include <strsafe.h>
 #include <windows.h>
@@ -40,16 +42,20 @@ private:
   HMENU m_hMenu;
 };
 
-NOTIFYICONDATA init(HWND hwnd) {
+NOTIFYICONDATA init(HWND hwnd, HINSTANCE hInstance) {
   NOTIFYICONDATA nid{};
   nid.cbSize = sizeof(nid);
   nid.hWnd = hwnd;
   nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
 
   nid.uCallbackMessage = Consts::WM_TRAYICON;
-
-  nid.hIcon = static_cast<HICON>(LoadImage(NULL, L"Images/icon.ico", IMAGE_ICON,
-                                           0, 0, LR_LOADFROMFILE | LR_SHARED));
+  nid.hIcon = static_cast<HICON>(
+      LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0,
+                LR_DEFAULTSIZE | LR_SHARED));
+  // nid.hIcon = static_cast<HICON>(LoadImage(NULL, L"Images/icon.ico",
+  // IMAGE_ICON,
+  //                                          0, 0, LR_LOADFROMFILE |
+  //                                          LR_SHARED));
 
   StringCchCopy(nid.szTip, ARRAYSIZE(nid.szTip), L"CatBoard");
 
