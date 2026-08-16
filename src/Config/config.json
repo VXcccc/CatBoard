@@ -1,0 +1,7 @@
+{
+  "version": 1,
+  "theme" : {
+    "activeFillCol" : { "r": 255, "g": 255, "b": 255, "o": 255 },
+    "idleFillCol"   : { "r": 1, "g": 1, "b": 1, "o": 255 }
+  }
+}

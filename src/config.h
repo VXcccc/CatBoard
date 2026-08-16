@@ -1,12 +1,12 @@
 #ifndef CONFIG_H
 #define CONFIG_H
 
+// maybe goona change location of this variable later
+#define CATBOARD_VERSION 1
+
 #include "imgui.h"
-#include "nlohmann/detail/macro_scope.hpp"
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
-#include <fstream>
-#include <vector>
 
 namespace Config {
 struct Color {
@@ -14,24 +14,31 @@ struct Color {
   int g;
   int b;
   int o;
+  ImU32 ToImU32() const { return IM_COL32(r, g, b, o); }
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Color, r, g, b, o)
 
 struct Theme {
-  Color activeFillCol{255, 255, 255, 255};
   Color idleFillCol{1, 1, 1, 255};
+  Color activeFillCol{255, 255, 255, 255};
+
+  Color idleTextCol{255, 255, 255, 255};
+  Color activeTextCol{1, 1, 1, 255};
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Theme, activeFillCol, idleFillCol)
 
 struct Settings {
-  double version{1};
-  Theme theme;
+  int version{CATBOARD_VERSION};
+  Theme theme{};
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Settings, version, theme)
 
-inline std::ifstream file{"config.json"};
+extern Settings config;
 
-inline Settings layout{json::parse(file).get<Settings>()};
+void Load();
+bool Save(const Settings &settings);
+ImU32 toImColor(const Color &c);
+
 } // namespace Config
 
 #endif // !CONFIG_H

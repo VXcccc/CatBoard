@@ -8,6 +8,7 @@
 // - Introduction, links and more at the top of imgui.cpp
 //
 
+#include "Config.h"
 #include "Constants.h"
 #include "Helpers.h"
 #include "SettingsWindow.h"
@@ -55,6 +56,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // Main code
 int main(int, char **) {
+  Config::Load();
   // Make process DPI aware and obtain main monitor scale
   ImGui_ImplWin32_EnableDpiAwareness();
   float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(
@@ -267,10 +269,12 @@ void renderKeyboard(const Input::Layout &layout,
     ImVec2 topLeft{key.x, key.y};
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
 
-    ImU32 fill{down ? IM_COL32(255, 255, 255, 255) : IM_COL32(1, 1, 1, 255)};
-    ImU32 textColor{
-        down ? IM_COL32(1, 1, 1, 255)
-             : IM_COL32(255, 255, 255, 255)}; // oposite the fill color
+    ImU32 fill{down ? Config::config.theme.activeFillCol.ToImU32()
+                    : Config::config.theme.idleFillCol.ToImU32()};
+    ImU32 textColor{down ? Config::config.theme.activeTextCol.ToImU32()
+                         : Config::config.theme.idleTextCol
+                               .ToImU32()}; // oposite the fill color
+                                            
     ImU32 border{IM_COL32(1, 1, 1, 255)};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, 0.0f);
@@ -393,14 +397,14 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              LPARAM lParam);
 
 // Win32 message handler
-// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if
-// dear imgui wants to use your inputs.
-// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your
-// main application, or clear/overwrite your copy of the mouse data.
-// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to
-// your main application, or clear/overwrite your copy of the keyboard data.
-// Generally you may always pass all inputs to dear imgui, and hide them from
-// your application based on those two flags.
+// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell
+// if dear imgui wants to use your inputs.
+// - When io.WantCaptureMouse is true, do not dispatch mouse input data to
+// your main application, or clear/overwrite your copy of the mouse data.
+// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data
+// to your main application, or clear/overwrite your copy of the keyboard
+// data. Generally you may always pass all inputs to dear imgui, and hide them
+// from your application based on those two flags.
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
     return true;

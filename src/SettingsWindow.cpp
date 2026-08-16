@@ -1,7 +1,11 @@
 #include "SettingsWindow.h"
+#include "Config.h"
+#include "Resource.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
+#include <algorithm>
+#include <cmath>
 #include <dxgi.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
@@ -84,6 +88,9 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   wc.lpfnWndProc = WndProc;
   wc.hInstance = hInstance;
   wc.lpszClassName = L"CatBoardSettingsClass";
+  wc.hIcon = static_cast<HICON>(LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON1),
+                                          IMAGE_ICON, 0, 0,
+                                          LR_DEFAULTSIZE | LR_SHARED));
   ::RegisterClassExW(&wc);
 
   s_hwnd = ::CreateWindowExW(0, wc.lpszClassName, L"CatBoard Settings",
@@ -153,6 +160,27 @@ void Hide() {
 
 bool IsVisible() { return s_visible; }
 
+// Helper functions
+int toColorRGB(float value) {
+  value = std::clamp(value, 0.0f, 1.0f);
+  return static_cast<int>(std::round(value * 255.0f));
+}
+
+float fromColorRGB(int value) {
+  value = std::clamp(value, 0, 255);
+  return static_cast<float>(value) / 255.0f;
+}
+
+Config::Color toConfColor(const ImVec4 &color) {
+  return Config::Color{toColorRGB(color.x), toColorRGB(color.y),
+                       toColorRGB(color.z), toColorRGB(color.w)};
+}
+
+ImVec4 fromConfColor(const Config::Color &color) {
+  return ImVec4{fromColorRGB(color.r), fromColorRGB(color.g),
+                fromColorRGB(color.b), fromColorRGB(color.o)};
+}
+
 void RenderFrame() {
   if (!s_visible)
     return;
@@ -168,6 +196,15 @@ void RenderFrame() {
     CreateRenderTarget();
   }
 
+  // Main Loop Variables
+  static ImVec4 idleFillCol{fromConfColor(Config::config.theme.idleFillCol)};
+  static ImVec4 activeFillCol{
+      fromConfColor(Config::config.theme.activeFillCol)};
+
+  static ImVec4 idleTextCol{fromConfColor(Config::config.theme.idleTextCol)};
+  static ImVec4 activeTextCol{
+      fromConfColor(Config::config.theme.activeTextCol)};
+
   ImGui_ImplDX11_NewFrame();
   ImGui_ImplWin32_NewFrame();
   ImGui::NewFrame();
@@ -180,7 +217,18 @@ void RenderFrame() {
                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
                    ImGuiWindowFlags_NoSavedSettings);
 
-  ImGui::Text("Test");
+  ImGui::ColorEdit4("Idle fill color", (float *)&idleFillCol);
+  ImGui::ColorEdit4("Active fill color", (float *)&activeFillCol);
+
+  ImGui::ColorEdit4("Idle text color", (float *)&idleTextCol);
+  ImGui::ColorEdit4("Active text color", (float *)&activeTextCol);
+
+  if (ImGui::Button("Save")) {
+    Config::Save(Config::Settings{
+        CATBOARD_VERSION,
+        Config::Theme{toConfColor(idleFillCol), toConfColor(activeFillCol),
+                      toConfColor(idleTextCol), toConfColor(activeTextCol)}});
+  }
 
   ImGui::End();
 
@@ -190,7 +238,6 @@ void RenderFrame() {
   s_deviceContext->ClearRenderTargetView(s_rtv, clearColor);
   ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
   s_swapChain->Present(1, 0);
-
 
   ImGui::SetCurrentContext(prev);
 }
