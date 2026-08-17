@@ -53,13 +53,13 @@ bool Save(const Settings &settings) {
     return false;
   }
 
-  file << json(settings).dump(4);
+  file << json(settings).dump(3);
   config = settings;
   return file.good();
 }
 
-
-ImU32 toImColor(const Color &c){
-  return IM_COL32(c.r, c.g, c.b, c.o);
+ImU32 ToImU32(const Config::Theme::ColorRGBA &c){
+  return IM_COL32(c[0], c[1], c[2], c[3]);
 }
+
 } // namespace Config

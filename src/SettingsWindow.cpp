@@ -1,6 +1,6 @@
 #include "SettingsWindow.h"
 #include "Config.h"
-#include "Resource.h"
+#include "Constants.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -171,14 +171,25 @@ float fromColorRGB(int value) {
   return static_cast<float>(value) / 255.0f;
 }
 
-Config::Color toConfColor(const ImVec4 &color) {
-  return Config::Color{toColorRGB(color.x), toColorRGB(color.y),
-                       toColorRGB(color.z), toColorRGB(color.w)};
+Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color) {
+  return Config::Theme::ColorRGBA{toColorRGB(color.x), toColorRGB(color.y),
+                                  toColorRGB(color.z), toColorRGB(color.w)};
 }
 
-ImVec4 fromConfColor(const Config::Color &color) {
-  return ImVec4{fromColorRGB(color.r), fromColorRGB(color.g),
-                fromColorRGB(color.b), fromColorRGB(color.o)};
+ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
+  return ImVec4{fromColorRGB(color[0]), fromColorRGB(color[1]),
+                fromColorRGB(color[2]), fromColorRGB(color[3])};
+}
+
+void restoreFromConfig(const Config::Settings &prevSettings,
+                       ImVec4 &idleFillCol, ImVec4 &activeFillCol,
+                       ImVec4 &idleTextCol, ImVec4 &activeTextCol,
+                       float &rounding) {
+  idleFillCol = fromConfigColor(prevSettings.theme.idleFill);
+  activeFillCol = fromConfigColor(prevSettings.theme.activeFill);
+  idleTextCol = fromConfigColor(prevSettings.theme.idleText);
+  activeTextCol = fromConfigColor(prevSettings.theme.activeText);
+  rounding = prevSettings.theme.rounding;
 }
 
 void RenderFrame() {
@@ -197,19 +208,32 @@ void RenderFrame() {
   }
 
   // Main Loop Variables
-  static ImVec4 idleFillCol{fromConfColor(Config::config.theme.idleFillCol)};
-  static ImVec4 activeFillCol{
-      fromConfColor(Config::config.theme.activeFillCol)};
+  static bool wasVisibleLastFrame = false;
+  static Config::Settings prevSettings{Config::config};
+  static ImVec4 idleFillCol, activeFillCol, idleTextCol, activeTextCol;
+  static float rounding;
 
-  static ImVec4 idleTextCol{fromConfColor(Config::config.theme.idleTextCol)};
-  static ImVec4 activeTextCol{
-      fromConfColor(Config::config.theme.activeTextCol)};
+  bool visibleNow = SettingsWindow::IsVisible();
+  if (visibleNow && !wasVisibleLastFrame) {
+    prevSettings = Config::config;
+    restoreFromConfig(prevSettings, idleFillCol, activeTextCol, idleTextCol,
+                      activeTextCol, rounding);
+  }
+  wasVisibleLastFrame = visibleNow;
+
+  Config::Settings newSettings{
+      Consts::CATBOARD_VERSION,
+      Config::Theme{toConfigColor(idleFillCol), toConfigColor(activeFillCol),
+                    toConfigColor(idleTextCol), toConfigColor(activeTextCol),
+                    rounding}};
+  // Passing new settings but dont saving them
+  Config::config = newSettings;
 
   ImGui_ImplDX11_NewFrame();
   ImGui_ImplWin32_NewFrame();
   ImGui::NewFrame();
 
-  // gonna do otherwise ig destroy the win titlebar and use imgui but idk rn
+  // maybe destroy the win titlebar and use imgui but idk rn
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
   ImGui::Begin("SettingsRoot", nullptr,
@@ -223,11 +247,19 @@ void RenderFrame() {
   ImGui::ColorEdit4("Idle text color", (float *)&idleTextCol);
   ImGui::ColorEdit4("Active text color", (float *)&activeTextCol);
 
+  ImGui::SliderFloat("Rounding", &rounding, 0.0f, 20.0f, "%.2f");
+
   if (ImGui::Button("Save")) {
-    Config::Save(Config::Settings{
-        CATBOARD_VERSION,
-        Config::Theme{toConfColor(idleFillCol), toConfColor(activeFillCol),
-                      toConfColor(idleTextCol), toConfColor(activeTextCol)}});
+    Config::Save(newSettings);
+    prevSettings = newSettings;
+  }
+  ImGui::SameLine();
+
+  // maybe change to Load button or smtmh like this later
+  if (ImGui::Button("Cancel")) {
+    Config::config = prevSettings;
+    restoreFromConfig(prevSettings, idleFillCol, activeTextCol, idleTextCol,
+                      activeTextCol, rounding);
   }
 
   ImGui::End();

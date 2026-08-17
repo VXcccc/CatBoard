@@ -29,13 +29,6 @@ inline std::ifstream file{"Layouts/layout7tNoMouse.json"};
 
 inline Layout layout {json::parse(file).get<Layout>()};
 
-// inline constexpr Input::Key keys[]  {
-//   {'W', "W", 60, 10, 50, 50},
-//   {'A', "A", 5, 65, 50, 50},
-//   {'S', "S", 60, 65, 50, 50},
-//   {'D', "D", 115, 65, 50, 50},
-//   {VK_SPACE, "SPACE", 5, 120, 160, 50},
-// };
 } // namespace Input
 
 #endif // !INPUTHANDLE_H

@@ -1,6 +1,5 @@
 #include "SystemTray.h"
 #include "Constants.h"
-#include "Resource.h"
 #include "SettingsWindow.h"
 #include <basetsd.h>
 #include <minwindef.h>
