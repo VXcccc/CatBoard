@@ -4,6 +4,7 @@
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
+#include "misc/cpp/imgui_stdlib.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -176,6 +177,20 @@ std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
 
 // Helper functions
 
+struct SettingsEditState {
+  Config::Settings previous;
+
+  ImVec4 idleFillCol;
+  ImVec4 activeFillCol;
+  ImVec4 idleTextCol;
+  ImVec4 activeTextCol;
+
+  float rounding{};
+
+  std::string configNameInput{};
+  std::string configNameError;
+};
+
 int toColorRGB(float value) {
   value = std::clamp(value, 0.0f, 1.0f);
   return static_cast<int>(std::round(value * 255.0f));
@@ -196,33 +211,127 @@ ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
                 fromColorRGB(color[2]), fromColorRGB(color[3])};
 }
 
-void restoreFromConfig(const Config::Settings &prevSettings,
-                       ImVec4 &idleFillCol, ImVec4 &activeFillCol,
-                       ImVec4 &idleTextCol, ImVec4 &activeTextCol,
-                       float &rounding) {
-  idleFillCol = fromConfigColor(prevSettings.theme.idleFill);
-  activeFillCol = fromConfigColor(prevSettings.theme.activeFill);
-  idleTextCol = fromConfigColor(prevSettings.theme.idleText);
-  activeTextCol = fromConfigColor(prevSettings.theme.activeText);
-  rounding = prevSettings.theme.rounding;
+void restoreFromConfig(SettingsEditState &state,
+                       const Config::Settings &prevSettings) {
+  state.idleFillCol = fromConfigColor(prevSettings.theme.idleFill);
+  state.activeFillCol = fromConfigColor(prevSettings.theme.activeFill);
+  state.idleTextCol = fromConfigColor(prevSettings.theme.idleText);
+  state.activeTextCol = fromConfigColor(prevSettings.theme.activeText);
+  state.rounding = prevSettings.theme.rounding;
+}
+
+void handleCreateConfig(SettingsEditState &state) {
+  const auto result = Config::createConfig(state.configNameInput);
+
+  switch (result) {
+  case Config::CreateConfigResult::Success:
+    state.configNameError.clear();
+    break;
+  case Config::CreateConfigResult::EmptyName:
+    state.configNameError = "Config name cannot be empty";
+    break;
+  case Config::CreateConfigResult::NameTooLong:
+    state.configNameError = "Config name is too long";
+    break;
+  case Config::CreateConfigResult::AlreadyExists:
+    state.configNameError = "Config already exists";
+    break;
+  case Config::CreateConfigResult::DirectoryError:
+    state.configNameError = "Could not create config directory";
+    break;
+  case Config::CreateConfigResult::FileError:
+    state.configNameError = "Could not create config file";
+    break;
+  default:
+    break;
+  }
 }
 
 // Draw functions
 
-void drawVisualsTab(ImVec4 &idleFillCol, ImVec4 &activeFillCol,
-                    ImVec4 &idleTextCol, ImVec4 &activeTextCol,
-                    float &rounding) {
+void drawVisualsTab(SettingsEditState &state) {
+  ImGui::ColorEdit4("Idle fill color", &state.idleFillCol.x);
+  ImGui::ColorEdit4("Active fill color", &state.activeFillCol.x);
 
-  ImGui::ColorEdit4("Idle fill color", (float *)&idleFillCol);
-  ImGui::ColorEdit4("Active fill color", (float *)&activeFillCol);
+  ImGui::ColorEdit4("Idle text color", &state.idleTextCol.x);
+  ImGui::ColorEdit4("Active text color", &state.activeTextCol.x);
 
-  ImGui::ColorEdit4("Idle text color", (float *)&idleTextCol);
-  ImGui::ColorEdit4("Active text color", (float *)&activeTextCol);
-
-  ImGui::SliderFloat("Rounding", &rounding, 0.0f, 20.0f, "%.2f");
+  ImGui::SliderFloat("Rounding", &state.rounding, 0.0f, 20.0f, "%.2f");
 }
 
-void drawConfigsTab() {
+void drawConfigsTab(SettingsEditState &state) {
+  Config::refreshConfigs();
+  static std::size_t currentItem{0};
+
+  if (Config::configs.empty()) {
+    currentItem = 0;
+  } else if (currentItem >= Config::configs.size()) {
+    currentItem = Config::configs.size() - 1;
+  }
+
+  const char *preview{Config::configs.empty()
+                          ? "No configs"
+                          : Config::configs[currentItem].c_str()};
+
+  if (ImGui::BeginCombo("Config", preview)) {
+    for (std::size_t i{0}; i < std::size(Config::configs); ++i) {
+      bool is_selected = (currentItem == i);
+      if (ImGui::Selectable(Config::configs[i].c_str(), is_selected)) {
+        currentItem = i;
+      }
+      if (is_selected)
+        ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  if (ImGui::Button("Save config")) {
+    Config::saveConfig(Config::configs[currentItem], Config::activeConfig);
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Load config")) {
+    if (Config::loadConfig(Config::configs[currentItem])) {
+      restoreFromConfig(state, Config::activeConfig);
+      state.previous = Config::activeConfig;
+    }
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Delete config")) {
+    Config::deleteConfig(Config::configs[currentItem]);
+    Config::refreshConfigs();
+  }
+
+  ImGui::InputText("##Config name", &state.configNameInput);
+  ImGui::SameLine();
+  if (ImGui::Button("Create config")) {
+    handleCreateConfig(state);
+    if (!state.configNameError.empty()) {
+      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.2f, 0.2f, 1));
+      ImGui::TextUnformatted(state.configNameError.c_str());
+      ImGui::PopStyleColor();
+    } else {
+      Config::refreshConfigs();
+    }
+  }
+}
+
+void drawApplyCancel(SettingsEditState &editState,
+                     const Config::Settings &newSettings) {
+
+  if (ImGui::Button("Apply")) {
+    Config::Apply(newSettings);
+    editState.previous = newSettings;
+  }
+  ImGui::SameLine();
+
+  if (ImGui::Button("Cancel")) {
+    Config::activeConfig = editState.previous;
+    restoreFromConfig(editState, editState.previous);
+  }
 }
 
 void RenderFrame() {
@@ -243,27 +352,17 @@ void RenderFrame() {
 
   // Main Loop Variables
   static bool wasVisibleLastFrame = false;
-  static Config::Settings prevSettings{Config::activeConfig};
-  static ImVec4 idleFillCol, activeFillCol, idleTextCol, activeTextCol;
-  static float rounding;
+
+  static SettingsEditState editState{};
 
   static SettingsTab currentTab = SettingsTab::Visuals;
 
   bool visibleNow = SettingsWindow::IsVisible();
   if (visibleNow && !wasVisibleLastFrame) {
-    prevSettings = Config::activeConfig;
-    restoreFromConfig(prevSettings, idleFillCol, activeTextCol, idleTextCol,
-                      activeTextCol, rounding);
+    editState.previous = Config::activeConfig;
+    restoreFromConfig(editState, editState.previous);
   }
   wasVisibleLastFrame = visibleNow;
-
-  Config::Settings newSettings{
-      Consts::CATBOARD_VERSION,
-      Config::Theme{toConfigColor(idleFillCol), toConfigColor(activeFillCol),
-                    toConfigColor(idleTextCol), toConfigColor(activeTextCol),
-                    rounding}};
-  // Passing new settings but dont saving them
-  Config::activeConfig = newSettings;
 
   ImGui_ImplDX11_NewFrame();
   ImGui_ImplWin32_NewFrame();
@@ -289,27 +388,27 @@ void RenderFrame() {
 
   switch (currentTab) {
   case SettingsTab::Visuals:
-    drawVisualsTab(idleFillCol, activeFillCol, idleTextCol, activeTextCol,
-                   rounding);
+    drawVisualsTab(editState);
     break;
   case SettingsTab::Configs:
-    drawConfigsTab();
+    drawConfigsTab(editState);
     break;
   default:
     break;
   }
 
-  if (ImGui::Button("Save")) {
-    Config::Save(newSettings);
-    prevSettings = newSettings;
-  }
-  ImGui::SameLine();
+  Config::Settings newSettings = {
+      Consts::CATBOARD_VERSION,
+      Config::Theme{toConfigColor(editState.idleFillCol),
+                    toConfigColor(editState.activeFillCol),
+                    toConfigColor(editState.idleTextCol),
+                    toConfigColor(editState.activeTextCol),
+                    editState.rounding}};
+  // Passing new settings but dont saving them
+  Config::activeConfig = newSettings;
 
-  // maybe change to Load button or smtmh like this later
-  if (ImGui::Button("Cancel")) {
-    Config::activeConfig = prevSettings;
-    restoreFromConfig(prevSettings, idleFillCol, activeTextCol, idleTextCol,
-                      activeTextCol, rounding);
+  if (currentTab == SettingsTab::Visuals) {
+    drawApplyCancel(editState, newSettings);
   }
 
   ImGui::End();

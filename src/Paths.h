@@ -21,6 +21,7 @@ std::filesystem::path getPortableConfigPath(std::string_view name);
 /// @return Path to the `.cfg` file.
 std::filesystem::path resolveConfigPath(std::string_view name);
 
+std::filesystem::path configDirectory();
 
 bool ensureConfigDirectory();
 } // namespace Paths

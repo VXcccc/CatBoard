@@ -26,11 +26,11 @@ std::filesystem::path appDataConfigsFolderPath() {
 }
 
 std::filesystem::path getConfigPath(std::string_view name) {
-  return appDataConfigsFolderPath() / (std::string{name} + ".cfg");
+  return appDataConfigsFolderPath() / (std::string{name} + ".json");
 }
 
 std::filesystem::path getPortableConfigPath(std::string_view name) {
-  return std::filesystem::path{"Configs"} / (std::string{name} + ".cfg");
+  return std::filesystem::path{"Configs"} / (std::string{name} + ".json");
 }
 
 std::filesystem::path resolveConfigPath(std::string_view name) {
@@ -41,16 +41,21 @@ std::filesystem::path resolveConfigPath(std::string_view name) {
   return getConfigPath(name);
 }
 
-static std::filesystem::path configDirectory() {
+std::filesystem::path configDirectory() {
   if (Consts::IS_PORTABLE) {
-    return "Configs";
+    return std::filesystem::path{"Configs"};
   }
 
   return appDataConfigsFolderPath();
 }
 
 bool ensureConfigDirectory() {
-  return std::filesystem::create_directories(Paths::configDirectory());
+    const auto path = Paths::configDirectory();
+
+    if (std::filesystem::exists(path)) {
+        return true;
+    }
+    return std::filesystem::create_directories(path);
 }
 
 } // namespace Paths

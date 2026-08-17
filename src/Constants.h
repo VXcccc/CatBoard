@@ -7,7 +7,7 @@
 
 namespace Consts {
 constexpr int CATBOARD_VERSION {1};
-constexpr bool IS_PORTABLE {true};
+constexpr bool IS_PORTABLE {false};
 
 constexpr UINT WM_TRAYICON{WM_APP + 1};
 

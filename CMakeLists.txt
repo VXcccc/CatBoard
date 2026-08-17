@@ -37,6 +37,7 @@ add_executable(${PROJECT_NAME}  WIN32
     ${imgui_SOURCE_DIR}/imgui_demo.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
+    ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)

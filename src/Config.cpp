@@ -16,29 +16,50 @@
 namespace Config {
 // current config
 Settings activeConfig{};
-std::vector<std::string> configs{};
 static const Settings defaultConfig{};
+std::vector<std::string> configs{};
+
+void refreshConfigs() {
+  Config::configs.clear();
+
+  const auto folder = Paths::configDirectory();
+
+  if (!std::filesystem::exists(folder)) {
+    return;
+  }
+
+  for (const auto &entry : std::filesystem::directory_iterator(folder)) {
+    if (!entry.is_regular_file()){
+      continue;
+    }
+
+    else if (entry.path().extension() != ".json"){
+      continue;
+    }
+
+    Config::configs.push_back(entry.path().stem().string());
+  }
+}
 
 void Load() {
   const auto path{Paths::getActiveConfigPath()};
 
   // first load
   if (!std::filesystem::exists(path)) {
-    Save(activeConfig);
+    Apply(activeConfig);
     return;
   }
 
   try {
     std::ifstream file{path};
-    const auto j = json::parse(file);    
+    const auto j = json::parse(file);
     activeConfig = j.get<Settings>();
   } catch (const std::exception &) {
     activeConfig = defaultConfig;
   }
 }
 
-
-bool Save(const Settings &settings) {
+bool Apply(const Settings &settings) {
   const auto path{Paths::getActiveConfigPath()};
   std::filesystem::create_directories(path.parent_path());
 
@@ -56,25 +77,31 @@ ImU32 ToImU32(const Config::Theme::ColorRGBA &c) {
   return IM_COL32(c[0], c[1], c[2], c[3]);
 }
 
-bool createConfig(std::string_view name) {
+Config::CreateConfigResult createConfig(std::string_view name) {
   if (!Paths::ensureConfigDirectory()) {
-    return false;
+    return CreateConfigResult::DirectoryError;
   }
+
+  if (name.empty() || name.size() > 64)
+    return CreateConfigResult::NameTooLong;
 
   const auto path{Paths::resolveConfigPath(name)};
 
   if (std::filesystem::exists(path)) {
-    return false; // todo add a message to input box
+    return CreateConfigResult::AlreadyExists;
   }
 
   std::ofstream file{path};
-
   if (!file) {
-    return false;
+    return CreateConfigResult::FileError;
   }
 
   file << json(defaultConfig).dump(4);
-  return file.good();
+  if (!file) {
+    return CreateConfigResult::FileError;
+  }
+
+  return CreateConfigResult::Success;
 }
 
 bool saveConfig(std::string_view name, const Config::Settings &settings) {
@@ -99,12 +126,12 @@ bool loadConfig(std::string_view name) {
 
   try {
     std::ifstream file{path};
-    if(!file){
+    if (!file) {
       return false;
     }
-    const auto j = json::parse(file);    
+    const auto j = json::parse(file);
     activeConfig = j.get<Settings>();
-  } catch (const std::exception & e) {
+  } catch (const std::exception &e) {
     // TODO: send message to imgui
     // notifyError{e.what()};
     return false;
@@ -113,14 +140,13 @@ bool loadConfig(std::string_view name) {
 }
 
 bool deleteConfig(std::string_view name) {
-    const auto path = Paths::resolveConfigPath(name);
+  const auto path = Paths::resolveConfigPath(name);
 
-    if (!std::filesystem::exists(path)) {
-        return false;
-    }
+  if (!std::filesystem::exists(path)) {
+    return false;
+  }
 
-    return std::filesystem::remove(path);
+  return std::filesystem::remove(path);
 }
-
 
 } // namespace Config

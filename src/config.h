@@ -10,9 +10,21 @@
 #include <array>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <string_view>
+#include <vector>
 using json = nlohmann::json;
 
 namespace Config {
+
+enum class CreateConfigResult {
+  Success,
+  EmptyName,
+  NameTooLong,
+  AlreadyExists,
+  DirectoryError,
+  FileError,
+  Max_ConfigResults
+};
 
 struct Theme {
   using ColorRGBA = std::array<int, 4>;
@@ -47,10 +59,11 @@ extern std::vector<std::string> configs;
 bool loadConfig(std::string_view name);
 bool saveConfig(std::string_view name, const Config::Settings &settings);
 bool deleteConfig(std::string_view name);
-bool createConfig(std::string_view name);
+CreateConfigResult createConfig(std::string_view name);
+void refreshConfigs();
 
 void Load();
-bool Save(const Settings &settings);
+bool Apply(const Settings &settings);
 ImU32 ToImU32(const Config::Theme::ColorRGBA &c);
 } // namespace Config
 
