@@ -5,6 +5,7 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <dxgi.h>
 
@@ -23,6 +24,8 @@ static ID3D11RenderTargetView *s_rtv = nullptr;
 static ImGuiContext *s_imguiContext = nullptr;
 static bool s_visible = false;
 static UINT s_resizeWidth = 0, s_resizeHeight = 0;
+
+// Forward declarations
 
 static void CreateRenderTarget() {
   ID3D11Texture2D *backBuffer = nullptr;
@@ -160,7 +163,19 @@ void Hide() {
 
 bool IsVisible() { return s_visible; }
 
+// Tabs handling
+enum class SettingsTab { Visuals, Configs, max_SettingsTabs };
+
+struct Tab {
+  const char *label;
+  SettingsTab type;
+};
+
+std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
+    {{"Visuals", SettingsTab::Visuals}, {"Configs", SettingsTab::Configs}}};
+
 // Helper functions
+
 int toColorRGB(float value) {
   value = std::clamp(value, 0.0f, 1.0f);
   return static_cast<int>(std::round(value * 255.0f));
@@ -192,6 +207,24 @@ void restoreFromConfig(const Config::Settings &prevSettings,
   rounding = prevSettings.theme.rounding;
 }
 
+// Draw functions
+
+void drawVisualsTab(ImVec4 &idleFillCol, ImVec4 &activeFillCol,
+                    ImVec4 &idleTextCol, ImVec4 &activeTextCol,
+                    float &rounding) {
+
+  ImGui::ColorEdit4("Idle fill color", (float *)&idleFillCol);
+  ImGui::ColorEdit4("Active fill color", (float *)&activeFillCol);
+
+  ImGui::ColorEdit4("Idle text color", (float *)&idleTextCol);
+  ImGui::ColorEdit4("Active text color", (float *)&activeTextCol);
+
+  ImGui::SliderFloat("Rounding", &rounding, 0.0f, 20.0f, "%.2f");
+}
+
+void drawConfigsTab() {
+}
+
 void RenderFrame() {
   if (!s_visible)
     return;
@@ -206,16 +239,19 @@ void RenderFrame() {
     s_resizeWidth = s_resizeHeight = 0;
     CreateRenderTarget();
   }
+  // Draw functions
 
   // Main Loop Variables
   static bool wasVisibleLastFrame = false;
-  static Config::Settings prevSettings{Config::config};
+  static Config::Settings prevSettings{Config::activeConfig};
   static ImVec4 idleFillCol, activeFillCol, idleTextCol, activeTextCol;
   static float rounding;
 
+  static SettingsTab currentTab = SettingsTab::Visuals;
+
   bool visibleNow = SettingsWindow::IsVisible();
   if (visibleNow && !wasVisibleLastFrame) {
-    prevSettings = Config::config;
+    prevSettings = Config::activeConfig;
     restoreFromConfig(prevSettings, idleFillCol, activeTextCol, idleTextCol,
                       activeTextCol, rounding);
   }
@@ -227,7 +263,7 @@ void RenderFrame() {
                     toConfigColor(idleTextCol), toConfigColor(activeTextCol),
                     rounding}};
   // Passing new settings but dont saving them
-  Config::config = newSettings;
+  Config::activeConfig = newSettings;
 
   ImGui_ImplDX11_NewFrame();
   ImGui_ImplWin32_NewFrame();
@@ -241,13 +277,27 @@ void RenderFrame() {
                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
                    ImGuiWindowFlags_NoSavedSettings);
 
-  ImGui::ColorEdit4("Idle fill color", (float *)&idleFillCol);
-  ImGui::ColorEdit4("Active fill color", (float *)&activeFillCol);
+  for (size_t i{0}; i < std::size(tabs); ++i) {
+    if (ImGui::Button(tabs[i].label,
+                      ImVec2((300.0f / std::size(tabs) - 9),
+                             25.0f))) // todo remove magic numbers
+      currentTab = tabs[i].type;
 
-  ImGui::ColorEdit4("Idle text color", (float *)&idleTextCol);
-  ImGui::ColorEdit4("Active text color", (float *)&activeTextCol);
+    if (i + 1 < std::size(tabs))
+      ImGui::SameLine();
+  }
 
-  ImGui::SliderFloat("Rounding", &rounding, 0.0f, 20.0f, "%.2f");
+  switch (currentTab) {
+  case SettingsTab::Visuals:
+    drawVisualsTab(idleFillCol, activeFillCol, idleTextCol, activeTextCol,
+                   rounding);
+    break;
+  case SettingsTab::Configs:
+    drawConfigsTab();
+    break;
+  default:
+    break;
+  }
 
   if (ImGui::Button("Save")) {
     Config::Save(newSettings);
@@ -257,7 +307,7 @@ void RenderFrame() {
 
   // maybe change to Load button or smtmh like this later
   if (ImGui::Button("Cancel")) {
-    Config::config = prevSettings;
+    Config::activeConfig = prevSettings;
     restoreFromConfig(prevSettings, idleFillCol, activeTextCol, idleTextCol,
                       activeTextCol, rounding);
   }

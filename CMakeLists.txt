@@ -26,6 +26,7 @@ add_executable(${PROJECT_NAME}  WIN32
     src/main.cpp
     src/SystemTray.cpp
     src/SettingsWindow.cpp
+    src/Paths.cpp
     src/Config.cpp
     src/Resource/app.o
     src/Resource/app.rc

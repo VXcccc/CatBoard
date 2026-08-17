@@ -269,14 +269,14 @@ void renderKeyboard(const Input::Layout &layout,
     ImVec2 topLeft{key.x, key.y};
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
 
-    ImU32 fill{down ? Config::ToImU32(Config::config.theme.activeFill)
-                    : Config::ToImU32(Config::config.theme.idleFill)};
-    ImU32 textColor{down ? Config::ToImU32(Config::config.theme.activeText)
-                         : Config::ToImU32(Config::config.theme.idleText)
+    ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
+                    : Config::ToImU32(Config::activeConfig.theme.idleFill)};
+    ImU32 textColor{down ? Config::ToImU32(Config::activeConfig.theme.activeText)
+                         : Config::ToImU32(Config::activeConfig.theme.idleText)
                                }; // oposite the fill color
                                             
     ImU32 border{IM_COL32(1, 1, 1, 255)};
-    float rounding {Config::config.theme.rounding};
+    float rounding {Config::activeConfig.theme.rounding};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
 
