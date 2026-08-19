@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "ConfigJson.h"
 #include "Constants.h"
 #include "Paths.h"
 #include "imgui.h"
@@ -18,10 +19,10 @@ namespace Config {
 Settings activeConfig{};
 static const Settings defaultConfig{};
 std::vector<std::string> configs{};
+std::string activeConfigName;
 
 void refreshConfigs() {
   Config::configs.clear();
-
   const auto folder = Paths::configDirectory();
 
   if (!std::filesystem::exists(folder)) {
@@ -29,14 +30,11 @@ void refreshConfigs() {
   }
 
   for (const auto &entry : std::filesystem::directory_iterator(folder)) {
-    if (!entry.is_regular_file()){
+    if (!entry.is_regular_file()) {
+      continue;
+    } else if (entry.path().extension() != ".json") {
       continue;
     }
-
-    else if (entry.path().extension() != ".json"){
-      continue;
-    }
-
     Config::configs.push_back(entry.path().stem().string());
   }
 }
@@ -50,12 +48,14 @@ void Load() {
     return;
   }
 
+  // silently reseting config to defaults
   try {
     std::ifstream file{path};
     const auto j = json::parse(file);
     activeConfig = j.get<Settings>();
   } catch (const std::exception &) {
     activeConfig = defaultConfig;
+    Apply(activeConfig);
   }
 }
 
@@ -85,7 +85,7 @@ Config::CreateConfigResult createConfig(std::string_view name) {
   if (name.empty() || name.size() > 64)
     return CreateConfigResult::NameTooLong;
 
-  const auto path{Paths::resolveConfigPath(name)};
+  const auto path{Paths::getConfigPath(name)};
 
   if (std::filesystem::exists(path)) {
     return CreateConfigResult::AlreadyExists;
@@ -109,7 +109,7 @@ bool saveConfig(std::string_view name, const Config::Settings &settings) {
     return false;
   }
 
-  const auto path{Paths::resolveConfigPath(name)};
+  const auto path{Paths::getConfigPath(name)};
 
   std::ofstream file{path};
 
@@ -122,7 +122,7 @@ bool saveConfig(std::string_view name, const Config::Settings &settings) {
 }
 
 bool loadConfig(std::string_view name) {
-  const auto path{Paths::resolveConfigPath(name)};
+  const auto path{Paths::getConfigPath(name)};
 
   try {
     std::ifstream file{path};
@@ -131,6 +131,7 @@ bool loadConfig(std::string_view name) {
     }
     const auto j = json::parse(file);
     activeConfig = j.get<Settings>();
+    activeConfigName = std::string{name};
   } catch (const std::exception &e) {
     // TODO: send message to imgui
     // notifyError{e.what()};
@@ -140,7 +141,7 @@ bool loadConfig(std::string_view name) {
 }
 
 bool deleteConfig(std::string_view name) {
-  const auto path = Paths::resolveConfigPath(name);
+  const auto path = Paths::getConfigPath(name);
 
   if (!std::filesystem::exists(path)) {
     return false;

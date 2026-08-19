@@ -1,8 +1,8 @@
 {
   "windowWidth": 450,
-  "windowHeight": 237,
+  "windowHeight": 287,
   "keys": [
-    { "keyCode": 9,   "x": 9,   "y": 53,  "w": 67,  "h": 43, "label": "tab" },
+    { "keyCode": 9,   "x": 9,   "y": 53,  "w": 67,  "h": 43, "label": "Tab" },
     { "keyCode": 49,  "x": 53,  "y": 9,   "w": 43,  "h": 43, "label": "1" },
     { "keyCode": 50,  "x": 97,  "y": 9,   "w": 43,  "h": 43, "label": "2" },
     { "keyCode": 51,  "x": 141, "y": 9,   "w": 43,  "h": 43, "label": "3" },
@@ -13,19 +13,19 @@
     { "keyCode": 69,  "x": 165, "y": 53,  "w": 43,  "h": 43, "label": "e" },
     { "keyCode": 82,  "x": 209, "y": 53,  "w": 43,  "h": 43, "label": "r" },
     { "keyCode": 84,  "x": 253, "y": 53,  "w": 43,  "h": 43, "label": "t" },
-    { "keyCode": 20,  "x": 9,   "y": 97,  "w": 79,  "h": 43, "label": "caps" },
+    { "keyCode": 20,  "x": 9,   "y": 97,  "w": 79,  "h": 43, "label": "Caps" },
     { "keyCode": 65,  "x": 89,  "y": 97,  "w": 43,  "h": 43, "label": "a" },
     { "keyCode": 83,  "x": 133, "y": 97,  "w": 43,  "h": 43, "label": "s" },
     { "keyCode": 68,  "x": 177, "y": 97,  "w": 43,  "h": 43, "label": "d" },
     { "keyCode": 70,  "x": 221, "y": 97,  "w": 43,  "h": 43, "label": "f" },
     { "keyCode": 71,  "x": 265, "y": 97,  "w": 43,  "h": 43, "label": "g" },
-    { "keyCode": 160, "x": 9,   "y": 141, "w": 100, "h": 43, "label": "shift" },
+    { "keyCode": 160, "x": 9,   "y": 141, "w": 100, "h": 43, "label": "Shift" },
     { "keyCode": 90,  "x": 110, "y": 141, "w": 43,  "h": 43, "label": "z" },
     { "keyCode": 88,  "x": 154, "y": 141, "w": 43,  "h": 43, "label": "x" },
     { "keyCode": 67,  "x": 198, "y": 141, "w": 43,  "h": 43, "label": "c" },
     { "keyCode": 86,  "x": 242, "y": 141, "w": 43,  "h": 43, "label": "v" },
-    { "keyCode": 162, "x": 9,   "y": 185, "w": 67,  "h": 43, "label": "ctrl" },
-    { "keyCode": 164, "x": 119, "y": 185, "w": 67,  "h": 43, "label": "alt" },
+    { "keyCode": 162, "x": 9,   "y": 185, "w": 67,  "h": 43, "label": "Ctrl" },
+    { "keyCode": 164, "x": 119, "y": 185, "w": 67,  "h": 43, "label": "Alt" },
     { "keyCode": 32,  "x": 187, "y": 185, "w": 121, "h": 43, "label": "" }
   ]
 }

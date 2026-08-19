@@ -1,8 +1,6 @@
-#include "nlohmann/detail/macro_scope.hpp"
 #include <nlohmann/json.hpp>
 using json = nlohmann::json;
 #include <fstream>
-// #include <windows.h>
 #include <vector>
 #ifndef INPUTHANDLE_H
 #define INPUTHANDLE_H
@@ -25,9 +23,13 @@ struct Layout {
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Layout, windowWidth, windowHeight, keys)
 
-inline std::ifstream file{"Layouts/layout7tNoMouse.json"};
+extern std::vector<std::string> layouts;
+extern Layout activeLayout;
+extern std::string defaultLayoutName;
 
-inline Layout layout {json::parse(file).get<Layout>()};
+bool installDefaultLayouts();
+void refreshLayouts();
+bool loadLayout(std::string_view name);
 
 } // namespace Input
 

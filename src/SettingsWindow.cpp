@@ -1,6 +1,8 @@
 #include "SettingsWindow.h"
 #include "Config.h"
 #include "Constants.h"
+#include "Helpers.h"
+#include "Paths.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -187,6 +189,13 @@ struct SettingsEditState {
 
   float rounding{};
 
+  Config::Outline outline;
+
+  std::string selectedLayout;
+
+  std::size_t currentLayout{};
+  std::size_t currentConfig{};
+
   std::string configNameInput{};
   std::string configNameError;
 };
@@ -218,6 +227,9 @@ void restoreFromConfig(SettingsEditState &state,
   state.idleTextCol = fromConfigColor(prevSettings.theme.idleText);
   state.activeTextCol = fromConfigColor(prevSettings.theme.activeText);
   state.rounding = prevSettings.theme.rounding;
+
+  state.outline = prevSettings.theme.outline;
+  state.selectedLayout = prevSettings.selectedLayout;
 }
 
 void handleCreateConfig(SettingsEditState &state) {
@@ -247,6 +259,80 @@ void handleCreateConfig(SettingsEditState &state) {
   }
 }
 
+void validateCurrentIndex(std::size_t &index, std::size_t size) {
+  if (index >= size) {
+    index = size == 0 ? 0 : size - 1;
+  }
+}
+
+std::size_t selectCurrentConfig() {
+  const auto cfg{std::find(Config::configs.begin(), Config::configs.end(),
+                           Config::activeConfigName)};
+
+  if (cfg != Config::configs.end()) {
+    return static_cast<std::size_t>(
+        std::distance(Config::configs.begin(), cfg));
+  } else {
+    return 0;
+  }
+}
+
+std::size_t selectCurrentLayout() {
+  const auto layout{std::find(Input::layouts.begin(), Input::layouts.end(),
+                              Config::activeConfig.selectedLayout)};
+
+  if (layout == Input::layouts.end())
+    return 0;
+
+  return static_cast<std::size_t>(
+      std::distance(Input::layouts.begin(), layout));
+}
+
+// Helper draw functions
+
+void drawLayoutCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
+  validateCurrentIndex(outCurrentItem, std::size(Input::layouts));
+
+  const char *preview{Input::layouts.empty()
+                          ? "No layouts"
+                          : Input::layouts[outCurrentItem].c_str()};
+  if (ImGui::BeginCombo("Layout", preview)) {
+    for (std::size_t i{0}; i < std::size(Input::layouts); ++i) {
+      bool isSelected{outCurrentItem == i};
+      if (ImGui::Selectable(Input::layouts[i].c_str(), isSelected)) {
+        outCurrentItem = i;
+
+        state.selectedLayout = Input::layouts[i];
+        Input::loadLayout(Input::layouts[i]);
+      }
+      if (isSelected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+}
+
+void drawConfigCombo(std::size_t &outCurrentItem) {
+  validateCurrentIndex(outCurrentItem, std::size(Config::configs));
+
+  const char *preview{Config::configs.empty()
+                          ? "No configs"
+                          : Config::configs[outCurrentItem].c_str()};
+
+  if (ImGui::BeginCombo("Config", preview)) {
+    for (std::size_t i{0}; i < std::size(Config::configs); ++i) {
+      bool isSelected{(outCurrentItem == i)};
+      if (ImGui::Selectable(Config::configs[i].c_str(), isSelected)) {
+        outCurrentItem = i;
+      }
+      if (isSelected)
+        ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+}
+
 // Draw functions
 
 void drawVisualsTab(SettingsEditState &state) {
@@ -257,43 +343,51 @@ void drawVisualsTab(SettingsEditState &state) {
   ImGui::ColorEdit4("Active text color", &state.activeTextCol.x);
 
   ImGui::SliderFloat("Rounding", &state.rounding, 0.0f, 20.0f, "%.2f");
+  state.rounding = std::clamp(state.rounding, 0.0f, 20.0f);
+
+  drawLayoutCombo(state.currentLayout, state);
+
+  if (ImGui::Button("Open layout folder")) {
+    Paths::openLayoutDirectory();
+  }
+  ImGui::SameLine();
+  if (ImGui::Button("Refresh layouts")) {
+    Input::refreshLayouts();
+    validateCurrentIndex(state.currentLayout, std::size(Input::layouts));
+  }
+
+  ImGui::Checkbox("Enable outline", &state.outline.enable);
+  if (state.outline.enable) {
+    ImVec4 outlineColor{fromConfigColor(state.outline.color)};
+    if (ImGui::ColorEdit4("Outline color", &outlineColor.x)) {
+      state.outline.color = toConfigColor(outlineColor);
+    };
+
+    ImGui::SliderFloat("Thickness", &state.outline.thickness, 0.0f, 20.0f,
+                       "%.2f");
+    // you can change this value if you want more thickness lol
+    state.outline.thickness = std::clamp(state.outline.thickness, 0.0f, 20.0f);
+  }
 }
 
 void drawConfigsTab(SettingsEditState &state) {
-  Config::refreshConfigs();
-  static std::size_t currentItem{0};
-
-  if (Config::configs.empty()) {
-    currentItem = 0;
-  } else if (currentItem >= Config::configs.size()) {
-    currentItem = Config::configs.size() - 1;
-  }
-
-  const char *preview{Config::configs.empty()
-                          ? "No configs"
-                          : Config::configs[currentItem].c_str()};
-
-  if (ImGui::BeginCombo("Config", preview)) {
-    for (std::size_t i{0}; i < std::size(Config::configs); ++i) {
-      bool is_selected = (currentItem == i);
-      if (ImGui::Selectable(Config::configs[i].c_str(), is_selected)) {
-        currentItem = i;
-      }
-      if (is_selected)
-        ImGui::SetItemDefaultFocus();
-    }
-    ImGui::EndCombo();
-  }
+  drawConfigCombo(state.currentConfig);
 
   if (ImGui::Button("Save config")) {
-    Config::saveConfig(Config::configs[currentItem], Config::activeConfig);
+    Config::saveConfig(Config::configs[state.currentConfig],
+                       Config::activeConfig);
   }
 
   ImGui::SameLine();
 
   if (ImGui::Button("Load config")) {
-    if (Config::loadConfig(Config::configs[currentItem])) {
+    if (Config::loadConfig(Config::configs[state.currentConfig])) {
       restoreFromConfig(state, Config::activeConfig);
+
+      if (!Input::loadLayout(Config::activeConfig.selectedLayout)) {
+        Helper::errorMesBox(L"Failed to load keyboard layout");
+      }
+
       state.previous = Config::activeConfig;
     }
   }
@@ -301,21 +395,35 @@ void drawConfigsTab(SettingsEditState &state) {
   ImGui::SameLine();
 
   if (ImGui::Button("Delete config")) {
-    Config::deleteConfig(Config::configs[currentItem]);
+    Config::deleteConfig(Config::configs[state.currentConfig]);
     Config::refreshConfigs();
+    validateCurrentIndex(state.currentConfig, std::size(Config::configs));
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Refresh configs")) {
+    Config::refreshConfigs();
+    validateCurrentIndex(state.currentConfig, std::size(Config::configs));
   }
 
   ImGui::InputText("##Config name", &state.configNameInput);
   ImGui::SameLine();
   if (ImGui::Button("Create config")) {
     handleCreateConfig(state);
-    if (!state.configNameError.empty()) {
-      ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.2f, 0.2f, 1));
-      ImGui::TextUnformatted(state.configNameError.c_str());
-      ImGui::PopStyleColor();
-    } else {
+    if (state.configNameError.empty()) {
       Config::refreshConfigs();
     }
+  }
+
+  if (!state.configNameError.empty()) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.2f, 0.2f, 1));
+    ImGui::TextUnformatted(state.configNameError.c_str());
+    ImGui::PopStyleColor();
+  }
+
+  if (ImGui::Button("Open config folder")) {
+    Paths::openConfigDirectory();
   }
 }
 
@@ -352,15 +460,20 @@ void RenderFrame() {
 
   // Main Loop Variables
   static bool wasVisibleLastFrame = false;
+  bool visibleNow = SettingsWindow::IsVisible();
 
   static SettingsEditState editState{};
-
   static SettingsTab currentTab = SettingsTab::Visuals;
 
-  bool visibleNow = SettingsWindow::IsVisible();
   if (visibleNow && !wasVisibleLastFrame) {
+    Input::refreshLayouts();
+    Config::refreshConfigs();
+
     editState.previous = Config::activeConfig;
     restoreFromConfig(editState, editState.previous);
+
+    editState.currentLayout = selectCurrentLayout();
+    editState.currentConfig = selectCurrentConfig();
   }
   wasVisibleLastFrame = visibleNow;
 
@@ -397,13 +510,16 @@ void RenderFrame() {
     break;
   }
 
-  Config::Settings newSettings = {
-      Consts::CATBOARD_VERSION,
-      Config::Theme{toConfigColor(editState.idleFillCol),
-                    toConfigColor(editState.activeFillCol),
-                    toConfigColor(editState.idleTextCol),
-                    toConfigColor(editState.activeTextCol),
-                    editState.rounding}};
+  Config::Settings newSettings = {Consts::CATBOARD_VERSION,
+                                  Config::Theme{
+                                      toConfigColor(editState.idleFillCol),
+                                      toConfigColor(editState.activeFillCol),
+                                      toConfigColor(editState.idleTextCol),
+                                      toConfigColor(editState.activeTextCol),
+                                      editState.rounding,
+                                      editState.outline,
+                                  },
+                                  editState.selectedLayout};
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;
 

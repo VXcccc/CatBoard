@@ -17,28 +17,40 @@ std::filesystem::path getAppDataDir() {
   return std::filesystem::current_path();
 }
 
+std::filesystem::path getExecutableDir() {
+    return std::filesystem::current_path();
+}
+
 std::filesystem::path getActiveConfigPath() {
   return getAppDataDir() / "ActiveConfig.json";
 }
+  
+std::filesystem::path getActiveLayoutPath() {
+  return getAppDataDir() / "ActiveLayout.json";
+}
 
-std::filesystem::path appDataConfigsFolderPath() {
+std::filesystem::path appDataConfigsDirPath() {
   return getAppDataDir() / "Configs";
 }
 
+std::filesystem::path appDataLayoutsDirPath() {
+  return getAppDataDir() / "Layouts";
+}
+
 std::filesystem::path getConfigPath(std::string_view name) {
-  return appDataConfigsFolderPath() / (std::string{name} + ".json");
-}
-
-std::filesystem::path getPortableConfigPath(std::string_view name) {
-  return std::filesystem::path{"Configs"} / (std::string{name} + ".json");
-}
-
-std::filesystem::path resolveConfigPath(std::string_view name) {
   if (Consts::IS_PORTABLE) {
-    return getPortableConfigPath(name);
-  }
+    return std::filesystem::path{"Configs"} / (std::string{name} + ".json");
+  } 
 
-  return getConfigPath(name);
+  return appDataConfigsDirPath() / (std::string{name} + ".json");
+}
+
+std::filesystem::path getLayoutPath(std::string_view name) {
+  if (Consts::IS_PORTABLE) {
+    return std::filesystem::path{"Layouts"} / (std::string{name} + ".json");
+  } 
+
+  return appDataLayoutsDirPath() / (std::string{name} + ".json");
 }
 
 std::filesystem::path configDirectory() {
@@ -46,16 +58,43 @@ std::filesystem::path configDirectory() {
     return std::filesystem::path{"Configs"};
   }
 
-  return appDataConfigsFolderPath();
+  return appDataConfigsDirPath();
+}
+
+std::filesystem::path layoutDirectory(){
+  if(Consts::IS_PORTABLE){
+    return std::filesystem::path{"Layouts"};
+  }
+
+  return appDataLayoutsDirPath();
 }
 
 bool ensureConfigDirectory() {
-    const auto path = Paths::configDirectory();
+  const auto path = Paths::configDirectory();
 
-    if (std::filesystem::exists(path)) {
-        return true;
-    }
-    return std::filesystem::create_directories(path);
+  if (std::filesystem::exists(path)) {
+    return true;
+  }
+  return std::filesystem::create_directories(path);
+}
+
+bool ensureLayoutDirectory(){
+  const auto path = Paths::layoutDirectory();
+
+  if (std::filesystem::exists(path)) {
+    return true;
+  }
+  return std::filesystem::create_directories(path);
+}
+
+void openConfigDirectory() {
+  const auto path{configDirectory()};
+  ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
+}
+
+void openLayoutDirectory(){
+  const auto path{layoutDirectory()};
+  ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
 }
 
 } // namespace Paths

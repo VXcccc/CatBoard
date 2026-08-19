@@ -5,25 +5,33 @@
 #include <string_view>
 
 namespace Paths {
-std::filesystem::path getAppDataDir();
-std::filesystem::path getActiveConfigPath();
+std::filesystem::path getExecutableDir();
 
-std::filesystem::path appDataConfigsFolderPath();
+std::filesystem::path getAppDataDir();
+
+std::filesystem::path getActiveConfigPath();
+std::filesystem::path getActiveLayoutPath();
+
+std::filesystem::path appDataConfigsDirPath();
+std::filesystem::path appDataLayoutsDirPath();
 
 /// @param name Config name without extension.
 std::filesystem::path getConfigPath(std::string_view name);
 
-/// @param name Config name without extension.
-std::filesystem::path getPortableConfigPath(std::string_view name);
+/// @param name Layout name without extension.
+std::filesystem::path getLayoutPath(std::string_view name);
 
-/// Returns the config file path depending on IS_PORTABLE constant
-/// @param name Config name without extension.
-/// @return Path to the `.cfg` file.
-std::filesystem::path resolveConfigPath(std::string_view name);
 
 std::filesystem::path configDirectory();
+std::filesystem::path layoutDirectory();
 
 bool ensureConfigDirectory();
+bool ensureLayoutDirectory();
+
+/// Open config folder in explorer
+void openConfigDirectory();
+void openLayoutDirectory();
+
 } // namespace Paths
 
 #endif // !PATHS_H

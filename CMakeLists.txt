@@ -28,6 +28,9 @@ add_executable(${PROJECT_NAME}  WIN32
     src/SettingsWindow.cpp
     src/Paths.cpp
     src/Config.cpp
+    src/ConfigJson.cpp
+    src/Helpers.cpp
+    src/InputHandle.cpp
     src/Resource/app.o
     src/Resource/app.rc
     ${imgui_SOURCE_DIR}/imgui.cpp

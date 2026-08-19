@@ -16,9 +16,11 @@
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
+#include "nlohmann/detail/value_t.hpp"
 #include <InputHandle.h>
 #include <array>
 #include <conio.h>
+#include <cstdlib>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <iostream>
@@ -54,9 +56,16 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+
 // Main code
 int main(int, char **) {
   Config::Load();
+  if(!Input::installDefaultLayouts()){
+    Helper::fatalError(L"Failed to install default layouts");
+  }
+  if (!Input::loadLayout(Config::activeConfig.selectedLayout)) {
+    Helper::fatalError(L"Failed to load keyboard layout");
+  }
   // Make process DPI aware and obtain main monitor scale
   ImGui_ImplWin32_EnableDpiAwareness();
   float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(
@@ -80,8 +89,8 @@ int main(int, char **) {
       ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
                             WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                         wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0, 600,
-                        (int)(Input::layout.windowWidth * main_scale),
-                        (int)(Input::layout.windowHeight * main_scale), nullptr,
+                        (int)(Input::activeLayout.windowWidth * main_scale),
+                        (int)(Input::activeLayout.windowHeight * main_scale), nullptr,
                         nullptr, wc.hInstance, nullptr);
 
   ::SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
@@ -201,7 +210,7 @@ int main(int, char **) {
     }
 
     bool anyKeyChanged{
-        detectAnyKeyChanged(Input::layout, prevKeyState, currentDown)};
+        detectAnyKeyChanged(Input::activeLayout, prevKeyState, currentDown)};
 
     bool needsRender = anyKeyChanged || firstFrame ||
                        (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
@@ -213,7 +222,7 @@ int main(int, char **) {
     }
     firstFrame = false;
 
-    commitKeyState(Input::layout, currentDown, prevKeyState);
+    commitKeyState(Input::activeLayout, currentDown, prevKeyState);
 
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
@@ -221,7 +230,7 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    renderKeyboard(Input::layout, currentDown);
+    renderKeyboard(Input::activeLayout, currentDown);
 
     // Rendering
     ImGui::Render();
@@ -262,7 +271,7 @@ int main(int, char **) {
 void renderKeyboard(const Input::Layout &layout,
                     const std::array<bool, 256> &currentDown) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
-  for (const auto &key : Input::layout.keys) {
+  for (const auto &key : Input::activeLayout.keys) {
     bool down{currentDown[key.keyCode]};
     // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
 
@@ -271,17 +280,21 @@ void renderKeyboard(const Input::Layout &layout,
 
     ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
                     : Config::ToImU32(Config::activeConfig.theme.idleFill)};
-    ImU32 textColor{down ? Config::ToImU32(Config::activeConfig.theme.activeText)
-                         : Config::ToImU32(Config::activeConfig.theme.idleText)
-                               }; // oposite the fill color
-                                            
-    ImU32 border{IM_COL32(1, 1, 1, 255)};
-    float rounding {Config::activeConfig.theme.rounding};
+    ImU32 textColor{
+        down ? Config::ToImU32(Config::activeConfig.theme.activeText)
+             : Config::ToImU32(Config::activeConfig.theme
+                                   .idleText)}; // oposite the fill color
+
+    float rounding{Config::activeConfig.theme.rounding};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-
+    if (Config::activeConfig.theme.outline.enable) {
+      ImU32 outlineColor{
+          Config::ToImU32(Config::activeConfig.theme.outline.color)};
+      float thickness{Config::activeConfig.theme.outline.thickness};
+      draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
+    }
     // outline
-    //  draw->AddRect(topLeft, bottomRight, border, 6.0f, 0, 3.0f);
 
     ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
     ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
@@ -294,7 +307,7 @@ bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown) {
   bool anyKeyChanged = false;
-  for (const auto &key : Input::layout.keys) {
+  for (const auto &key : Input::activeLayout.keys) {
     bool down = (GetAsyncKeyState(key.keyCode) & 0x8000) != 0;
     outCurrentDown[key.keyCode] = down;
     if (down != prevKeyState[key.keyCode]) {
@@ -308,7 +321,7 @@ bool detectAnyKeyChanged(const Input::Layout &layout,
 void commitKeyState(const Input::Layout &layout,
                     const std::array<bool, 256> &currentDown,
                     std::array<bool, 256> &outPrevKeyState) {
-  for (const auto &key : Input::layout.keys) {
+  for (const auto &key : Input::activeLayout.keys) {
     outPrevKeyState[key.keyCode] = currentDown[key.keyCode];
   }
 }
@@ -390,6 +403,7 @@ void CleanupRenderTarget() {
     g_mainRenderTargetView = nullptr;
   }
 }
+
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,

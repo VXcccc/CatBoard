@@ -5,6 +5,7 @@
 
 #include "Constants.h"
 #include "Paths.h"
+#include "InputHandle.h"
 #include "imgui.h"
 #include "nlohmann/detail/macro_scope.hpp"
 #include <array>
@@ -26,6 +27,14 @@ enum class CreateConfigResult {
   Max_ConfigResults
 };
 
+struct Outline{
+  using ColorRGBA = std::array<int, 4>;
+
+  bool enable{false};
+  ColorRGBA color{255, 255, 255, 255};
+  float thickness{3.0f};
+};
+
 struct Theme {
   using ColorRGBA = std::array<int, 4>;
   ColorRGBA idleFill{1, 1, 1, 255};
@@ -35,26 +44,21 @@ struct Theme {
   ColorRGBA activeText{1, 1, 1, 255};
 
   float rounding{0.0f};
+
+  Outline outline{};
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Theme, idleFill, activeFill, idleText,
-                                   activeText, rounding)
 
 struct Settings {
   int version{Consts::CATBOARD_VERSION};
   Theme theme{};
+  std::string selectedLayout{Input::defaultLayoutName};
 };
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Settings, version, theme)
 
-// struct for user Configs
-struct Profile {
-  std::string name{};
-  Settings settings{};
-};
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Profile, name, settings)
 
 // current config
 extern Settings activeConfig;
 extern std::vector<std::string> configs;
+extern std::string activeConfigName;
 
 bool loadConfig(std::string_view name);
 bool saveConfig(std::string_view name, const Config::Settings &settings);
