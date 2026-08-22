@@ -2,7 +2,9 @@
 #include "Config.h"
 #include "Constants.h"
 #include "Helpers.h"
+#include "InputHandle.h"
 #include "Paths.h"
+#include "Sound.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -167,7 +169,7 @@ void Hide() {
 bool IsVisible() { return s_visible; }
 
 // Tabs handling
-enum class SettingsTab { Visuals, Configs, max_SettingsTabs };
+enum class SettingsTab { Visuals, Sounds, Configs, max_SettingsTabs };
 
 struct Tab {
   const char *label;
@@ -175,7 +177,12 @@ struct Tab {
 };
 
 std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
-    {{"Visuals", SettingsTab::Visuals}, {"Configs", SettingsTab::Configs}}};
+    {{"Visuals", SettingsTab::Visuals},
+     {"Sounds", SettingsTab::Sounds},
+     {"Configs", SettingsTab::Configs}}};
+
+static_assert(tabs.size() == static_cast<std::size_t>(SettingsTab::max_SettingsTabs),
+             "tabs array is out of sync with SettingsTab enum");
 
 // Helper functions
 
@@ -193,8 +200,11 @@ struct SettingsEditState {
 
   std::string selectedLayout;
 
+  Config::SoundPackSelection selectedSoundPack;
+
   std::size_t currentLayout{};
   std::size_t currentConfig{};
+  std::size_t currentSound{};
 
   std::string configNameInput{};
   std::string configNameError;
@@ -265,27 +275,14 @@ void validateCurrentIndex(std::size_t &index, std::size_t size) {
   }
 }
 
-std::size_t selectCurrentConfig() {
-  const auto cfg{std::find(Config::configs.begin(), Config::configs.end(),
-                           Config::activeConfigName)};
+std::size_t findIndexByName(const std::vector<std::string> &vec,
+                            std::string_view name) {
 
-  if (cfg != Config::configs.end()) {
-    return static_cast<std::size_t>(
-        std::distance(Config::configs.begin(), cfg));
-  } else {
+  const auto it{std::find(vec.begin(), vec.end(), name)};
+  if (it == vec.end()) {
     return 0;
   }
-}
-
-std::size_t selectCurrentLayout() {
-  const auto layout{std::find(Input::layouts.begin(), Input::layouts.end(),
-                              Config::activeConfig.selectedLayout)};
-
-  if (layout == Input::layouts.end())
-    return 0;
-
-  return static_cast<std::size_t>(
-      std::distance(Input::layouts.begin(), layout));
+  return static_cast<std::size_t>(std::distance(vec.begin(), it));
 }
 
 // Helper draw functions
@@ -328,6 +325,29 @@ void drawConfigCombo(std::size_t &outCurrentItem) {
       }
       if (isSelected)
         ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+}
+
+void drawSoundCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
+  validateCurrentIndex(outCurrentItem, std::size(Sound::sounds));
+
+  const char *preview{Sound::sounds.empty()
+                          ? "No sounds"
+                          : Sound::sounds[outCurrentItem].c_str()};
+  if (ImGui::BeginCombo("Sound", preview)) {
+    for (std::size_t i{0}; i < std::size(Sound::sounds); ++i) {
+      bool isSelected{outCurrentItem == i};
+      if (ImGui::Selectable(Sound::sounds[i].c_str(), isSelected)) {
+        outCurrentItem = i;
+
+        state.selectedSoundPack.name = Sound::sounds[i];
+        Sound::loadSoundPack(Sound::sounds[i]);
+      }
+      if (isSelected) {
+        ImGui::SetItemDefaultFocus();
+      }
     }
     ImGui::EndCombo();
   }
@@ -427,6 +447,19 @@ void drawConfigsTab(SettingsEditState &state) {
   }
 }
 
+void drawSoundsTab(SettingsEditState &state) {
+
+  ImGui::Checkbox("Enable sounds", &state.selectedSoundPack.enable);
+  if (state.selectedSoundPack.enable) {
+    drawSoundCombo(state.currentSound, state);
+
+    if (ImGui::Button("Refresh sounds")) {
+      Sound::refreshSounds();
+      validateCurrentIndex(state.currentSound, std::size(Sound::sounds));
+    }
+  }
+}
+
 void drawApplyCancel(SettingsEditState &editState,
                      const Config::Settings &newSettings) {
 
@@ -468,12 +501,17 @@ void RenderFrame() {
   if (visibleNow && !wasVisibleLastFrame) {
     Input::refreshLayouts();
     Config::refreshConfigs();
+    Sound::refreshSounds();
 
     editState.previous = Config::activeConfig;
     restoreFromConfig(editState, editState.previous);
 
-    editState.currentLayout = selectCurrentLayout();
-    editState.currentConfig = selectCurrentConfig();
+    editState.currentConfig =
+        findIndexByName(Config::configs, Config::activeConfigName);
+    editState.currentLayout =
+        findIndexByName(Input::layouts, Config::activeConfig.selectedLayout);
+    editState.currentSound =
+        findIndexByName(Sound::sounds, Config::activeConfig.soundPack.name);
   }
   wasVisibleLastFrame = visibleNow;
 
@@ -503,6 +541,9 @@ void RenderFrame() {
   case SettingsTab::Visuals:
     drawVisualsTab(editState);
     break;
+  case SettingsTab::Sounds:
+    drawSoundsTab(editState);
+    break;
   case SettingsTab::Configs:
     drawConfigsTab(editState);
     break;
@@ -519,11 +560,12 @@ void RenderFrame() {
                                       editState.rounding,
                                       editState.outline,
                                   },
-                                  editState.selectedLayout};
+                                  editState.selectedLayout,
+                                  editState.selectedSoundPack};
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;
 
-  if (currentTab == SettingsTab::Visuals) {
+  if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds) {
     drawApplyCancel(editState, newSettings);
   }
 

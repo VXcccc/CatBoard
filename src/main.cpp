@@ -9,6 +9,7 @@
 //
 
 #include "Config.h"
+#include "Sound.h"
 #include "Constants.h"
 #include "Helpers.h"
 #include "SettingsWindow.h"
@@ -16,14 +17,12 @@
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
-#include "nlohmann/detail/value_t.hpp"
 #include <InputHandle.h>
 #include <array>
 #include <conio.h>
 #include <cstdlib>
 #include <d3d11.h>
 #include <dxgi.h>
-#include <iostream>
 #include <shellapi.h>
 #include <tchar.h>
 #include <windows.h>
@@ -41,12 +40,12 @@ static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
 
 // Forward declarations of main functions
 void renderKeyboard(const Input::Layout &layout,
-                    const std::array<bool, 256> &currentDown);
+                    const std::array<bool, 256> &currentKeysDown);
 bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown);
 void commitKeyState(const Input::Layout &layout,
-                    const std::array<bool, 256> &currentDown,
+                    const std::array<bool, 256> &currentKeysDown,
                     std::array<bool, 256> &outPrevKeyState);
 
 // Forward declarations of helper functions
@@ -56,16 +55,22 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-
 // Main code
 int main(int, char **) {
   Config::Load();
-  if(!Input::installDefaultLayouts()){
+
+  if (!Input::installDefaultLayouts()) {
     Helper::fatalError(L"Failed to install default layouts");
   }
+
   if (!Input::loadLayout(Config::activeConfig.selectedLayout)) {
     Helper::fatalError(L"Failed to load keyboard layout");
   }
+
+  if (!(Sound::installDefaultSoundPacks())) {
+    Helper::fatalError(L"Failed to install default sound packs");
+  }
+
   // Make process DPI aware and obtain main monitor scale
   ImGui_ImplWin32_EnableDpiAwareness();
   float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(
@@ -90,8 +95,8 @@ int main(int, char **) {
                             WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                         wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0, 600,
                         (int)(Input::activeLayout.windowWidth * main_scale),
-                        (int)(Input::activeLayout.windowHeight * main_scale), nullptr,
-                        nullptr, wc.hInstance, nullptr);
+                        (int)(Input::activeLayout.windowHeight * main_scale),
+                        nullptr, nullptr, wc.hInstance, nullptr);
 
   ::SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
@@ -175,7 +180,7 @@ int main(int, char **) {
   bool done = false;
   // prevKeyState holding previous frame state
   static std::array<bool, 256> prevKeyState{};
-  static std::array<bool, 256> currentDown{};
+  static std::array<bool, 256> currentKeysDown{};
   static bool firstFrame = true;
 
   while (!done) {
@@ -209,12 +214,12 @@ int main(int, char **) {
       CreateRenderTarget();
     }
 
-    bool anyKeyChanged{
-        detectAnyKeyChanged(Input::activeLayout, prevKeyState, currentDown)};
+    bool anyKeyChanged{detectAnyKeyChanged(Input::activeLayout, prevKeyState,
+                                           currentKeysDown)};
 
-    bool needsRender = anyKeyChanged || firstFrame ||
-                       (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
-                       SettingsWindow::IsVisible();
+    bool needsRender{anyKeyChanged || firstFrame ||
+                     (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
+                     SettingsWindow::IsVisible()};
     if (!needsRender) {
       SettingsWindow::RenderFrame();
       ::Sleep(1);
@@ -222,7 +227,7 @@ int main(int, char **) {
     }
     firstFrame = false;
 
-    commitKeyState(Input::activeLayout, currentDown, prevKeyState);
+    commitKeyState(Input::activeLayout, currentKeysDown, prevKeyState);
 
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
@@ -230,7 +235,7 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    renderKeyboard(Input::activeLayout, currentDown);
+    renderKeyboard(Input::activeLayout, currentKeysDown);
 
     // Rendering
     ImGui::Render();
@@ -269,10 +274,10 @@ int main(int, char **) {
 // Main functions
 
 void renderKeyboard(const Input::Layout &layout,
-                    const std::array<bool, 256> &currentDown) {
+                    const std::array<bool, 256> &currentKeysDown) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   for (const auto &key : Input::activeLayout.keys) {
-    bool down{currentDown[key.keyCode]};
+    bool down{currentKeysDown[key.keyCode]};
     // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
 
     ImVec2 topLeft{key.x, key.y};
@@ -305,11 +310,11 @@ void renderKeyboard(const Input::Layout &layout,
 
 bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
-                         std::array<bool, 256> &outCurrentDown) {
+                         std::array<bool, 256> &outCurrentKeysDown) {
   bool anyKeyChanged = false;
   for (const auto &key : Input::activeLayout.keys) {
     bool down = (GetAsyncKeyState(key.keyCode) & 0x8000) != 0;
-    outCurrentDown[key.keyCode] = down;
+    outCurrentKeysDown[key.keyCode] = down;
     if (down != prevKeyState[key.keyCode]) {
       anyKeyChanged = true;
     }
@@ -319,10 +324,10 @@ bool detectAnyKeyChanged(const Input::Layout &layout,
 }
 
 void commitKeyState(const Input::Layout &layout,
-                    const std::array<bool, 256> &currentDown,
+                    const std::array<bool, 256> &currentKeysDown,
                     std::array<bool, 256> &outPrevKeyState) {
   for (const auto &key : Input::activeLayout.keys) {
-    outPrevKeyState[key.keyCode] = currentDown[key.keyCode];
+    outPrevKeyState[key.keyCode] = currentKeysDown[key.keyCode];
   }
 }
 
@@ -403,7 +408,6 @@ void CleanupRenderTarget() {
     g_mainRenderTargetView = nullptr;
   }
 }
-
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,

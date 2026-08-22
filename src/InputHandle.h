@@ -1,9 +1,9 @@
-#include <nlohmann/json.hpp>
-using json = nlohmann::json;
-#include <fstream>
-#include <vector>
 #ifndef INPUTHANDLE_H
 #define INPUTHANDLE_H
+
+#include <nlohmann/json.hpp>
+using json = nlohmann::json;
+#include <vector>
 
 namespace Input {
 struct Key {

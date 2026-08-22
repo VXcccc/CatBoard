@@ -4,6 +4,7 @@
 // maybe goona change location of this variable later
 
 #include "Constants.h"
+#include "Sound.h"
 #include "Paths.h"
 #include "InputHandle.h"
 #include "imgui.h"
@@ -48,10 +49,16 @@ struct Theme {
   Outline outline{};
 };
 
+struct SoundPackSelection{
+  std::string name{Sound::defaultSoundPack};
+  bool enable{false};
+};
+
 struct Settings {
   int version{Consts::CATBOARD_VERSION};
   Theme theme{};
   std::string selectedLayout{Input::defaultLayoutName};
+  SoundPackSelection soundPack{};
 };
 
 

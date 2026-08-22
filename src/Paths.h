@@ -5,32 +5,31 @@
 #include <string_view>
 
 namespace Paths {
-std::filesystem::path getExecutableDir();
 
 std::filesystem::path getAppDataDir();
+
+std::filesystem::path getExecutableDir();
 
 std::filesystem::path getActiveConfigPath();
 std::filesystem::path getActiveLayoutPath();
 
-std::filesystem::path appDataConfigsDirPath();
-std::filesystem::path appDataLayoutsDirPath();
-
-/// @param name Config name without extension.
-std::filesystem::path getConfigPath(std::string_view name);
-
-/// @param name Layout name without extension.
-std::filesystem::path getLayoutPath(std::string_view name);
-
-
 std::filesystem::path configDirectory();
 std::filesystem::path layoutDirectory();
+std::filesystem::path soundsDirectory();
+
+std::filesystem::path getConfigPath(std::string_view name);
+std::filesystem::path getLayoutPath(std::string_view name);
+
+std::filesystem::path getSoundPackDir(std::string_view name);
+std::filesystem::path getSoundPackJsonPath(std::string_view name);
 
 bool ensureConfigDirectory();
 bool ensureLayoutDirectory();
+bool ensureSoundsDirectory();
 
-/// Open config folder in explorer
 void openConfigDirectory();
 void openLayoutDirectory();
+void openSoundsDirectory();
 
 } // namespace Paths
 
