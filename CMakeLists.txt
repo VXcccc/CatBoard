@@ -1,6 +1,6 @@
-cmake_minimum_required(VERSION 4.4.2)
+cmake_minimum_required(VERSION 3.25)
 
-project(CatBoard LANGUAGES CXX)
+project(CatBoard LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -22,7 +22,16 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(json)
 
-add_executable(${PROJECT_NAME}  WIN32
+FetchContent_Declare(
+    miniaudio
+    GIT_REPOSITORY https://github.com/mackron/miniaudio.git
+    GIT_TAG master
+)
+FetchContent_MakeAvailable(miniaudio)
+
+find_package(Vorbis CONFIG REQUIRED)
+
+add_executable(${PROJECT_NAME} WIN32
     src/main.cpp
     src/SystemTray.cpp
     src/SettingsWindow.cpp
@@ -32,8 +41,8 @@ add_executable(${PROJECT_NAME}  WIN32
     src/Helpers.cpp
     src/InputHandle.cpp
     src/Sound.cpp
-    src/Resource/app.o
     src/Resource/app.rc
+
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
@@ -42,37 +51,38 @@ add_executable(${PROJECT_NAME}  WIN32
     ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
     ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
     ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
+
+    ${miniaudio_SOURCE_DIR}/miniaudio.c
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src
+    src/Resource
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
+    ${miniaudio_SOURCE_DIR}
 )
 
-# find_package(imgui CONFIG REQUIRED)
-
 target_link_libraries(${PROJECT_NAME} PRIVATE
-  nlohmann_json::nlohmann_json
-  d3d11 dxgi d3dcompiler dwmapi
+    nlohmann_json::nlohmann_json
+    d3d11 dxgi d3dcompiler dwmapi
+    Vorbis::vorbisfile
+    miniaudio_libvorbis
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_SOURCE_DIR}/src/Layouts"
-    "$<TARGET_FILE_DIR:CatBoard>/Layouts"
-
-    TARGET ${PROJECT_NAME} POST_BUILD
+        "${CMAKE_SOURCE_DIR}/src/Layouts"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Layouts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_SOURCE_DIR}/src/Sounds"
-    "$<TARGET_FILE_DIR:CatBoard>/Sounds"
+        "${CMAKE_SOURCE_DIR}/src/Sounds"
+        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Sounds"
 )
 
-
 if(MINGW)
-  target_link_options(${PROJECT_NAME} PRIVATE
+    target_link_options(${PROJECT_NAME} PRIVATE
         -static-libgcc
         -static-libstdc++
     )

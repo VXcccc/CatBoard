@@ -603,7 +603,7 @@
         }
     },
     "id": "keyboard-cherrymx-brown-abs",
-    "name": "CherryMX Brown - ABS keycaps",
+    "name": "cherrymx-brown-abs",
     "options": {
         "random_pitch": false,
         "recommended_volume": 1.0

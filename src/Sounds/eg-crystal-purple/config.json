@@ -601,7 +601,7 @@
         }
     },
     "id": "keyboard-eg-crystal-purple",
-    "name": "EG Crystal Purple",
+    "name": "eg-crystal-purple",
     "options": {
         "random_pitch": false,
         "recommended_volume": 1.0

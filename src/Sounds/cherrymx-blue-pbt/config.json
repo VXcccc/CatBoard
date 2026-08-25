@@ -602,7 +602,7 @@
         }
     },
     "id": "keyboard-cherrymx-blue-pbt",
-    "name": "CherryMX Blue - PBT keycaps",
+    "name": "cherrymx-blue-pbt",
     "options": {
         "random_pitch": false,
         "recommended_volume": 1.0

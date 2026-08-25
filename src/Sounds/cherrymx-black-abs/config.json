@@ -601,7 +601,7 @@
         }
     },
     "id": "keyboad-cherrymx-black-abs",
-    "name": "CherryMX Black - ABS keycaps",
+    "name": "cherrymx-black-abs",
     "options": {
         "random_pitch": false,
         "recommended_volume": 1.0

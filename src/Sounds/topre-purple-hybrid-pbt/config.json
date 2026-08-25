@@ -601,7 +601,7 @@
         }
     },
     "id": "keyboard-topre-purple-hybrid-pbt",
-    "name": "Topre Purple Hybrid - PBT keycaps",
+    "name": "topre-purple-hybrid-pbt",
     "icon": "topre.jpg",
     "options": {
         "random_pitch": false,

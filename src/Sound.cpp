@@ -1,7 +1,9 @@
 #include "Paths.h"
 
+#include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
 #include <Sound.h>
 #include <fstream>
+#include <miniaudio.h>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -11,6 +13,48 @@ namespace Sound {
 std::vector<std::string> sounds;
 PackVK activePack;
 std::string defaultSoundPack{"cherrymx-red-abs"};
+
+static ma_resource_manager g_resourceManager;
+static ma_engine g_engine;
+static ma_sound g_activeSound;
+
+ma_uint64 msToFrames(double ms) {
+  return static_cast<ma_uint64>(
+      ms * static_cast<double>(ma_engine_get_sample_rate(&g_engine)) / 1000.0);
+}
+
+bool initAudio() {
+  ma_decoding_backend_vtable *pCustomBackendVTables[] = {
+      ma_decoding_backend_libvorbis,
+  };
+
+  ma_resource_manager_config resourceManagerConfig =
+      ma_resource_manager_config_init();
+  resourceManagerConfig.ppCustomDecodingBackendVTables = pCustomBackendVTables;
+  resourceManagerConfig.customDecodingBackendCount =
+      sizeof(pCustomBackendVTables) / sizeof(pCustomBackendVTables[0]);
+  resourceManagerConfig.pCustomDecodingBackendUserData = nullptr;
+
+  if (ma_resource_manager_init(&resourceManagerConfig, &g_resourceManager) !=
+      MA_SUCCESS) {
+    return false;
+  }
+
+  ma_engine_config engineConfig = ma_engine_config_init();
+  engineConfig.pResourceManager = &g_resourceManager;
+
+  if (ma_engine_init(&engineConfig, &g_engine) != MA_SUCCESS) {
+    ma_resource_manager_uninit(&g_resourceManager);
+    return false;
+  }
+
+  return true;
+}
+
+void ShutdownAudio() {
+  ma_engine_uninit(&g_engine);
+  ma_resource_manager_uninit(&g_resourceManager);
+}
 
 void refreshSounds() {
   sounds.clear();
@@ -36,7 +80,8 @@ std::optional<PackVK> Load(const std::filesystem::path &packDir) {
   try {
     Sound::Pack pack{json::parse(file).get<Pack>()};
     PackVK loaded;
-    loaded.audioFile = (packDir / pack.audio_file).string();
+    loaded.name = pack.name;
+    loaded.audio_file = (packDir / pack.audio_file).string();
 
     const auto &codeToVK = CodeToVK();
     for (const auto &[code, def] : pack.definitions) {
@@ -56,11 +101,46 @@ std::optional<PackVK> Load(const std::filesystem::path &packDir) {
 bool loadSoundPack(std::string_view name) {
   auto packDir = Paths::getSoundPackDir(name);
   auto result = Load(packDir);
+
   if (!result) {
     return false;
   }
   activePack = std::move(*result);
+
+  const auto audioPath{Paths::getSoundPackDir(name) / activePack.audio_file};
+
+  ma_result soundInitResult{ma_sound_init_from_file(
+      &g_engine, audioPath.string().c_str(), MA_SOUND_FLAG_DECODE, nullptr,
+      nullptr, &g_activeSound)};
   return true;
+}
+
+void playKeyUp(int keyCode) {
+  auto it = activePack.KeyDefByVK.find(keyCode);
+  if (it == activePack.KeyDefByVK.end()) {
+    return;
+  }
+
+  const KeyDef &keyDef{it->second};
+  const auto &up{keyDef.keyUp()};
+
+
+  const double upStart = up[0];
+  const double upEnd = up[1];
+}
+
+void playKeyDown(int keyCode){
+  auto it = activePack.KeyDefByVK.find(keyCode);
+  if (it == activePack.KeyDefByVK.end()) {
+    return;
+  }
+
+  const KeyDef &keyDef{it->second};
+
+  const auto &down{keyDef.keyDown()};
+
+  const double downStart = down[0];
+  const double downEnd = down[1];
 }
 
 bool installDefaultSoundPacks() {

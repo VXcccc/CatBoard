@@ -3,6 +3,7 @@
 
 #include "nlohmann/detail/macro_scope.hpp"
 #include <array>
+#include <miniaudio.h>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <unordered_map>
@@ -15,6 +16,10 @@ using TimingRange = std::array<double, 2>; // startms //endms
 
 struct KeyDef {
   std::array<TimingRange, 2> timing;
+
+  const TimingRange &keyDown() const { return timing[0]; }
+
+  const TimingRange &keyUp() const { return timing[1]; }
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(KeyDef, timing)
 
@@ -26,7 +31,8 @@ struct Pack {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Pack, name, audio_file, definitions)
 
 struct PackVK {
-  std::string audioFile;
+  std::string name;
+  std::string audio_file;
   std::unordered_map<int, KeyDef> KeyDefByVK;
   std::vector<std::string> unknownCodes;
 };
@@ -34,6 +40,9 @@ struct PackVK {
 void refreshSounds();
 bool loadSoundPack(std::string_view name);
 bool installDefaultSoundPacks();
+
+bool initAudio();
+void ShutdownAudio();
 
 std::optional<PackVK> Load(const std::filesystem::path &path);
 const std::unordered_map<std::string, int> &CodeToVK();

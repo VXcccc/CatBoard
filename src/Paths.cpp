@@ -72,7 +72,7 @@ std::filesystem::path getSoundPackDir(std::string_view name) {
 }
 
 std::filesystem::path getSoundPackJsonPath(std::string_view name) {
-    return getSoundPackDir(name) / "pack.json";
+    return getSoundPackDir(name) / "config.json";
 }
 
 bool ensureConfigDirectory() { return ensureCategoryDirectory("Configs"); }

@@ -602,7 +602,7 @@
         }
     },
     "id": "keyboard-eg-oreo",
-    "name": "EG Oreo",
+    "name": "eg-oreo",
     "options": {
         "random_pitch": false,
         "recommended_volume": 1.0

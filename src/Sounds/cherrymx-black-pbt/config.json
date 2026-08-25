@@ -601,7 +601,7 @@
         }
     },
     "id": "keyboard-cherrymx-black-pbt",
-    "name": "CherryMX Black - PBT keycaps",
+    "name": "cherrymx-black-pbt",
     "options": {
         "random_pitch": false,
         "recommended_volume": 1.0

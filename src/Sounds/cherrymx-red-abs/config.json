@@ -602,7 +602,7 @@
         }
     },
     "id": "keyboard-cherrymx-red-abs",
-    "name": "CherryMX Red - ABS keycaps",
+    "name": "cherrymx-red-abs",
     "options": {
         "random_pitch": false,
         "recommended_volume": 1.0

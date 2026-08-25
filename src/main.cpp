@@ -9,10 +9,10 @@
 //
 
 #include "Config.h"
-#include "Sound.h"
 #include "Constants.h"
 #include "Helpers.h"
 #include "SettingsWindow.h"
+#include "Sound.h"
 #include "SystemTray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
@@ -69,6 +69,11 @@ int main(int, char **) {
 
   if (!(Sound::installDefaultSoundPacks())) {
     Helper::fatalError(L"Failed to install default sound packs");
+  }
+
+  if (!(Sound::initAudio())) {
+    Helper::fatalError(L"Failed to init audio backends\nTry: vcpkg install "
+                       L"libvorbis --triplet x64-mingw-dynamic");
   }
 
   // Make process DPI aware and obtain main monitor scale
@@ -260,6 +265,7 @@ int main(int, char **) {
   ImGui_ImplDX11_Shutdown();
   ImGui_ImplWin32_Shutdown();
   SettingsWindow::Shutdown();
+  Sound::ShutdownAudio();
   ImGui::DestroyContext();
 
   CleanupDeviceD3D();
@@ -276,6 +282,7 @@ int main(int, char **) {
 void renderKeyboard(const Input::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
+
   for (const auto &key : Input::activeLayout.keys) {
     bool down{currentKeysDown[key.keyCode]};
     // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
@@ -285,6 +292,7 @@ void renderKeyboard(const Input::Layout &layout,
 
     ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
                     : Config::ToImU32(Config::activeConfig.theme.idleFill)};
+
     ImU32 textColor{
         down ? Config::ToImU32(Config::activeConfig.theme.activeText)
              : Config::ToImU32(Config::activeConfig.theme
