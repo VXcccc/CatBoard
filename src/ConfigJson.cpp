@@ -47,14 +47,21 @@ void from_json(const json &j, Theme &theme) {
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {
-  j = {{"name", soundPack.name}, {"enable", soundPack.enable}};
+  j = {{"name", soundPack.name},
+       {"enable", soundPack.enable},
+       {"layoutKeysOnlySound", soundPack.layoutKeysOnlySound},
+       {"volume", soundPack.volume}};
 }
 
-void from_json(const json &j, SoundPackSelection &soundPack){
-  if(j.contains("name"))
+void from_json(const json &j, SoundPackSelection &soundPack) {
+  if (j.contains("name"))
     j.at("name").get_to(soundPack.name);
-  if(j.contains("enable"))
+  if (j.contains("enable"))
     j.at("enable").get_to(soundPack.enable);
+  if (j.contains("layoutKeysOnlySound"))
+    j.at("layoutKeysOnlySound").get_to(soundPack.layoutKeysOnlySound);
+  if (j.contains("volume"))
+    j.at("volume").get_to(soundPack.volume);
 }
 
 void to_json(json &j, const Settings &settings) {

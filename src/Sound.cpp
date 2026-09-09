@@ -2,6 +2,7 @@
 
 #include "Constants.h"
 #include "Sound.h"
+#include "Config.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
 #include <fstream>
 #include <miniaudio.h>
@@ -177,6 +178,8 @@ void playKey(int keyCode, bool is_down) {
   if(!voice){
     return;
   }
+
+  ma_sound_set_volume(voice, Config::activeConfig.soundPack.volume);
 
   const ma_uint64 lengthFrames{msToFrames(endms) - msToFrames(startms)};
   const ma_uint64 now = ma_engine_get_time_in_pcm_frames(&g_engine);

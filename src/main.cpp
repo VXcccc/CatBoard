@@ -52,6 +52,12 @@ void handleKeySound(const Input::Layout &layout,
                     const std::array<bool, 256> &prevKeyState,
                     const std::array<bool, 256> &currentDown);
 
+void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
+                        const std::array<bool, 256> &currentKeysDown);
+
+
+void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown);
+
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
@@ -194,6 +200,10 @@ int main(int, char **) {
   // prevKeyState holding previous frame state
   static std::array<bool, 256> prevKeyState{};
   static std::array<bool, 256> currentKeysDown{};
+
+  // arrays for sound
+  static std::array<bool, 256> prevSoundKeyState{};
+  static std::array<bool, 256> currentSoundKeysDown{};
   static bool firstFrame = true;
 
   while (!done) {
@@ -227,8 +237,19 @@ int main(int, char **) {
       CreateRenderTarget();
     }
 
+
     bool anyKeyChanged{detectAnyKeyChanged(Input::activeLayout, prevKeyState,
                                            currentKeysDown)};
+
+    if (Config::activeConfig.soundPack.enable) {
+        if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
+            handleKeySound(Input::activeLayout, prevKeyState, currentKeysDown);
+        } else {
+            pollFullKeyboard(currentSoundKeysDown);
+            handleKeySoundFull(prevSoundKeyState, currentSoundKeysDown);
+            prevSoundKeyState = currentSoundKeysDown;
+        }
+    }
 
     bool needsRender{anyKeyChanged || firstFrame ||
                      (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
@@ -239,10 +260,6 @@ int main(int, char **) {
       continue;
     }
     firstFrame = false;
-
-    if (Config::activeConfig.soundPack.enable) {
-      handleKeySound(Input::activeLayout, prevKeyState, currentKeysDown);
-    }
 
     commitKeyState(Input::activeLayout, currentKeysDown, prevKeyState);
 
@@ -332,7 +349,7 @@ bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentKeysDown) {
   bool anyKeyChanged = false;
-  for (const auto &key : Input::activeLayout.keys) {
+  for (const auto &key : layout.keys) {
     bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
     outCurrentKeysDown[key.keyCode] = down;
     if (down != prevKeyState[key.keyCode]) {
@@ -343,25 +360,38 @@ bool detectAnyKeyChanged(const Input::Layout &layout,
   return anyKeyChanged;
 }
 
+void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown) {
+  for (int vk = 0; vk < 256; ++vk) {
+    outCurrentKeysDown[vk] = (GetAsyncKeyState(vk) & 0x8000) != 0;
+  }
+}
+
 void commitKeyState(const Input::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     std::array<bool, 256> &outPrevKeyState) {
-  for (const auto &key : Input::activeLayout.keys) {
+  for (const auto &key : layout.keys) {
     outPrevKeyState[key.keyCode] = currentKeysDown[key.keyCode];
   }
 }
 
+// sound functions
 void handleKeySound(const Input::Layout &layout,
                     const std::array<bool, 256> &prevKeyState,
                     const std::array<bool, 256> &currentKeysDown) {
-
-  for (const auto &key : Input::activeLayout.keys) {
+  for (const auto &key : layout.keys) {
     bool down{currentKeysDown[key.keyCode]};
-    if (down && !prevKeyState[key.keyCode]) {
+    if (down != prevKeyState[key.keyCode]) {
       Sound::playKey(key.keyCode, down);
     }
-    if (!down && prevKeyState[key.keyCode]) {
-      Sound::playKey(key.keyCode, down);
+  }
+}
+
+void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
+                        const std::array<bool, 256> &currentKeysDown) {
+  for (const auto &[vk, def] : Sound::activePack.KeyDefByVK) {
+    bool down{currentKeysDown[vk]};
+    if (down != prevKeyState[vk]) {
+      Sound::playKey(vk, down);
     }
   }
 }

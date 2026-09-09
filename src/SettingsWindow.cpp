@@ -202,6 +202,7 @@ struct SettingsEditState {
   std::string selectedLayout;
 
   Config::SoundPackSelection selectedSoundPack;
+  int volumePercent{};
 
   std::size_t currentLayout{};
   std::size_t currentConfig{};
@@ -242,7 +243,10 @@ void restoreFromConfig(SettingsEditState &state,
   state.outline = prevSettings.theme.outline;
 
   state.selectedLayout = prevSettings.selectedLayout;
+
   state.selectedSoundPack = prevSettings.soundPack;
+  state.volumePercent =
+      static_cast<int>(std::round(prevSettings.soundPack.volume * 100.0f));
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -397,6 +401,24 @@ void drawVisualsTab(SettingsEditState &state) {
   }
 }
 
+void drawSoundsTab(SettingsEditState &state) {
+
+  ImGui::Checkbox("Enable sounds", &state.selectedSoundPack.enable);
+  if (state.selectedSoundPack.enable) {
+    ImGui::Checkbox("Sounds only for keys in layout",
+                    &state.selectedSoundPack.layoutKeysOnlySound);
+
+    ImGui::SliderInt("Volume", &state.volumePercent, 0, 100);
+    state.volumePercent = std::clamp(state.volumePercent, 0, 100);
+
+    drawSoundCombo(state.currentSound, state);
+    if (ImGui::Button("Refresh sounds")) {
+      Sound::refreshSounds();
+      validateCurrentIndex(state.currentSound, std::size(Sound::sounds));
+    }
+  }
+}
+
 void drawConfigsTab(SettingsEditState &state) {
   drawConfigCombo(state.currentConfig);
 
@@ -455,19 +477,6 @@ void drawConfigsTab(SettingsEditState &state) {
 
   if (ImGui::Button("Open config folder")) {
     Paths::openConfigDirectory();
-  }
-}
-
-void drawSoundsTab(SettingsEditState &state) {
-
-  ImGui::Checkbox("Enable sounds", &state.selectedSoundPack.enable);
-  if (state.selectedSoundPack.enable) {
-    drawSoundCombo(state.currentSound, state);
-
-    if (ImGui::Button("Refresh sounds")) {
-      Sound::refreshSounds();
-      validateCurrentIndex(state.currentSound, std::size(Sound::sounds));
-    }
   }
 }
 
@@ -562,17 +571,22 @@ void RenderFrame() {
     break;
   }
 
-  Config::Settings newSettings = {Consts::CATBOARD_VERSION,
-                                  Config::Theme{
-                                      toConfigColor(editState.idleFillCol),
-                                      toConfigColor(editState.activeFillCol),
-                                      toConfigColor(editState.idleTextCol),
-                                      toConfigColor(editState.activeTextCol),
-                                      editState.rounding,
-                                      editState.outline,
-                                  },
-                                  editState.selectedLayout,
-                                  editState.selectedSoundPack};
+  Config::Settings newSettings = {
+      Consts::CATBOARD_VERSION,
+      Config::Theme{
+          toConfigColor(editState.idleFillCol),
+          toConfigColor(editState.activeFillCol),
+          toConfigColor(editState.idleTextCol),
+          toConfigColor(editState.activeTextCol),
+          editState.rounding,
+          editState.outline,
+      },
+      editState.selectedLayout,
+      Config::SoundPackSelection{
+          editState.selectedSoundPack.name, editState.selectedSoundPack.enable,
+          editState.selectedSoundPack.layoutKeysOnlySound,
+          static_cast<float>(editState.volumePercent) / 100.0f}};
+
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;
 

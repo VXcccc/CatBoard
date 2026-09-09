@@ -52,6 +52,8 @@ struct Theme {
 struct SoundPackSelection{
   std::string name{Sound::defaultSoundPack};
   bool enable{false};
+  bool layoutKeysOnlySound{false};
+  float volume{1.0f};
 };
 
 struct Settings {
