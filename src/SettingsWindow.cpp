@@ -181,8 +181,9 @@ std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
      {"Sounds", SettingsTab::Sounds},
      {"Configs", SettingsTab::Configs}}};
 
-static_assert(tabs.size() == static_cast<std::size_t>(SettingsTab::max_SettingsTabs),
-             "tabs array is out of sync with SettingsTab enum");
+static_assert(tabs.size() ==
+                  static_cast<std::size_t>(SettingsTab::max_SettingsTabs),
+              "tabs array is out of sync with SettingsTab enum");
 
 // Helper functions
 
@@ -239,7 +240,12 @@ void restoreFromConfig(SettingsEditState &state,
   state.rounding = prevSettings.theme.rounding;
 
   state.outline = prevSettings.theme.outline;
+
   state.selectedLayout = prevSettings.selectedLayout;
+  state.selectedSoundPack = prevSettings.soundPack;
+
+  Input::loadLayout(prevSettings.selectedLayout);
+  Sound::loadSoundPack(prevSettings.soundPack.name);
 }
 
 void handleCreateConfig(SettingsEditState &state) {
@@ -297,10 +303,10 @@ void drawLayoutCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
     for (std::size_t i{0}; i < std::size(Input::layouts); ++i) {
       bool isSelected{outCurrentItem == i};
       if (ImGui::Selectable(Input::layouts[i].c_str(), isSelected)) {
-        outCurrentItem = i;
-
-        state.selectedLayout = Input::layouts[i];
-        Input::loadLayout(Input::layouts[i]);
+        if (Input::loadLayout(Input::layouts[i])) {
+          outCurrentItem = i;
+          state.selectedLayout = Input::layouts[i];
+        }
       }
       if (isSelected) {
         ImGui::SetItemDefaultFocus();
@@ -340,10 +346,11 @@ void drawSoundCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
     for (std::size_t i{0}; i < std::size(Sound::sounds); ++i) {
       bool isSelected{outCurrentItem == i};
       if (ImGui::Selectable(Sound::sounds[i].c_str(), isSelected)) {
-        outCurrentItem = i;
+        if (Sound::loadSoundPack(Sound::sounds[i])) {
+          outCurrentItem = i;
 
-        state.selectedSoundPack.name = Sound::sounds[i];
-        Sound::loadSoundPack(Sound::sounds[i]);
+          state.selectedSoundPack.name = Sound::sounds[i];
+        }
       }
       if (isSelected) {
         ImGui::SetItemDefaultFocus();
@@ -405,7 +412,11 @@ void drawConfigsTab(SettingsEditState &state) {
       restoreFromConfig(state, Config::activeConfig);
 
       if (!Input::loadLayout(Config::activeConfig.selectedLayout)) {
-        Helper::errorMesBox(L"Failed to load keyboard layout");
+        Helper::errorMesBox(L"Failed to load keyboard layout from config");
+      }
+
+      if (!Sound::loadSoundPack(Config::activeConfig.soundPack.name)) {
+        Helper::errorMesBox(L"Failed to load sound pack from config");
       }
 
       state.previous = Config::activeConfig;
@@ -460,18 +471,18 @@ void drawSoundsTab(SettingsEditState &state) {
   }
 }
 
-void drawApplyCancel(SettingsEditState &editState,
+void drawApplyCancel(SettingsEditState &state,
                      const Config::Settings &newSettings) {
 
   if (ImGui::Button("Apply")) {
     Config::Apply(newSettings);
-    editState.previous = newSettings;
+    state.previous = newSettings;
   }
   ImGui::SameLine();
 
   if (ImGui::Button("Cancel")) {
-    Config::activeConfig = editState.previous;
-    restoreFromConfig(editState, editState.previous);
+    Config::activeConfig = state.previous;
+    restoreFromConfig(state, state.previous);
   }
 }
 

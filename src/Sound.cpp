@@ -1,11 +1,13 @@
 #include "Paths.h"
 
+#include "Constants.h"
+#include "Sound.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
-#include <Sound.h>
 #include <fstream>
 #include <miniaudio.h>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <windows.h>
 
@@ -16,7 +18,11 @@ std::string defaultSoundPack{"cherrymx-red-abs"};
 
 static ma_resource_manager g_resourceManager;
 static ma_engine g_engine;
-static ma_sound g_activeSound;
+// static ma_sound g_activeSound;
+
+static std::vector<ma_sound> g_voices;
+
+// static bool g_soundLoaded = false;
 
 ma_uint64 msToFrames(double ms) {
   return static_cast<ma_uint64>(
@@ -81,7 +87,7 @@ std::optional<PackVK> Load(const std::filesystem::path &packDir) {
     Sound::Pack pack{json::parse(file).get<Pack>()};
     PackVK loaded;
     loaded.name = pack.name;
-    loaded.audio_file = (packDir / pack.audio_file).string();
+    loaded.audio_file = pack.audio_file;
 
     const auto &codeToVK = CodeToVK();
     for (const auto &[code, def] : pack.definitions) {
@@ -98,6 +104,37 @@ std::optional<PackVK> Load(const std::filesystem::path &packDir) {
   }
 }
 
+bool initVoicePool(const std::filesystem::path &audioPath) {
+  g_voices.resize(Consts::VOICE_COUNT);
+
+  for (auto &voice : g_voices) {
+    const ma_result result{ma_sound_init_from_file(
+        &g_engine, audioPath.string().c_str(), MA_SOUND_FLAG_DECODE, nullptr,
+        nullptr, &voice)};
+
+    if (result != MA_SUCCESS) {
+      return false;
+    }
+  }
+  return true;
+}
+
+void uninitVoicePool() {
+  for (auto &voice : g_voices) {
+    ma_sound_uninit(&voice);
+  }
+  g_voices.clear();
+}
+
+ma_sound *findFreeVoice() {
+  for (auto &voice : g_voices) {
+    if (!ma_sound_is_playing(&voice)) {
+      return &voice;
+    }
+  }
+  return nullptr; // maybe todo system that gonna stole the resource for voice
+}
+
 bool loadSoundPack(std::string_view name) {
   auto packDir = Paths::getSoundPackDir(name);
   auto result = Load(packDir);
@@ -105,32 +142,17 @@ bool loadSoundPack(std::string_view name) {
   if (!result) {
     return false;
   }
+
+  uninitVoicePool();
   activePack = std::move(*result);
 
   const auto audioPath{Paths::getSoundPackDir(name) / activePack.audio_file};
 
-  ma_result soundInitResult{ma_sound_init_from_file(
-      &g_engine, audioPath.string().c_str(), MA_SOUND_FLAG_DECODE, nullptr,
-      nullptr, &g_activeSound)};
-  return true;
+  return initVoicePool(audioPath);
 }
 
-void playKeyUp(int keyCode) {
-  auto it = activePack.KeyDefByVK.find(keyCode);
-  if (it == activePack.KeyDefByVK.end()) {
-    return;
-  }
-
-  const KeyDef &keyDef{it->second};
-  const auto &up{keyDef.keyUp()};
-
-
-  const double upStart = up[0];
-  const double upEnd = up[1];
-}
-
-void playKeyDown(int keyCode){
-  auto it = activePack.KeyDefByVK.find(keyCode);
+void playKey(int keyCode, bool is_down) {
+  auto it{activePack.KeyDefByVK.find(keyCode)};
   if (it == activePack.KeyDefByVK.end()) {
     return;
   }
@@ -138,9 +160,32 @@ void playKeyDown(int keyCode){
   const KeyDef &keyDef{it->second};
 
   const auto &down{keyDef.keyDown()};
+  const auto &up{keyDef.keyUp()};
 
-  const double downStart = down[0];
-  const double downEnd = down[1];
+  double startms{};
+  double endms{};
+
+  if (is_down) {
+    startms = down[0];
+    endms = down[1];
+  } else {
+    startms = up[0];
+    endms = up[1];
+  }
+
+  ma_sound *voice{findFreeVoice()};
+  if(!voice){
+    return;
+  }
+
+  const ma_uint64 lengthFrames{msToFrames(endms) - msToFrames(startms)};
+  const ma_uint64 now = ma_engine_get_time_in_pcm_frames(&g_engine);
+
+  ma_sound_set_start_time_in_pcm_frames(voice, now);
+  ma_sound_set_stop_time_in_pcm_frames(voice, now + lengthFrames);
+
+  ma_sound_seek_to_pcm_frame(voice, msToFrames(startms));
+  ma_sound_start(voice);
 }
 
 bool installDefaultSoundPacks() {

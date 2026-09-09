@@ -1,6 +1,7 @@
 #ifndef CONSTANTS_H
 #define CONSTANTS_H
 
+#include <cstddef>
 #include <windows.h>
 
 #define IDI_ICON1 101
@@ -15,6 +16,8 @@ constexpr UINT ID_ABOUT     {1002};
 constexpr UINT ID_EXIT      {1003};
 constexpr UINT ID_DRAGMODE  {1004};
 constexpr UINT ID_SETTINGS  {1005};
+
+constexpr std::size_t VOICE_COUNT {32};
 }
 
 #endif // !CONSTANTS_H

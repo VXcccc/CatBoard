@@ -48,6 +48,10 @@ void commitKeyState(const Input::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     std::array<bool, 256> &outPrevKeyState);
 
+void handleKeySound(const Input::Layout &layout,
+                    const std::array<bool, 256> &prevKeyState,
+                    const std::array<bool, 256> &currentDown);
+
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
@@ -74,6 +78,10 @@ int main(int, char **) {
   if (!(Sound::initAudio())) {
     Helper::fatalError(L"Failed to init audio backends\nTry: vcpkg install "
                        L"libvorbis --triplet x64-mingw-dynamic");
+  }
+
+  if (!Sound::loadSoundPack(Config::activeConfig.soundPack.name)) {
+    Helper::fatalError(L"Failed to load sound pack");
   }
 
   // Make process DPI aware and obtain main monitor scale
@@ -232,6 +240,10 @@ int main(int, char **) {
     }
     firstFrame = false;
 
+    if (Config::activeConfig.soundPack.enable) {
+      handleKeySound(Input::activeLayout, prevKeyState, currentKeysDown);
+    }
+
     commitKeyState(Input::activeLayout, currentKeysDown, prevKeyState);
 
     // Start the Dear ImGui frame
@@ -321,7 +333,7 @@ bool detectAnyKeyChanged(const Input::Layout &layout,
                          std::array<bool, 256> &outCurrentKeysDown) {
   bool anyKeyChanged = false;
   for (const auto &key : Input::activeLayout.keys) {
-    bool down = (GetAsyncKeyState(key.keyCode) & 0x8000) != 0;
+    bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
     outCurrentKeysDown[key.keyCode] = down;
     if (down != prevKeyState[key.keyCode]) {
       anyKeyChanged = true;
@@ -336,6 +348,21 @@ void commitKeyState(const Input::Layout &layout,
                     std::array<bool, 256> &outPrevKeyState) {
   for (const auto &key : Input::activeLayout.keys) {
     outPrevKeyState[key.keyCode] = currentKeysDown[key.keyCode];
+  }
+}
+
+void handleKeySound(const Input::Layout &layout,
+                    const std::array<bool, 256> &prevKeyState,
+                    const std::array<bool, 256> &currentKeysDown) {
+
+  for (const auto &key : Input::activeLayout.keys) {
+    bool down{currentKeysDown[key.keyCode]};
+    if (down && !prevKeyState[key.keyCode]) {
+      Sound::playKey(key.keyCode, down);
+    }
+    if (!down && prevKeyState[key.keyCode]) {
+      Sound::playKey(key.keyCode, down);
+    }
   }
 }
 

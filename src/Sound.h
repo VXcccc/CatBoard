@@ -44,6 +44,9 @@ bool installDefaultSoundPacks();
 bool initAudio();
 void ShutdownAudio();
 
+
+void playKey(int keyCode, bool is_down);
+
 std::optional<PackVK> Load(const std::filesystem::path &path);
 const std::unordered_map<std::string, int> &CodeToVK();
 
