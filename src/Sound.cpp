@@ -179,7 +179,6 @@ void playKey(int keyCode, bool is_down) {
     return;
   }
 
-  ma_sound_set_volume(voice, Config::activeConfig.soundPack.volume);
 
   const ma_uint64 lengthFrames{msToFrames(endms) - msToFrames(startms)};
   const ma_uint64 now = ma_engine_get_time_in_pcm_frames(&g_engine);
@@ -189,6 +188,10 @@ void playKey(int keyCode, bool is_down) {
 
   ma_sound_seek_to_pcm_frame(voice, msToFrames(startms));
   ma_sound_start(voice);
+}
+
+void setMasterVolume(float volume) {
+    ma_engine_set_volume(&g_engine, volume);
 }
 
 bool installDefaultSoundPacks() {

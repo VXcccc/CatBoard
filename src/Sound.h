@@ -46,6 +46,7 @@ void ShutdownAudio();
 
 
 void playKey(int keyCode, bool is_down);
+void setMasterVolume(float volume);
 
 std::optional<PackVK> Load(const std::filesystem::path &path);
 const std::unordered_map<std::string, int> &CodeToVK();

@@ -250,6 +250,7 @@ void restoreFromConfig(SettingsEditState &state,
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
+  Sound::setMasterVolume(prevSettings.soundPack.volume);
 }
 
 void handleCreateConfig(SettingsEditState &state) {
@@ -408,7 +409,9 @@ void drawSoundsTab(SettingsEditState &state) {
     ImGui::Checkbox("Sounds only for keys in layout",
                     &state.selectedSoundPack.layoutKeysOnlySound);
 
-    ImGui::SliderInt("Volume", &state.volumePercent, 0, 100);
+    if(ImGui::SliderInt("Volume", &state.volumePercent, 0, 100)){
+      Sound::setMasterVolume(static_cast<float>(state.volumePercent / 100.0f));
+    }
     state.volumePercent = std::clamp(state.volumePercent, 0, 100);
 
     drawSoundCombo(state.currentSound, state);
