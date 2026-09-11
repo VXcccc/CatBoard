@@ -208,7 +208,6 @@ struct SettingsEditState {
 
   Input::BindsArray binds{};
 
-  Config::OverlayPosition overlayPos{};
 
   std::size_t currentLayout{};
   std::size_t currentConfig{};
@@ -255,7 +254,6 @@ void restoreFromConfig(SettingsEditState &state,
       static_cast<int>(std::round(prevSettings.soundPack.volume * 100.0f));
 
   state.binds = prevSettings.binds;
-  state.overlayPos = prevSettings.overlayPos;
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -622,7 +620,7 @@ void RenderFrame() {
           editState.selectedSoundPack.layoutKeysOnlySound,
           static_cast<float>(editState.volumePercent) / 100.0f},
       editState.binds,
-      editState.overlayPos};
+      Config::activeConfig.overlayPos};
 
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;

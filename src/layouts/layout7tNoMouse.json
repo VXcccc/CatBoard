@@ -1,5 +1,5 @@
 {
-  "windowWidth": 450,
+  "windowWidth": 350,
   "windowHeight": 287,
   "keys": [
     { "keyCode": 9,   "x": 9,   "y": 53,  "w": 67,  "h": 43, "label": "Tab" },
