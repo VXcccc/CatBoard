@@ -11,6 +11,7 @@
 #include "Config.h"
 #include "Constants.h"
 #include "Helpers.h"
+#include "MainWindow.h"
 #include "SettingsWindow.h"
 #include "Sound.h"
 #include "SystemTray.h"
@@ -37,6 +38,8 @@ static IDXGISwapChain *g_pSwapChain = nullptr;
 static bool g_SwapChainOccluded = false;
 static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
+static bool s_visible = true;
+static HWND s_hwnd = nullptr;
 
 // Forward declarations of main functions
 void renderKeyboard(const Input::Layout &layout,
@@ -63,6 +66,20 @@ void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+namespace MainWindow {
+void Show() {
+  s_visible = true;
+  ::ShowWindow(s_hwnd, SW_SHOW);
+  ::SetForegroundWindow(s_hwnd);
+}
+
+void Hide() {
+  s_visible = false;
+  ::ShowWindow(s_hwnd, SW_HIDE);
+}
+bool IsVisible() { return s_visible; }
+} // namespace MainWindow
 
 // Main code
 int main(int, char **) {
@@ -108,7 +125,7 @@ int main(int, char **) {
                     L"CatBoard Overlay",
                     nullptr};
   ::RegisterClassExW(&wc);
-  HWND hwnd =
+  s_hwnd =
       ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
                             WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
                         wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0, 600,
@@ -116,18 +133,18 @@ int main(int, char **) {
                         (int)(Input::activeLayout.windowHeight * main_scale),
                         nullptr, nullptr, wc.hInstance, nullptr);
 
-  ::SetLayeredWindowAttributes(hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+  ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
   // Initialize Direct3D
-  if (!CreateDeviceD3D(hwnd)) {
+  if (!CreateDeviceD3D(s_hwnd)) {
     CleanupDeviceD3D();
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
     return 1;
   }
 
   // Show the window
-  ::ShowWindow(hwnd, SW_SHOWDEFAULT);
-  ::UpdateWindow(hwnd);
+  ::ShowWindow(s_hwnd, SW_SHOWDEFAULT);
+  ::UpdateWindow(s_hwnd);
 
   // Setup Dear ImGui context
   IMGUI_CHECKVERSION();
@@ -155,7 +172,7 @@ int main(int, char **) {
                   // for every window depending on the current monitor)
 
   // Setup Platform/Renderer backends
-  ImGui_ImplWin32_Init(hwnd);
+  ImGui_ImplWin32_Init(s_hwnd);
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
   SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext);
@@ -187,7 +204,7 @@ int main(int, char **) {
   // IM_ASSERT(font != nullptr);
 
   // creating tray icon
-  Tray::g_nid = Tray::init(hwnd, wc.hInstance);
+  Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
 
   // Our state
   bool show_demo_window = true;
@@ -243,7 +260,14 @@ int main(int, char **) {
                                            currentKeysDown)};
 
     pollFullKeyboard(currentFullKeysDown);
-    Input::handleBinds(prevFullKeyState, currentFullKeysDown, hwnd);
+
+    if (Input::g_bindJustRecorded) {
+
+      prevFullKeyState = currentFullKeysDown;
+      Input::g_bindJustRecorded = false;
+    } else {
+      Input::handleBinds(prevFullKeyState, currentFullKeysDown, s_hwnd);
+    }
 
     if (Config::activeConfig.soundPack.enable) {
       if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
@@ -302,7 +326,7 @@ int main(int, char **) {
   ImGui::DestroyContext();
 
   CleanupDeviceD3D();
-  ::DestroyWindow(hwnd);
+  ::DestroyWindow(s_hwnd);
   ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
   // tray test

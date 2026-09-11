@@ -1,7 +1,9 @@
 #include "InputHandle.h"
 #include "Config.h"
 #include "Helpers.h"
+#include "MainWindow.h"
 #include "Paths.h"
+#include "SettingsWindow.h"
 #include "SystemTray.h"
 #include <array>
 #include <nlohmann/json.hpp>
@@ -15,6 +17,8 @@ namespace Input {
 std::vector<std::string> layouts{};
 Layout activeLayout{};
 std::string defaultLayoutName{"layout7t"};
+
+bool g_bindJustRecorded{false};
 
 BindsArray defaultBinds{
     Bind{"Drag mode", VK_F4, "F4", BindType::dragMode},
@@ -89,8 +93,18 @@ void handleBindType(const BindType type, HWND hWnd) {
     Tray::SetDragMode(hWnd, Tray::g_dragMode);
     break;
   case BindType::hideOverlay:
+    if (!MainWindow::IsVisible()) {
+      MainWindow::Show();
+    } else if (MainWindow::IsVisible()) {
+      MainWindow::Hide();
+    }
     break;
   case BindType::openSettings:
+    if (!SettingsWindow::IsVisible()) {
+      SettingsWindow::Show();
+    } else if (SettingsWindow::IsVisible()) {
+      SettingsWindow::Hide();
+    }
     break;
   default:
     break;
@@ -106,11 +120,17 @@ void handleBinds(const std::array<bool, 256> &prevKeyState,
     }
   }
 }
+bool isBindFree(int vk) {
+  for (const auto &bind : Config::activeConfig.binds) {
+    if (vk == bind.vkCode) {
+      return false;
+    }
+  }
+  return true;
+}
 
 bool recordBind(Bind &outBind) {
   Bind prevBindState{outBind};
-
-  bool recorded{false};
 
   std::array<bool, 256> wasDown{};
   for (int vk = 0; vk < 256; ++vk) {
@@ -118,6 +138,12 @@ bool recordBind(Bind &outBind) {
   }
 
   while (true) {
+    bool escapeDown{(GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0};
+
+    if (!wasDown[VK_ESCAPE] && escapeDown) {
+      outBind = prevBindState;
+      return true;
+    }
 
     for (int vk{0}; vk < 256; ++vk) {
       bool down = (GetAsyncKeyState(vk) & 0x8000) != 0;
@@ -129,18 +155,19 @@ bool recordBind(Bind &outBind) {
         continue;
       }
 
-      if (!wasDown[VK_ESCAPE] && (GetAsyncKeyState(VK_ESCAPE) & 0x8000)) {
-        outBind = prevBindState;
-        return true;
-      }
-
       if (down) {
-        if (Helper::VkToName(vk) == "Unknown") {
+        if (Helper::VkToName(vk) == "Unknown" || !isBindFree(vk)) {
           outBind = prevBindState;
+          g_bindJustRecorded = true;
+
           return false;
         }
+
         outBind.vkCode = vk;
         outBind.keyName = Helper::VkToName(vk);
+
+        g_bindJustRecorded = true;
+
         return true;
       }
     }

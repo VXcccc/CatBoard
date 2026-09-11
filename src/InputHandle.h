@@ -47,9 +47,12 @@ extern std::vector<std::string> layouts;
 extern Layout activeLayout;
 extern std::string defaultLayoutName;
 
+
 bool installDefaultLayouts();
 void refreshLayouts();
 bool loadLayout(std::string_view name);
+
+extern bool g_bindJustRecorded;
 
 bool recordBind(Bind &outBind);
 

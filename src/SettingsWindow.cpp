@@ -412,14 +412,13 @@ void drawBindsTab(SettingsEditState &state) {
   for (auto &bind : state.binds) {
     ImGui::Text("%s", bind.bindName.c_str());
     ImGui::SameLine();
-    if(ImGui::Button(bind.keyName.c_str())){
+    if (ImGui::Button(bind.keyName.c_str())) {
       Input::recordBind(bind);
     }
   }
 }
 
 void drawSoundsTab(SettingsEditState &state) {
-
   ImGui::Checkbox("Enable asmr sounds", &state.selectedSoundPack.enable);
   if (state.selectedSoundPack.enable) {
     ImGui::Checkbox("Sounds only for keys in layout",
@@ -614,12 +613,14 @@ void RenderFrame() {
       Config::SoundPackSelection{
           editState.selectedSoundPack.name, editState.selectedSoundPack.enable,
           editState.selectedSoundPack.layoutKeysOnlySound,
-          static_cast<float>(editState.volumePercent) / 100.0f}};
+          static_cast<float>(editState.volumePercent) / 100.0f},
+      editState.binds};
 
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;
 
-  if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds) {
+  if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds ||
+      currentTab == SettingsTab::Binds) {
     drawApplyCancel(editState, newSettings);
   }
 

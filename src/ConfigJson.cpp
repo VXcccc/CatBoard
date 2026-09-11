@@ -1,4 +1,5 @@
 #include "ConfigJson.h"
+#include "InputHandle.h"
 #include <nlohmann/json.hpp>
 
 namespace Config {
@@ -68,7 +69,8 @@ void to_json(json &j, const Settings &settings) {
   j = {{"version", settings.version},
        {"theme", settings.theme},
        {"selectedLayout", settings.selectedLayout},
-       {"soundPack", settings.soundPack}};
+       {"soundPack", settings.soundPack},
+       {"binds", settings.binds}};
 }
 
 void from_json(const json &j, Settings &settings) {
@@ -83,6 +85,9 @@ void from_json(const json &j, Settings &settings) {
 
   if (j.contains("soundPack"))
     j.at("soundPack").get_to(settings.soundPack);
+
+  if (j.contains("binds"))
+    j.at("binds").get_to(settings.binds);
 }
 
 } // namespace Config
