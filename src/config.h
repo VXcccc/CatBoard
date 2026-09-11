@@ -4,9 +4,9 @@
 // maybe goona change location of this variable later
 
 #include "Constants.h"
-#include "Sound.h"
-#include "Paths.h"
 #include "InputHandle.h"
+#include "Paths.h"
+#include "Sound.h"
 #include "imgui.h"
 #include "nlohmann/detail/macro_scope.hpp"
 #include <array>
@@ -14,6 +14,7 @@
 #include <string>
 #include <string_view>
 #include <vector>
+#include <winuser.h>
 using json = nlohmann::json;
 
 namespace Config {
@@ -28,7 +29,7 @@ enum class CreateConfigResult {
   Max_ConfigResults
 };
 
-struct Outline{
+struct Outline {
   using ColorRGBA = std::array<int, 4>;
 
   bool enable{false};
@@ -49,7 +50,7 @@ struct Theme {
   Outline outline{};
 };
 
-struct SoundPackSelection{
+struct SoundPackSelection {
   std::string name{Sound::defaultSoundPack};
   bool enable{false};
   bool layoutKeysOnlySound{false};
@@ -61,8 +62,8 @@ struct Settings {
   Theme theme{};
   std::string selectedLayout{Input::defaultLayoutName};
   SoundPackSelection soundPack{};
+  Input::BindsArray binds{Input::defaultBinds};
 };
-
 
 // current config
 extern Settings activeConfig;

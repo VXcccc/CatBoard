@@ -55,7 +55,6 @@ void handleKeySound(const Input::Layout &layout,
 void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
                         const std::array<bool, 256> &currentKeysDown);
 
-
 void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown);
 
 // Forward declarations of helper functions
@@ -197,13 +196,16 @@ int main(int, char **) {
 
   // Main loop
   bool done = false;
+
   // prevKeyState holding previous frame state
+  //
+  // arrays only for layouts keys
   static std::array<bool, 256> prevKeyState{};
   static std::array<bool, 256> currentKeysDown{};
 
-  // arrays for sound
-  static std::array<bool, 256> prevSoundKeyState{};
-  static std::array<bool, 256> currentSoundKeysDown{};
+  // arrays for full keyboard
+  static std::array<bool, 256> prevFullKeyState{};
+  static std::array<bool, 256> currentFullKeysDown{};
   static bool firstFrame = true;
 
   while (!done) {
@@ -237,19 +239,21 @@ int main(int, char **) {
       CreateRenderTarget();
     }
 
-
     bool anyKeyChanged{detectAnyKeyChanged(Input::activeLayout, prevKeyState,
                                            currentKeysDown)};
 
+    pollFullKeyboard(currentFullKeysDown);
+    Input::handleBinds(prevFullKeyState, currentFullKeysDown, hwnd);
+
     if (Config::activeConfig.soundPack.enable) {
-        if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
-            handleKeySound(Input::activeLayout, prevKeyState, currentKeysDown);
-        } else {
-            pollFullKeyboard(currentSoundKeysDown);
-            handleKeySoundFull(prevSoundKeyState, currentSoundKeysDown);
-            prevSoundKeyState = currentSoundKeysDown;
-        }
+      if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
+        handleKeySound(Input::activeLayout, prevKeyState, currentKeysDown);
+      } else {
+        handleKeySoundFull(prevFullKeyState, currentFullKeysDown);
+      }
     }
+
+    prevFullKeyState = currentFullKeysDown;
 
     bool needsRender{anyKeyChanged || firstFrame ||
                      (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
@@ -361,7 +365,7 @@ bool detectAnyKeyChanged(const Input::Layout &layout,
 }
 
 void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown) {
-  for (int vk = 0; vk < 256; ++vk) {
+  for (int vk{0}; vk < 256; ++vk) {
     outCurrentKeysDown[vk] = (GetAsyncKeyState(vk) & 0x8000) != 0;
   }
 }

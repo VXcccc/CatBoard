@@ -169,7 +169,7 @@ void Hide() {
 bool IsVisible() { return s_visible; }
 
 // Tabs handling
-enum class SettingsTab { Visuals, Sounds, Configs, max_SettingsTabs };
+enum class SettingsTab { Visuals, Sounds, Binds, Configs, max_SettingsTabs };
 
 struct Tab {
   const char *label;
@@ -179,6 +179,7 @@ struct Tab {
 std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
     {{"Visuals", SettingsTab::Visuals},
      {"Sounds", SettingsTab::Sounds},
+     {"Binds", SettingsTab::Binds},
      {"Configs", SettingsTab::Configs}}};
 
 static_assert(tabs.size() ==
@@ -203,6 +204,8 @@ struct SettingsEditState {
 
   Config::SoundPackSelection selectedSoundPack;
   int volumePercent{};
+
+  Input::BindsArray binds{};
 
   std::size_t currentLayout{};
   std::size_t currentConfig{};
@@ -247,6 +250,7 @@ void restoreFromConfig(SettingsEditState &state,
   state.selectedSoundPack = prevSettings.soundPack;
   state.volumePercent =
       static_cast<int>(std::round(prevSettings.soundPack.volume * 100.0f));
+  state.binds = prevSettings.binds;
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -382,7 +386,9 @@ void drawVisualsTab(SettingsEditState &state) {
   if (ImGui::Button("Open layout folder")) {
     Paths::openLayoutDirectory();
   }
+
   ImGui::SameLine();
+
   if (ImGui::Button("Refresh layouts")) {
     Input::refreshLayouts();
     validateCurrentIndex(state.currentLayout, std::size(Input::layouts));
@@ -402,19 +408,36 @@ void drawVisualsTab(SettingsEditState &state) {
   }
 }
 
+void drawBindsTab(SettingsEditState &state) {
+  for (auto &bind : state.binds) {
+    ImGui::Text("%s", bind.bindName.c_str());
+    ImGui::SameLine();
+    if(ImGui::Button(bind.keyName.c_str())){
+      Input::recordBind(bind);
+    }
+  }
+}
+
 void drawSoundsTab(SettingsEditState &state) {
 
-  ImGui::Checkbox("Enable sounds", &state.selectedSoundPack.enable);
+  ImGui::Checkbox("Enable asmr sounds", &state.selectedSoundPack.enable);
   if (state.selectedSoundPack.enable) {
     ImGui::Checkbox("Sounds only for keys in layout",
                     &state.selectedSoundPack.layoutKeysOnlySound);
 
-    if(ImGui::SliderInt("Volume", &state.volumePercent, 0, 100)){
+    if (ImGui::SliderInt("Volume", &state.volumePercent, 0, 100)) {
       Sound::setMasterVolume(static_cast<float>(state.volumePercent / 100.0f));
     }
     state.volumePercent = std::clamp(state.volumePercent, 0, 100);
 
     drawSoundCombo(state.currentSound, state);
+
+    if (ImGui::Button("Open sounds folder")) {
+      Paths::openSoundsDirectory();
+    }
+
+    ImGui::SameLine();
+
     if (ImGui::Button("Refresh sounds")) {
       Sound::refreshSounds();
       validateCurrentIndex(state.currentSound, std::size(Sound::sounds));
@@ -566,6 +589,9 @@ void RenderFrame() {
     break;
   case SettingsTab::Sounds:
     drawSoundsTab(editState);
+    break;
+  case SettingsTab::Binds:
+    drawBindsTab(editState);
     break;
   case SettingsTab::Configs:
     drawConfigsTab(editState);
