@@ -57,12 +57,18 @@ struct SoundPackSelection {
   float volume{1.0f};
 };
 
+struct OverlayPosition {
+  int x{0};
+  int y{600};
+};
+
 struct Settings {
   int version{Consts::CATBOARD_VERSION};
   Theme theme{};
   std::string selectedLayout{Input::defaultLayoutName};
   SoundPackSelection soundPack{};
   Input::BindsArray binds{Input::defaultBinds};
+  OverlayPosition overlayPos{};
 };
 
 // current config

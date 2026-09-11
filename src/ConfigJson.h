@@ -17,6 +17,9 @@ void from_json(const json& j, Theme& theme);
 void to_json(json& j, const SoundPackSelection& soundPack);
 void from_json(const json& j, SoundPackSelection& soundPack);
 
+void to_json(json& j, const OverlayPosition& overlayPos);
+void from_json(const json& j, OverlayPosition& overlayPos);
+
 void to_json(json& j, const Settings& settings);
 void from_json(const json& j, Settings& settings);
 

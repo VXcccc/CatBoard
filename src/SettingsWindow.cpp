@@ -3,6 +3,7 @@
 #include "Constants.h"
 #include "Helpers.h"
 #include "InputHandle.h"
+#include "MainWindow.h"
 #include "Paths.h"
 #include "Sound.h"
 #include "imgui.h"
@@ -207,6 +208,8 @@ struct SettingsEditState {
 
   Input::BindsArray binds{};
 
+  Config::OverlayPosition overlayPos{};
+
   std::size_t currentLayout{};
   std::size_t currentConfig{};
   std::size_t currentSound{};
@@ -250,7 +253,9 @@ void restoreFromConfig(SettingsEditState &state,
   state.selectedSoundPack = prevSettings.soundPack;
   state.volumePercent =
       static_cast<int>(std::round(prevSettings.soundPack.volume * 100.0f));
+
   state.binds = prevSettings.binds;
+  state.overlayPos = prevSettings.overlayPos;
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -466,6 +471,8 @@ void drawConfigsTab(SettingsEditState &state) {
         Helper::errorMesBox(L"Failed to load sound pack from config");
       }
 
+      MainWindow::ApplyOverlayPosition();
+
       state.previous = Config::activeConfig;
     }
   }
@@ -614,7 +621,8 @@ void RenderFrame() {
           editState.selectedSoundPack.name, editState.selectedSoundPack.enable,
           editState.selectedSoundPack.layoutKeysOnlySound,
           static_cast<float>(editState.volumePercent) / 100.0f},
-      editState.binds};
+      editState.binds,
+      editState.overlayPos};
 
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;

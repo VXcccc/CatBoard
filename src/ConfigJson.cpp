@@ -70,7 +70,8 @@ void to_json(json &j, const Settings &settings) {
        {"theme", settings.theme},
        {"selectedLayout", settings.selectedLayout},
        {"soundPack", settings.soundPack},
-       {"binds", settings.binds}};
+       {"binds", settings.binds},
+       {"overlayPos", settings.overlayPos}};
 }
 
 void from_json(const json &j, Settings &settings) {
@@ -88,6 +89,20 @@ void from_json(const json &j, Settings &settings) {
 
   if (j.contains("binds"))
     j.at("binds").get_to(settings.binds);
+
+  if (j.contains("overlayPos"))
+    j.at("overlayPos").get_to(settings.overlayPos);
+}
+
+void to_json(json &j, const OverlayPosition &overlayPos) {
+  j = {{"x", overlayPos.x}, {"y", overlayPos.y}};
+}
+
+void from_json(const json &j, OverlayPosition &overlayPos) {
+  if (j.contains("x"))
+    j.at("x").get_to(overlayPos.x);
+  if (j.contains("y"))
+    j.at("y").get_to(overlayPos.y);
 }
 
 } // namespace Config

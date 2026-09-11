@@ -19,6 +19,7 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include <InputHandle.h>
+#include <algorithm>
 #include <array>
 #include <conio.h>
 #include <cstdlib>
@@ -26,6 +27,7 @@
 #include <dxgi.h>
 #include <shellapi.h>
 #include <tchar.h>
+#include <windef.h>
 #include <windows.h>
 #include <winuser.h>
 
@@ -40,6 +42,8 @@ static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
 static bool s_visible = true;
 static HWND s_hwnd = nullptr;
+
+static float g_main_scale{};
 
 // Forward declarations of main functions
 void renderKeyboard(const Input::Layout &layout,
@@ -67,6 +71,8 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+POINT getOverlayPosition(int windowWidth, int windowHeight);
+
 namespace MainWindow {
 void Show() {
   s_visible = true;
@@ -78,7 +84,15 @@ void Hide() {
   s_visible = false;
   ::ShowWindow(s_hwnd, SW_HIDE);
 }
+
 bool IsVisible() { return s_visible; }
+
+void ApplyOverlayPosition() {
+  int windowWidth = (int)(Input::activeLayout.windowWidth * g_main_scale);
+  int windowHeight = (int)(Input::activeLayout.windowHeight * g_main_scale);
+  POINT pos = getOverlayPosition(windowWidth, windowHeight);
+  SetWindowPos(s_hwnd, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+}
 } // namespace MainWindow
 
 // Main code
@@ -108,7 +122,7 @@ int main(int, char **) {
 
   // Make process DPI aware and obtain main monitor scale
   ImGui_ImplWin32_EnableDpiAwareness();
-  float main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(
+  g_main_scale = ImGui_ImplWin32_GetDpiScaleForMonitor(
       ::MonitorFromPoint(POINT{0, 0}, MONITOR_DEFAULTTOPRIMARY));
 
   // Create application window
@@ -125,13 +139,17 @@ int main(int, char **) {
                     L"CatBoard Overlay",
                     nullptr};
   ::RegisterClassExW(&wc);
-  s_hwnd =
-      ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
-                            WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                        wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, 0, 600,
-                        (int)(Input::activeLayout.windowWidth * main_scale),
-                        (int)(Input::activeLayout.windowHeight * main_scale),
-                        nullptr, nullptr, wc.hInstance, nullptr);
+
+  int windowWidth = (int)(Input::activeLayout.windowWidth * g_main_scale);
+  int windowHeight = (int)(Input::activeLayout.windowHeight * g_main_scale);
+
+  POINT pos = getOverlayPosition(windowWidth, windowHeight);
+
+  s_hwnd = ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
+                                 WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+                             wc.lpszClassName, L"CatBoard Overlay", WS_POPUP,
+                             pos.x, pos.y, windowWidth, windowHeight, nullptr,
+                             nullptr, wc.hInstance, nullptr);
 
   ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
@@ -163,13 +181,13 @@ int main(int, char **) {
   // Setup scaling
   ImGuiStyle &style = ImGui::GetStyle();
   style.ScaleAllSizes(
-      main_scale); // Bake a fixed style scale. (until we have a solution for
-                   // dynamic style scaling, changing this requires resetting
-                   // Style + calling this again)
+      g_main_scale); // Bake a fixed style scale. (until we have a solution for
+                     // dynamic style scaling, changing this requires resetting
+                     // Style + calling this again)
   style.FontScaleDpi =
-      main_scale; // Set initial font scale. (in docking branch: using
-                  // io.ConfigDpiScaleFonts=true automatically overrides this
-                  // for every window depending on the current monitor)
+      g_main_scale; // Set initial font scale. (in docking branch: using
+                    // io.ConfigDpiScaleFonts=true automatically overrides this
+                    // for every window depending on the current monitor)
 
   // Setup Platform/Renderer backends
   ImGui_ImplWin32_Init(s_hwnd);
@@ -426,6 +444,27 @@ void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
 
 // Helper functions
 
+POINT getOverlayPosition(int windowWidth, int windowHeight) {
+  POINT savedPos{Config::activeConfig.overlayPos.x,
+                 Config::activeConfig.overlayPos.y};
+
+  HMONITOR monitor{MonitorFromPoint(savedPos, MONITOR_DEFAULTTONEAREST)};
+
+  MONITORINFO mi{};
+  mi.cbSize = sizeof(mi);
+  GetMonitorInfo(monitor, &mi);
+
+  int minX = mi.rcWork.left;
+  int minY = mi.rcWork.top;
+  int maxX = std::max(minX, static_cast<int>(mi.rcWork.right - windowWidth));
+  int maxY = std::max(minY, static_cast<int>(mi.rcWork.bottom - windowHeight));
+
+  POINT result;
+  result.x = std::clamp(static_cast<int>(savedPos.x), minX, maxX);
+  result.y = std::clamp(static_cast<int>(savedPos.y), minY, maxY);
+  return result;
+}
+
 bool CreateDeviceD3D(HWND hWnd) {
   // Setup swap chain
   // This is a basic setup. Optimally could use e.g.
@@ -546,6 +585,14 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       return position == HTCLIENT ? HTCAPTION : position;
     }
     break;
+  case WM_EXITSIZEMOVE: {
+    RECT rect;
+    GetWindowRect(hWnd, &rect);
+    Config::activeConfig.overlayPos.x = rect.left;
+    Config::activeConfig.overlayPos.y = rect.top;
+    Config::Apply(Config::activeConfig);
+    return 0;
+  }
   case WM_DESTROY:
     ::PostQuitMessage(0);
     return 0;
