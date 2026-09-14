@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME} WIN32
     src/Helpers.cpp
     src/InputHandle.cpp
     src/Sound.cpp
+    src/FontHandle.cpp
     src/Resource/app.rc
 
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -79,10 +80,13 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
         "${CMAKE_SOURCE_DIR}/src/Sounds"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Sounds"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      "${CMAKE_SOURCE_DIR}/src/Fonts"
+      "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Fonts"
 )
 
 if(MINGW)
-    target_link_options(${PROJECT_NAME} PRIVATE
+  target_link_options(${PROJECT_NAME} PRIVATE
         -static-libgcc
         -static-libstdc++
     )

@@ -51,13 +51,11 @@ std::filesystem::path getActiveConfigPath() {
   return getAppDataDir() / "ActiveConfig.json";
 }
 
-std::filesystem::path getActiveLayoutPath() {
-  return getAppDataDir() / "ActiveLayout.json";
-}
 
 std::filesystem::path configDirectory() { return categoryDirectory("Configs"); }
 std::filesystem::path layoutDirectory() { return categoryDirectory("Layouts"); }
 std::filesystem::path soundsDirectory() { return categoryDirectory("Sounds"); }
+std::filesystem::path fontsDirectory() { return categoryDirectory("Fonts"); }
 
 std::filesystem::path getConfigPath(std::string_view name) {
   return categoryItemPath("Configs", name);
@@ -75,12 +73,18 @@ std::filesystem::path getSoundPackJsonPath(std::string_view name) {
     return getSoundPackDir(name) / "config.json";
 }
 
+std::filesystem::path getFontPath(std::string_view name) {
+    return fontsDirectory() / (std::string{name} + ".ttf");
+}
+
 bool ensureConfigDirectory() { return ensureCategoryDirectory("Configs"); }
 bool ensureLayoutDirectory() { return ensureCategoryDirectory("Layouts"); }
 bool ensureSoundsDirectory() { return ensureCategoryDirectory("Sounds"); }
+bool ensureFontsDirectory() { return ensureCategoryDirectory("Fonts"); }
 
 void openConfigDirectory() { openCategoryDirectory("Configs"); }
 void openLayoutDirectory() { openCategoryDirectory("Layouts"); }
 void openSoundsDirectory() { openCategoryDirectory("Sounds"); }
+void openFontsDirectory() { openCategoryDirectory("Fonts"); }
 
 } // namespace Paths

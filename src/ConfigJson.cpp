@@ -71,7 +71,8 @@ void to_json(json &j, const Settings &settings) {
        {"selectedLayout", settings.selectedLayout},
        {"soundPack", settings.soundPack},
        {"binds", settings.binds},
-       {"overlayPos", settings.overlayPos}};
+       {"overlayPos", settings.overlayPos},
+       {"font", settings.font}};
 }
 
 void from_json(const json &j, Settings &settings) {
@@ -92,6 +93,9 @@ void from_json(const json &j, Settings &settings) {
 
   if (j.contains("overlayPos"))
     j.at("overlayPos").get_to(settings.overlayPos);
+
+  if (j.contains("font"))
+    j.at("font").get_to(settings.font);
 }
 
 void to_json(json &j, const OverlayPosition &overlayPos) {

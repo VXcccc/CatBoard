@@ -10,6 +10,7 @@
 
 #include "Config.h"
 #include "Constants.h"
+#include "FontHandle.h"
 #include "Helpers.h"
 #include "MainWindow.h"
 #include "SettingsWindow.h"
@@ -99,11 +100,13 @@ void ApplyOverlayPosition() {
 int main(int, char **) {
   Config::Load();
 
-  if (!Input::installDefaultLayouts()) {
+  if (!(Input::installDefaultLayouts())) {
     Helper::fatalError(L"Failed to install default layouts");
   }
 
-  if (!Input::loadLayout(Config::activeConfig.selectedLayout)) {
+  Input::refreshLayouts();
+
+  if (!(Input::loadLayout(Config::activeConfig.selectedLayout))) {
     Helper::fatalError(L"Failed to load keyboard layout");
   }
 
@@ -111,12 +114,14 @@ int main(int, char **) {
     Helper::fatalError(L"Failed to install default sound packs");
   }
 
+  Sound::refreshSounds();
+
   if (!(Sound::initAudio())) {
     Helper::fatalError(L"Failed to init audio backends\nTry: vcpkg install "
                        L"libvorbis --triplet x64-mingw-dynamic");
   }
 
-  if (!Sound::loadSoundPack(Config::activeConfig.soundPack.name)) {
+  if (!(Sound::loadSoundPack(Config::activeConfig.soundPack.name))) {
     Helper::fatalError(L"Failed to load sound pack");
   }
 
@@ -174,6 +179,7 @@ int main(int, char **) {
   io.ConfigFlags |=
       ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
 
+
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
   // ImGui::StyleColorsLight();
@@ -193,9 +199,25 @@ int main(int, char **) {
   ImGui_ImplWin32_Init(s_hwnd);
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
+
+  if (!(Fonts::installDefaultFonts())) {
+    Helper::fatalError(L"Failed to install default fonts");
+  }
+  Fonts::refreshFonts();
+  if (!(Fonts::loadFont(Config::activeConfig.font))) {
+    Helper::fatalError(L"Failed to load font");
+  }
+
   SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext);
 
   // Load Fonts
+  // fontCfg.FontDataOwnedByAtlas = false;
+
+  // io.Fonts->AddFontFromMemoryTTF(Courier_new, sizeof(Courier_new), 20.0f,
+  // &fontCfg);
+
+  // IM_ASSERT(Fonts::activeFont != nullptr);
+
   // - If fonts are not explicitly loaded, Dear ImGui will select an embedded
   // font: either AddFontDefaultVector() or AddFontDefaultBitmap().
   //   This selection is based on (style.FontSizeBase * style.FontScaleMain *
@@ -247,6 +269,15 @@ int main(int, char **) {
     // Poll and handle messages (inputs, window resize, etc.)
     // See the WndProc() function below for our to dispatch events to the Win32
     // backend.
+
+    static Fonts::Font lastAppliedFont{};
+    if (Config::activeConfig.font.name != lastAppliedFont.name ||
+        Config::activeConfig.font.sizePixels != lastAppliedFont.sizePixels) {
+      if (Fonts::loadFont(Config::activeConfig.font)) {
+        lastAppliedFont = Config::activeConfig.font;
+      }
+    }
+
     MSG msg;
     while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
       ::TranslateMessage(&msg);
@@ -357,6 +388,7 @@ int main(int, char **) {
 void renderKeyboard(const Input::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
+  ImGui::PushFont(Fonts::activeFont);
 
   for (const auto &key : Input::activeLayout.keys) {
     bool down{currentKeysDown[key.keyCode]};
@@ -389,6 +421,7 @@ void renderKeyboard(const Input::Layout &layout,
                    key.y + (key.h - textSize.y) * 0.5f};
     draw->AddText(textPos, textColor, key.label.c_str());
   }
+  ImGui::PopFont();
 }
 
 bool detectAnyKeyChanged(const Input::Layout &layout,

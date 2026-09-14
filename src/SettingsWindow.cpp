@@ -1,6 +1,7 @@
 #include "SettingsWindow.h"
 #include "Config.h"
 #include "Constants.h"
+#include "FontHandle.h"
 #include "Helpers.h"
 #include "InputHandle.h"
 #include "MainWindow.h"
@@ -169,7 +170,7 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   return true;
 }
 
-//focuses on the window when oppening it
+// focuses on the window when oppening it
 void ForceForeground(HWND hwnd) {
   HWND foreground{GetForegroundWindow()};
   DWORD foregroundThreadId{GetWindowThreadProcessId(foreground, nullptr)};
@@ -249,9 +250,14 @@ struct SettingsEditState {
 
   Input::BindsArray binds{};
 
+  Fonts::Font selectedFont{};
+  // std::string selectedFontName{};
+  // float fontSize{};
+
   std::size_t currentLayout{};
   std::size_t currentConfig{};
   std::size_t currentSound{};
+  std::size_t currentFont{};
 
   std::string configNameInput{};
   std::string configNameError;
@@ -294,6 +300,8 @@ void restoreFromConfig(SettingsEditState &state,
       static_cast<int>(std::round(prevSettings.soundPack.volume * 100.0f));
 
   state.binds = prevSettings.binds;
+
+  state.selectedFont = prevSettings.font;
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -359,6 +367,26 @@ void drawLayoutCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
           outCurrentItem = i;
           state.selectedLayout = Input::layouts[i];
         }
+      }
+      if (isSelected) {
+        ImGui::SetItemDefaultFocus();
+      }
+    }
+    ImGui::EndCombo();
+  }
+}
+
+void drawFontCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
+  validateCurrentIndex(outCurrentItem, std::size(Fonts::fonts));
+
+  const char *preview{
+      Fonts::fonts.empty() ? "No fonts" : Fonts::fonts[outCurrentItem].c_str()};
+  if (ImGui::BeginCombo("Font", preview)) {
+    for (std::size_t i{0}; i < std::size(Fonts::fonts); ++i) {
+      bool isSelected{outCurrentItem == i};
+      if (ImGui::Selectable(Fonts::fonts[i].c_str(), isSelected)) {
+        outCurrentItem = i;
+        state.selectedFont.name = Fonts::fonts[i];
       }
       if (isSelected) {
         ImGui::SetItemDefaultFocus();
@@ -435,6 +463,24 @@ void drawVisualsTab(SettingsEditState &state) {
   if (ImGui::Button("Refresh layouts")) {
     Input::refreshLayouts();
     validateCurrentIndex(state.currentLayout, std::size(Input::layouts));
+  }
+
+  drawFontCombo(state.currentFont, state);
+
+  ImGui::SliderFloat("Font size", &state.selectedFont.sizePixels, 0.0f, 100.0f,
+                     "%.2f");
+  state.selectedFont.sizePixels =
+      std::clamp(state.selectedFont.sizePixels, 1.0f, 300.0f);
+
+  if (ImGui::Button("Open fonts folder")) {
+    Paths::openFontsDirectory();
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Refresh fonts")) {
+    Fonts::refreshFonts();
+    validateCurrentIndex(state.currentFont, std::size(Fonts::fonts));
   }
 
   ImGui::Checkbox("Enable outline", &state.outline.enable);
@@ -660,7 +706,8 @@ void RenderFrame() {
           editState.selectedSoundPack.layoutKeysOnlySound,
           static_cast<float>(editState.volumePercent) / 100.0f},
       editState.binds,
-      Config::activeConfig.overlayPos};
+      Config::activeConfig.overlayPos,
+      editState.selectedFont};
 
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;

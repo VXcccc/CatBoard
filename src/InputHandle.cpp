@@ -28,7 +28,7 @@ BindsArray defaultBinds{
 void refreshLayouts() {
   layouts.clear();
 
-  const auto folder = Paths::layoutDirectory();
+  const auto folder {Paths::layoutDirectory()};
 
   if (!std::filesystem::exists(folder))
     return;

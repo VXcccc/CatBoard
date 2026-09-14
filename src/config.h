@@ -3,6 +3,7 @@
 
 // maybe goona change location of this variable later
 
+#include "FontHandle.h"
 #include "Constants.h"
 #include "InputHandle.h"
 #include "Paths.h"
@@ -69,6 +70,7 @@ struct Settings {
   SoundPackSelection soundPack{};
   Input::BindsArray binds{Input::defaultBinds};
   OverlayPosition overlayPos{};
+  Fonts::Font font{};
 };
 
 // current config

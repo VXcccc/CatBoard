@@ -23,7 +23,7 @@ std::string activeConfigName;
 
 void refreshConfigs() {
   Config::configs.clear();
-  const auto folder = Paths::configDirectory();
+  const auto folder {Paths::configDirectory()};
 
   if (!std::filesystem::exists(folder)) {
     return;

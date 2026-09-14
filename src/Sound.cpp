@@ -66,7 +66,7 @@ void ShutdownAudio() {
 void refreshSounds() {
   sounds.clear();
 
-  const auto folder = Paths::soundsDirectory();
+  const auto folder {Paths::soundsDirectory()};
 
   if (!std::filesystem::exists(folder))
     return;
@@ -197,7 +197,7 @@ void setMasterVolume(float volume) {
 bool installDefaultSoundPacks() {
   const auto source{Paths::getExecutableDir() /
                     "Sounds"}; // TODO fix this function(cuz idk how its gonna
-                               // work without layouts dir in executable dir)
+                               // work without sounds dir in executable dir)
   const auto destination{Paths::soundsDirectory()};
 
   if (std::filesystem::exists(destination)) {
