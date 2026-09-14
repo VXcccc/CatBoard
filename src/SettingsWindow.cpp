@@ -14,6 +14,7 @@
 #include <array>
 #include <cmath>
 #include <dxgi.h>
+#include <winuser.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -105,6 +106,18 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   s_hwnd = ::CreateWindowExW(0, wc.lpszClassName, L"CatBoard Settings",
                              WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
                              600, 400, nullptr, nullptr, hInstance, nullptr);
+
+  RECT rc;
+
+  GetWindowRect(s_hwnd, &rc);
+
+  // centering the settings window
+  int xWindowPos{(GetSystemMetrics(SM_CXSCREEN) - rc.right) / 2};
+  int yWindowPos{(GetSystemMetrics(SM_CYSCREEN) - rc.bottom) / 2};
+
+  SetWindowPos(s_hwnd, 0, xWindowPos, yWindowPos, 0, 0,
+               SWP_NOZORDER | SWP_NOSIZE);
+
   if (!s_hwnd)
     return false;
 
@@ -156,10 +169,38 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   return true;
 }
 
+//focuses on the window when oppening it
+void ForceForeground(HWND hwnd) {
+  HWND foreground{GetForegroundWindow()};
+  DWORD foregroundThreadId{GetWindowThreadProcessId(foreground, nullptr)};
+  DWORD currentThreadId{GetCurrentThreadId()};
+
+  if (foregroundThreadId != currentThreadId) {
+    AttachThreadInput(foregroundThreadId, currentThreadId, TRUE);
+    SetForegroundWindow(hwnd);
+    AttachThreadInput(foregroundThreadId, currentThreadId, FALSE);
+  } else {
+    SetForegroundWindow(hwnd);
+  }
+}
+
 void Show() {
   s_visible = true;
-  ::ShowWindow(s_hwnd, SW_SHOW);
-  ::SetForegroundWindow(s_hwnd);
+
+  if (IsIconic(s_hwnd)) {
+    ::ShowWindow(s_hwnd, SW_RESTORE);
+  } else {
+    ::ShowWindow(s_hwnd, SW_SHOW);
+  }
+  ::SetWindowPos(s_hwnd, HWND_TOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
+
+  ForceForeground(s_hwnd);
+  // ::SetForegroundWindow(s_hwnd);
+  // ::SetFocus(s_hwnd);
+
+  ::SetWindowPos(s_hwnd, HWND_NOTOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
 }
 
 void Hide() {
@@ -207,7 +248,6 @@ struct SettingsEditState {
   int volumePercent{};
 
   Input::BindsArray binds{};
-
 
   std::size_t currentLayout{};
   std::size_t currentConfig{};

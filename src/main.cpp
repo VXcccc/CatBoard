@@ -448,7 +448,12 @@ POINT getOverlayPosition(int windowWidth, int windowHeight) {
   POINT savedPos{Config::activeConfig.overlayPos.x,
                  Config::activeConfig.overlayPos.y};
 
-  HMONITOR monitor{MonitorFromPoint(savedPos, MONITOR_DEFAULTTONEAREST)};
+  // todo maybe rework this shi
+  int centerX{savedPos.x + windowWidth / 2};
+  int centerY{savedPos.y + windowHeight / 2};
+
+  HMONITOR monitor{
+      MonitorFromPoint(POINT{centerX, centerY}, MONITOR_DEFAULTTONEAREST)};
 
   MONITORINFO mi{};
   mi.cbSize = sizeof(mi);
@@ -456,8 +461,9 @@ POINT getOverlayPosition(int windowWidth, int windowHeight) {
 
   int minX = mi.rcWork.left;
   int minY = mi.rcWork.top;
-  int maxX = std::max(minX, static_cast<int>(mi.rcWork.right - windowWidth));
-  int maxY = std::max(minY, static_cast<int>(mi.rcWork.bottom - windowHeight));
+  int maxX = (std::max)(minX, static_cast<int>(mi.rcWork.right - windowWidth));
+  int maxY =
+      (std::max)(minY, static_cast<int>(mi.rcWork.bottom - windowHeight));
 
   POINT result;
   result.x = std::clamp(static_cast<int>(savedPos.x), minX, maxX);

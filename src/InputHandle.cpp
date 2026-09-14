@@ -95,14 +95,14 @@ void handleBindType(const BindType type, HWND hWnd) {
   case BindType::hideOverlay:
     if (!MainWindow::IsVisible()) {
       MainWindow::Show();
-    } else if (MainWindow::IsVisible()) {
+    } else {
       MainWindow::Hide();
     }
     break;
   case BindType::openSettings:
     if (!SettingsWindow::IsVisible()) {
       SettingsWindow::Show();
-    } else if (SettingsWindow::IsVisible()) {
+    } else {
       SettingsWindow::Hide();
     }
     break;
@@ -120,6 +120,7 @@ void handleBinds(const std::array<bool, 256> &prevKeyState,
     }
   }
 }
+
 bool isBindFree(int vk) {
   for (const auto &bind : Config::activeConfig.binds) {
     if (vk == bind.vkCode) {
