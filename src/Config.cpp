@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "Helpers.h"
 #include "ConfigJson.h"
 #include "Constants.h"
 #include "Paths.h"
@@ -22,21 +23,7 @@ std::vector<std::string> configs{};
 std::string activeConfigName;
 
 void refreshConfigs() {
-  Config::configs.clear();
-  const auto folder {Paths::configDirectory()};
-
-  if (!std::filesystem::exists(folder)) {
-    return;
-  }
-
-  for (const auto &entry : std::filesystem::directory_iterator(folder)) {
-    if (!entry.is_regular_file()) {
-      continue;
-    } else if (entry.path().extension() != ".json") {
-      continue;
-    }
-    Config::configs.push_back(entry.path().stem().string());
-  }
+  Helper::refresh(configs, Paths::configDirectory(), ".json");
 }
 
 void Load() {

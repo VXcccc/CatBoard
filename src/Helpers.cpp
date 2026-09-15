@@ -1,7 +1,9 @@
 #include "Helpers.h"
 #include <cstdlib>
+#include <filesystem>
 #include <string>
 #include <unordered_map>
+#include <vector>
 #include <windows.h>
 #include <winuser.h>
 
@@ -13,6 +15,24 @@ namespace Helper {
 
 void errorMesBox(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Error", MB_OK | MB_ICONERROR);
+}
+
+void refresh(std::vector<std::string> &category,
+             const std::filesystem::path &folder, std::string_view ext) {
+  category.clear();
+
+  if (!std::filesystem::exists(folder))
+    return;
+
+  for (const auto &entry : std::filesystem::directory_iterator(folder)) {
+    if (!entry.is_regular_file())
+      continue;
+
+    if (entry.path().extension() != ext)
+      continue;
+
+    category.push_back(entry.path().stem().string());
+  }
 }
 
 std::string VkToName(int vk) {

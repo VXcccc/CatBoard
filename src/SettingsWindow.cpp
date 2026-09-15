@@ -251,8 +251,8 @@ struct SettingsEditState {
   Input::BindsArray binds{};
 
   Fonts::Font selectedFont{};
-  // std::string selectedFontName{};
-  // float fontSize{};
+
+  int letterCaseMode{}; // converting to enum in new settings
 
   std::size_t currentLayout{};
   std::size_t currentConfig{};
@@ -443,6 +443,8 @@ void drawSoundCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
 // Draw functions
 
 void drawVisualsTab(SettingsEditState &state) {
+  ImGui::SeparatorText("Appearance");
+
   ImGui::ColorEdit4("Idle fill color", &state.idleFillCol.x);
   ImGui::ColorEdit4("Active fill color", &state.activeFillCol.x);
 
@@ -451,6 +453,21 @@ void drawVisualsTab(SettingsEditState &state) {
 
   ImGui::SliderFloat("Rounding", &state.rounding, 0.0f, 20.0f, "%.2f");
   state.rounding = std::clamp(state.rounding, 0.0f, 20.0f);
+
+  ImGui::Checkbox("Enable outline", &state.outline.enable);
+  if (state.outline.enable) {
+    ImVec4 outlineColor{fromConfigColor(state.outline.color)};
+    if (ImGui::ColorEdit4("Outline color", &outlineColor.x)) {
+      state.outline.color = toConfigColor(outlineColor);
+    };
+
+    ImGui::SliderFloat("Thickness", &state.outline.thickness, 0.0f, 20.0f,
+                       "%.2f");
+    // you can change this value if you want more thickness lol
+    state.outline.thickness = std::clamp(state.outline.thickness, 0.0f, 20.0f);
+  }
+
+  ImGui::SeparatorText("Layouts");
 
   drawLayoutCombo(state.currentLayout, state);
 
@@ -472,6 +489,28 @@ void drawVisualsTab(SettingsEditState &state) {
   state.selectedFont.sizePixels =
       std::clamp(state.selectedFont.sizePixels, 1.0f, 300.0f);
 
+  ImGui::Text("Capitalization of keys: ");
+
+  ImGui::RadioButton("Show all buttons defaulted", &state.letterCaseMode,
+                     static_cast<int>(Fonts::LetterCaseMode::defaultMode));
+  ImGui::RadioButton("Show all buttons capitalized", &state.letterCaseMode,
+                     static_cast<int>(Fonts::LetterCaseMode::allCapital));
+  ImGui::RadioButton("Show all buttons lower-case", &state.letterCaseMode,
+                     static_cast<int>(Fonts::LetterCaseMode::allLower));
+  state.selectedFont.letterCase.mode =
+      static_cast<Fonts::LetterCaseMode>(state.letterCaseMode);
+
+  ImGui::Text("Options: ");
+  ImGui::Checkbox(
+      "Caps Lock applying for keys",
+      &state.selectedFont.letterCase.options.capsLockDisplay);
+  ImGui::Checkbox(
+      "Follow shift for caps Lock insensitive keys",
+      &state.selectedFont.letterCase.options.capsInsensitiveKeys);
+  ImGui::Checkbox(
+      "Follow shift for caps Lock sensitive keys",
+      &state.selectedFont.letterCase.options.capsSensitiveKeys);
+
   if (ImGui::Button("Open fonts folder")) {
     Paths::openFontsDirectory();
   }
@@ -481,19 +520,6 @@ void drawVisualsTab(SettingsEditState &state) {
   if (ImGui::Button("Refresh fonts")) {
     Fonts::refreshFonts();
     validateCurrentIndex(state.currentFont, std::size(Fonts::fonts));
-  }
-
-  ImGui::Checkbox("Enable outline", &state.outline.enable);
-  if (state.outline.enable) {
-    ImVec4 outlineColor{fromConfigColor(state.outline.color)};
-    if (ImGui::ColorEdit4("Outline color", &outlineColor.x)) {
-      state.outline.color = toConfigColor(outlineColor);
-    };
-
-    ImGui::SliderFloat("Thickness", &state.outline.thickness, 0.0f, 20.0f,
-                       "%.2f");
-    // you can change this value if you want more thickness lol
-    state.outline.thickness = std::clamp(state.outline.thickness, 0.0f, 20.0f);
   }
 }
 

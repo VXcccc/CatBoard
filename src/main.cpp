@@ -48,7 +48,8 @@ static float g_main_scale{};
 
 // Forward declarations of main functions
 void renderKeyboard(const Input::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown);
+                    const std::array<bool, 256> &currentKeysDown,
+                    const std::array<bool, 256> &currentFullKeysDown);
 bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown);
@@ -179,7 +180,6 @@ int main(int, char **) {
   io.ConfigFlags |=
       ImGuiConfigFlags_NavEnableGamepad; // Enable Gamepad Controls
 
-
   // Setup Dear ImGui style
   ImGui::StyleColorsDark();
   // ImGui::StyleColorsLight();
@@ -198,7 +198,6 @@ int main(int, char **) {
   // Setup Platform/Renderer backends
   ImGui_ImplWin32_Init(s_hwnd);
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
-
 
   if (!(Fonts::installDefaultFonts())) {
     Helper::fatalError(L"Failed to install default fonts");
@@ -346,7 +345,7 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    renderKeyboard(Input::activeLayout, currentKeysDown);
+    renderKeyboard(Input::activeLayout, currentKeysDown, currentFullKeysDown);
 
     // Rendering
     ImGui::Render();
@@ -360,8 +359,8 @@ int main(int, char **) {
     ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
     // Present
-    HRESULT hr = g_pSwapChain->Present(1, 0); // Present with vsync
-    // HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
+    // HRESULT hr = g_pSwapChain->Present(1, 0); // Present with vsync
+    HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
 
     SettingsWindow::RenderFrame();
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
@@ -385,14 +384,25 @@ int main(int, char **) {
 
 // Main functions
 
-void renderKeyboard(const Input::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown) {
+void renderKeyboard(
+    const Input::Layout &layout, const std::array<bool, 256> &currentKeysDown,
+    const std::array<bool, 256>
+        &currentFullKeysDown) { // todo maybe remove currentFullKeysDown
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   ImGui::PushFont(Fonts::activeFont);
 
   for (const auto &key : Input::activeLayout.keys) {
     bool down{currentKeysDown[key.keyCode]};
     // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
+
+    // i did first if statement for peoples who have caps binded to smth, you
+    // can remove it if you want to show caps lock toogle state without changing
+    // buttons labels
+    if (Config::activeConfig.font.letterCase.options.capsLockDisplay) {
+      if (key.keyCode == VK_CAPITAL) {
+        down = (GetKeyState(VK_CAPITAL) & 1) != 0;
+      }
+    }
 
     ImVec2 topLeft{key.x, key.y};
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
@@ -416,10 +426,13 @@ void renderKeyboard(const Input::Layout &layout,
     }
     // outline
 
+    std::string displayLabel{Fonts::handleLetterCase(
+        currentFullKeysDown, Config::activeConfig.font, key)};
+
     ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
     ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
                    key.y + (key.h - textSize.y) * 0.5f};
-    draw->AddText(textPos, textColor, key.label.c_str());
+    draw->AddText(textPos, textColor, displayLabel.c_str());
   }
   ImGui::PopFont();
 }

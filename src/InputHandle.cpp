@@ -26,22 +26,7 @@ BindsArray defaultBinds{
     Bind{"Open settings", VK_F9, "F9", BindType::openSettings}};
 
 void refreshLayouts() {
-  layouts.clear();
-
-  const auto folder {Paths::layoutDirectory()};
-
-  if (!std::filesystem::exists(folder))
-    return;
-
-  for (const auto &entry : std::filesystem::directory_iterator(folder)) {
-    if (!entry.is_regular_file())
-      continue;
-
-    if (entry.path().extension() != ".json")
-      continue;
-
-    layouts.push_back(entry.path().stem().string());
-  }
+  Helper::refresh(layouts, Paths::layoutDirectory(), ".json");
 }
 
 bool installDefaultLayouts() {
