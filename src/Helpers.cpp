@@ -6,6 +6,8 @@
 #include <vector>
 #include <windows.h>
 #include <winuser.h>
+#include <algorithm>
+#include <cmath>
 
 namespace Helper {
 [[noreturn]] void fatalError(const wchar_t *message) {
@@ -15,6 +17,16 @@ namespace Helper {
 
 void errorMesBox(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Error", MB_OK | MB_ICONERROR);
+}
+
+int toColorRGB(float value) {
+  value = std::clamp(value, 0.0f, 1.0f);
+  return static_cast<int>(std::round(value * 255.0f));
+}
+
+float fromColorRGB(int value) {
+  value = std::clamp(value, 0, 255);
+  return static_cast<float>(value) / 255.0f;
 }
 
 void refresh(std::vector<std::string> &category,

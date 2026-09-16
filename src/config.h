@@ -63,6 +63,11 @@ struct OverlayPosition {
   int y{600};
 };
 
+struct Misc{
+  bool vsync{false};
+  bool obsMode{false};
+};
+
 struct Settings {
   int version{Consts::CATBOARD_VERSION};
   Theme theme{};
@@ -71,6 +76,7 @@ struct Settings {
   Input::BindsArray binds{Input::defaultBinds};
   OverlayPosition overlayPos{};
   Fonts::Font font{};
+  Misc misc{};
 };
 
 // current config

@@ -7,6 +7,7 @@
 #include "MainWindow.h"
 #include "Paths.h"
 #include "Sound.h"
+#include "SystemTray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -212,7 +213,14 @@ void Hide() {
 bool IsVisible() { return s_visible; }
 
 // Tabs handling
-enum class SettingsTab { Visuals, Sounds, Binds, Configs, max_SettingsTabs };
+enum class SettingsTab {
+  Visuals,
+  Sounds,
+  Misc,
+  Binds,
+  Configs,
+  max_SettingsTabs
+};
 
 struct Tab {
   const char *label;
@@ -222,6 +230,7 @@ struct Tab {
 std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
     {{"Visuals", SettingsTab::Visuals},
      {"Sounds", SettingsTab::Sounds},
+     {"Misc", SettingsTab::Misc},
      {"Binds", SettingsTab::Binds},
      {"Configs", SettingsTab::Configs}}};
 
@@ -254,6 +263,8 @@ struct SettingsEditState {
 
   int letterCaseMode{}; // converting to enum in new settings
 
+  Config::Misc misc{};
+
   std::size_t currentLayout{};
   std::size_t currentConfig{};
   std::size_t currentSound{};
@@ -263,24 +274,15 @@ struct SettingsEditState {
   std::string configNameError;
 };
 
-int toColorRGB(float value) {
-  value = std::clamp(value, 0.0f, 1.0f);
-  return static_cast<int>(std::round(value * 255.0f));
-}
-
-float fromColorRGB(int value) {
-  value = std::clamp(value, 0, 255);
-  return static_cast<float>(value) / 255.0f;
-}
-
 Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color) {
-  return Config::Theme::ColorRGBA{toColorRGB(color.x), toColorRGB(color.y),
-                                  toColorRGB(color.z), toColorRGB(color.w)};
+  return Config::Theme::ColorRGBA{
+      Helper::toColorRGB(color.x), Helper::toColorRGB(color.y),
+      Helper::toColorRGB(color.z), Helper::toColorRGB(color.w)};
 }
 
 ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
-  return ImVec4{fromColorRGB(color[0]), fromColorRGB(color[1]),
-                fromColorRGB(color[2]), fromColorRGB(color[3])};
+  return ImVec4{Helper::fromColorRGB(color[0]), Helper::fromColorRGB(color[1]),
+                Helper::fromColorRGB(color[2]), Helper::fromColorRGB(color[3])};
 }
 
 void restoreFromConfig(SettingsEditState &state,
@@ -302,6 +304,8 @@ void restoreFromConfig(SettingsEditState &state,
   state.binds = prevSettings.binds;
 
   state.selectedFont = prevSettings.font;
+
+  state.misc = prevSettings.misc;
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -440,12 +444,15 @@ void drawSoundCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
   }
 }
 
-// Draw functions
-
-void drawVisualsTab(SettingsEditState &state) {
+// Draw sections functions
+void drawAppearanceSection(SettingsEditState &state) {
   ImGui::SeparatorText("Appearance");
 
   ImGui::ColorEdit4("Idle fill color", &state.idleFillCol.x);
+  //idk im not sure about if statement above
+  // if(!state.misc.obsMode){
+  //   state.idleFillCol.x = std::clamp(state.idleFillCol.x, Helper::fromColorRGB(1), Helper::fromColorRGB(255));
+  // }
   ImGui::ColorEdit4("Active fill color", &state.activeFillCol.x);
 
   ImGui::ColorEdit4("Idle text color", &state.idleTextCol.x);
@@ -466,7 +473,9 @@ void drawVisualsTab(SettingsEditState &state) {
     // you can change this value if you want more thickness lol
     state.outline.thickness = std::clamp(state.outline.thickness, 0.0f, 20.0f);
   }
+}
 
+void drawLayoutsSection(SettingsEditState &state) {
   ImGui::SeparatorText("Layouts");
 
   drawLayoutCombo(state.currentLayout, state);
@@ -501,15 +510,12 @@ void drawVisualsTab(SettingsEditState &state) {
       static_cast<Fonts::LetterCaseMode>(state.letterCaseMode);
 
   ImGui::Text("Options: ");
-  ImGui::Checkbox(
-      "Caps Lock applying for keys",
-      &state.selectedFont.letterCase.options.capsLockDisplay);
-  ImGui::Checkbox(
-      "Follow shift for caps Lock insensitive keys",
-      &state.selectedFont.letterCase.options.capsInsensitiveKeys);
-  ImGui::Checkbox(
-      "Follow shift for caps Lock sensitive keys",
-      &state.selectedFont.letterCase.options.capsSensitiveKeys);
+  ImGui::Checkbox("Caps Lock applying for keys",
+                  &state.selectedFont.letterCase.options.capsLockDisplay);
+  ImGui::Checkbox("Follow shift for caps Lock insensitive keys",
+                  &state.selectedFont.letterCase.options.capsInsensitiveKeys);
+  ImGui::Checkbox("Follow shift for caps Lock sensitive keys",
+                  &state.selectedFont.letterCase.options.capsSensitiveKeys);
 
   if (ImGui::Button("Open fonts folder")) {
     Paths::openFontsDirectory();
@@ -520,6 +526,21 @@ void drawVisualsTab(SettingsEditState &state) {
   if (ImGui::Button("Refresh fonts")) {
     Fonts::refreshFonts();
     validateCurrentIndex(state.currentFont, std::size(Fonts::fonts));
+  }
+}
+
+// Draw. functions
+
+void drawVisualsTab(SettingsEditState &state) {
+  drawAppearanceSection(state);
+
+  drawLayoutsSection(state);
+}
+
+void drawMiscTab(SettingsEditState &state) {
+  ImGui::Checkbox("Enable V-Sync", &state.misc.vsync);
+  if (ImGui::Checkbox("Enable ObsMode", &state.misc.obsMode)) {
+    Tray::SetObsMode(MainWindow::getHWND(), state.misc.obsMode);
   }
 }
 
@@ -691,7 +712,7 @@ void RenderFrame() {
 
   for (size_t i{0}; i < std::size(tabs); ++i) {
     if (ImGui::Button(tabs[i].label,
-                      ImVec2((300.0f / std::size(tabs) - 9),
+                      ImVec2((500.0f / std::size(tabs) - 9),
                              25.0f))) // todo remove magic numbers
       currentTab = tabs[i].type;
 
@@ -705,6 +726,9 @@ void RenderFrame() {
     break;
   case SettingsTab::Sounds:
     drawSoundsTab(editState);
+    break;
+  case SettingsTab::Misc:
+    drawMiscTab(editState);
     break;
   case SettingsTab::Binds:
     drawBindsTab(editState);
@@ -733,13 +757,14 @@ void RenderFrame() {
           static_cast<float>(editState.volumePercent) / 100.0f},
       editState.binds,
       Config::activeConfig.overlayPos,
-      editState.selectedFont};
+      editState.selectedFont,
+      editState.misc};
 
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;
 
   if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds ||
-      currentTab == SettingsTab::Binds) {
+      currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc) {
     drawApplyCancel(editState, newSettings);
   }
 

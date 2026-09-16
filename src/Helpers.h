@@ -15,6 +15,10 @@ void refresh(std::vector<std::string> &category,
 
 std::string VkToName(int vk);
 
+
+int toColorRGB(float value);
+float fromColorRGB(int value);
+
 }; // namespace Helper
 
 #endif // !HELPERS_H

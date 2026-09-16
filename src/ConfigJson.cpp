@@ -72,7 +72,8 @@ void to_json(json &j, const Settings &settings) {
        {"soundPack", settings.soundPack},
        {"binds", settings.binds},
        {"overlayPos", settings.overlayPos},
-       {"font", settings.font}};
+       {"font", settings.font},
+       {"misc", settings.misc}};
 }
 
 void from_json(const json &j, Settings &settings) {
@@ -96,6 +97,22 @@ void from_json(const json &j, Settings &settings) {
 
   if (j.contains("font"))
     j.at("font").get_to(settings.font);
+
+  if (j.contains("misc"))
+    j.at("misc").get_to(settings.misc);
+}
+
+void to_json(json &j, const Misc &misc) {
+  j = {{"vsync", misc.vsync}, {"obsMode", misc.obsMode}};
+}
+
+void from_json(const json &j, Misc &misc) {
+
+  if (j.contains("vsync"))
+    j.at("vsync").get_to(misc.vsync);
+
+  if (j.contains("obsMode"))
+    j.at("obsMode").get_to(misc.obsMode);
 }
 
 void to_json(json &j, const OverlayPosition &overlayPos) {

@@ -1,5 +1,8 @@
 #include "SystemTray.h"
 #include "Constants.h"
+#include "Helpers.h"
+#include "InputHandle.h"
+#include "MainWindow.h"
 #include "SettingsWindow.h"
 #include <basetsd.h>
 #include <minwindef.h>
@@ -95,31 +98,8 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd) {
 
   return;
 }
-// void RequestInteractive(HWND hwnd) {
-//   g_interactiveRequests++;
-//   if (g_interactiveRequests == 1) {
-//     LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
-//     exStyle &= ~WS_EX_TRANSPARENT;
-//     SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
-//     SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-//                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-//   }
-// }
 
-// void ReleaseInteractive(HWND hwnd) {
-//   g_interactiveRequests--;
-//   if (g_interactiveRequests == 0) {
-//     LONG_PTR exStyle = GetWindowLongPtr(hwnd, GWL_EXSTYLE);
-//     exStyle |= WS_EX_TRANSPARENT;
-//     SetWindowLongPtr(hwnd, GWL_EXSTYLE, exStyle);
-//     SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
-//                  SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-//   }
-// }
-//
-// Reverted to the old version of the fucntion cuz the g_interactiveRequests is
-// no longer needed
-//
+// to do move this functions to mainWindow.h
 void SetDragMode(HWND hWnd, bool enabled) {
   LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
   if (enabled) {
@@ -130,6 +110,52 @@ void SetDragMode(HWND hWnd, bool enabled) {
   SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
   SetWindowPos(hWnd, nullptr, 0, 0, 0, 0,
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+}
+
+void SetObsMode(HWND hWnd, bool enabled) {
+  int windowWidth{
+      (int)(Input::activeLayout.windowWidth * MainWindow::getG_MainScale())};
+
+  int windowHeight{
+      (int)(Input::activeLayout.windowHeight * MainWindow::getG_MainScale())};
+
+  // adding 30 pixles cuz of sysmenu
+  int obsWindowHeight{
+      ((int)(Input::activeLayout.windowHeight * MainWindow::getG_MainScale())) +
+      (30)};
+
+  LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
+  LONG_PTR style{GetWindowLongPtr(hWnd, GWL_STYLE)};
+
+  if (enabled) {
+    exStyle &= ~(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
+                 WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+
+    style = (style & ~WS_POPUP) |
+            (WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME);
+
+    MainWindow::setClearColor(
+        ImVec4(0.0f, Helper::fromColorRGB(255), 0.0f, 1.0f));
+  } else {
+    exStyle |= (WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
+                WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
+
+    style =
+        (style & ~(WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME)) |
+        WS_POPUP;
+  }
+
+  SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
+  SetWindowLongPtr(hWnd, GWL_STYLE, style);
+
+  if (!enabled) {
+    MainWindow::setClearColor(Consts::defaultClearColor);
+    SetLayeredWindowAttributes(hWnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+  }
+
+  SetWindowPos(hWnd, enabled ? HWND_NOTOPMOST : HWND_TOPMOST, 0, 0, windowWidth,
+               enabled ? obsWindowHeight : windowHeight,
+               SWP_NOMOVE | SWP_FRAMECHANGED);
 }
 
 void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd) {

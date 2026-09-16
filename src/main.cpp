@@ -76,6 +76,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 POINT getOverlayPosition(int windowWidth, int windowHeight);
 
 namespace MainWindow {
+static ImVec4 s_clearColor{Consts::defaultClearColor};
+
 void Show() {
   s_visible = true;
   ::ShowWindow(s_hwnd, SW_SHOW);
@@ -95,6 +97,13 @@ void ApplyOverlayPosition() {
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
   SetWindowPos(s_hwnd, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
+
+HWND getHWND() { return s_hwnd; }
+
+float getG_MainScale() { return g_main_scale; }
+
+void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
+
 } // namespace MainWindow
 
 // Main code
@@ -146,8 +155,8 @@ int main(int, char **) {
                     nullptr};
   ::RegisterClassExW(&wc);
 
-  int windowWidth = (int)(Input::activeLayout.windowWidth * g_main_scale);
-  int windowHeight = (int)(Input::activeLayout.windowHeight * g_main_scale);
+  int windowWidth {(int)(Input::activeLayout.windowWidth * g_main_scale)};
+  int windowHeight {(int)(Input::activeLayout.windowHeight * g_main_scale)};
 
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
 
@@ -245,10 +254,11 @@ int main(int, char **) {
   // creating tray icon
   Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
 
+  Tray::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
+
   // Our state
   bool show_demo_window = true;
   bool show_another_window = false;
-  ImVec4 clear_color = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
 
   // Main loop
   bool done = false;
@@ -275,6 +285,12 @@ int main(int, char **) {
       if (Fonts::loadFont(Config::activeConfig.font)) {
         lastAppliedFont = Config::activeConfig.font;
       }
+    }
+
+    static bool lastObsModeCondition{Config::activeConfig.misc.obsMode};
+    if (Config::activeConfig.misc.obsMode != lastObsModeCondition) {
+      Tray::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
+      lastObsModeCondition = Config::activeConfig.misc.obsMode;
     }
 
     MSG msg;
@@ -310,7 +326,6 @@ int main(int, char **) {
     pollFullKeyboard(currentFullKeysDown);
 
     if (Input::g_bindJustRecorded) {
-
       prevFullKeyState = currentFullKeysDown;
       Input::g_bindJustRecorded = false;
     } else {
@@ -350,8 +365,10 @@ int main(int, char **) {
     // Rendering
     ImGui::Render();
     const float clear_color_with_alpha[4] = {
-        clear_color.x * clear_color.w, clear_color.y * clear_color.w,
-        clear_color.z * clear_color.w, clear_color.w};
+        MainWindow::s_clearColor.x * MainWindow::s_clearColor.w,
+        MainWindow::s_clearColor.y * MainWindow::s_clearColor.w,
+        MainWindow::s_clearColor.z * MainWindow::s_clearColor.w,
+        MainWindow::s_clearColor.w};
     g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView,
                                             nullptr);
     g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView,
