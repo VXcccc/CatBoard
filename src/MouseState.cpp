@@ -14,11 +14,22 @@ std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
 
 MouseState g_mouseState{
     Config::activeConfig.theme.mouseSensitivity,
-    Config::activeConfig.theme.mouseDecayRate}; // to do change sensitivity and
-                                                // decayrate to config varibales
+    Config::activeConfig.theme.mouseDecayRate}; 
 
 float MouseState::getDistance() const {
   return (std::sqrt(m_offsetX * m_offsetX + m_offsetY * m_offsetY));
+}
+
+void MouseState::addRawDelta(int dx, int dy) {
+    m_pendingDeltaX += dx;
+    m_pendingDeltaY += dy;
+}
+
+void MouseState::consumePendingDelta() {
+    m_deltaX = m_pendingDeltaX;
+    m_deltaY = m_pendingDeltaY;
+    m_pendingDeltaX = 0;
+    m_pendingDeltaY = 0;
 }
 
 void MouseState::updateMouseState(float deltaTime, float radius) {

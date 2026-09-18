@@ -84,6 +84,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 POINT getOverlayPosition(int windowWidth, int windowHeight);
 
+bool RegisterRawMouseInput(HWND hwnd);
+
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
 void pollMouseState(POINT &outPrevMousePos, Mouse::MouseState &mouseState);
 
@@ -180,6 +182,8 @@ int main(int, char **) {
                              nullptr, wc.hInstance, nullptr);
 
   ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+
+  RegisterRawMouseInput(s_hwnd);
 
   // Initialize Direct3D
   if (!CreateDeviceD3D(s_hwnd)) {
@@ -287,9 +291,6 @@ int main(int, char **) {
   static std::array<bool, 256> currentFullKeysDown{};
   static bool firstFrame = true;
 
-  // Mouse varibales
-  POINT prevMousePos{};
-  GetCursorPos(&prevMousePos);
 
   // deltaTime
   LARGE_INTEGER freq;
@@ -346,7 +347,7 @@ int main(int, char **) {
     pollFullKeyboard(currentFullKeysDown);
 
     // mouse poll
-    pollMouseState(prevMousePos, Mouse::g_mouseState);
+    Mouse::g_mouseState.consumePendingDelta();
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
     Mouse::g_mouseState.updateMouseState(deltaTime, Config::activeConfig.theme.radius);
 
@@ -393,12 +394,13 @@ int main(int, char **) {
 
     renderKeyboard(Input::activeLayout, currentKeysDown, currentFullKeysDown);
 
+    //todo edit layout file to add center variable
     Mouse::renderMouseIndicator(ImVec2(374, 184),
                                 Config::activeConfig.theme.mouseStyle.type);
-    // Mouse::renderDefaultMouseIndicator(ImVec2(374, 184), 37.0f);
 
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                1000.0f / io.Framerate, io.Framerate);
+    //debug
+    // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+    //             1000.0f / io.Framerate, io.Framerate);
 
     // Rendering
     ImGui::Render();
@@ -423,6 +425,7 @@ int main(int, char **) {
     SettingsWindow::RenderFrame();
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 
+    //todo move it to seperate function
     // fps limiter
     const auto frameEnd{std::chrono::steady_clock::now()};
 
@@ -580,14 +583,16 @@ void handleObsMode() {
 }
 
 // Helper functions
+bool RegisterRawMouseInput(HWND hwnd) {
+    RAWINPUTDEVICE rid{};
+    rid.usUsagePage = 0x01; // Generic Desktop Controls
+    rid.usUsage = 0x02;     // Mouse
+    rid.dwFlags = RIDEV_INPUTSINK; // input without focus
+    rid.hwndTarget = hwnd;
 
-void pollMouseState(POINT &outPrevMousePos, Mouse::MouseState &mouseState) {
-  POINT currentMousePos;
-  GetCursorPos(&currentMousePos);
-  mouseState.setDeltaX(currentMousePos, outPrevMousePos);
-  mouseState.setDeltaY(currentMousePos, outPrevMousePos);
-  outPrevMousePos = currentMousePos;
+    return RegisterRawInputDevices(&rid, 1, sizeof(rid));
 }
+
 
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
   LARGE_INTEGER now;
@@ -701,6 +706,22 @@ void CleanupRenderTarget() {
     g_mainRenderTargetView = nullptr;
   }
 }
+void WM_RawMouseInputHandle(LPARAM lParam){
+      UINT dataSize;
+      GetRawInputData((HRAWINPUT)lParam, RID_INPUT, nullptr, &dataSize, sizeof(RAWINPUTHEADER));
+
+      if (dataSize > 0) {
+          std::vector<BYTE> buffer(dataSize);
+          if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer.data(), &dataSize, sizeof(RAWINPUTHEADER)) == dataSize) {
+              RAWINPUT* raw = (RAWINPUT*)buffer.data();
+              if (raw->header.dwType == RIM_TYPEMOUSE) {
+                  LONG rawDeltaX = raw->data.mouse.lLastX;
+                  LONG rawDeltaY = raw->data.mouse.lLastY;
+                  Mouse::g_mouseState.addRawDelta(rawDeltaX, rawDeltaY); 
+              }
+          }
+      }
+}
 
 // Forward declare message handler from imgui_impl_win32.cpp
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
@@ -722,6 +743,10 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return true;
 
   switch (msg) {
+  case WM_INPUT: {
+      WM_RawMouseInputHandle(lParam);
+      break; 
+  }
   case WM_SIZE:
     if (wParam == SIZE_MINIMIZED)
       return 0;

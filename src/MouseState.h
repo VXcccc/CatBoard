@@ -7,6 +7,7 @@
 
 namespace Mouse {
 
+
 enum class Type { CatBoard, NohBoard, maxMouseStyles };
 
 struct MouseStyle {
@@ -45,7 +46,13 @@ public:
 
   float getDistance() const;
 
+  void addRawDelta(int dx, int dy);
+  void consumePendingDelta() ;
+
 private:
+  int m_pendingDeltaX{0};
+  int m_pendingDeltaY{0};
+
   int m_deltaX{0};
   int m_deltaY{0};
 
