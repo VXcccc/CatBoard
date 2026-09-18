@@ -1,4 +1,5 @@
 #include "SystemTray.h"
+#include "Config.h"
 #include "Constants.h"
 #include "Helpers.h"
 #include "InputHandle.h"
@@ -54,10 +55,6 @@ NOTIFYICONDATA init(HWND hwnd, HINSTANCE hInstance) {
   nid.hIcon = static_cast<HICON>(
       LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0,
                 LR_DEFAULTSIZE | LR_SHARED));
-  // nid.hIcon = static_cast<HICON>(LoadImage(NULL, L"Images/icon.ico",
-  // IMAGE_ICON,
-  //                                          0, 0, LR_LOADFROMFILE |
-  //                                          LR_SHARED));
 
   StringCchCopy(nid.szTip, ARRAYSIZE(nid.szTip), L"CatBoard");
 
@@ -88,8 +85,8 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd) {
   uMouseMsg = (UINT)lParam;
 
   switch (uMouseMsg) {
-  case WM_LBUTTONUP:
-    DisplayContextMenu(hWnd);
+  case WM_LBUTTONDBLCLK:
+    SettingsWindow::Show();
     return;
   case WM_RBUTTONUP:
     DisplayContextMenu(hWnd);
@@ -135,7 +132,7 @@ void SetObsMode(HWND hWnd, bool enabled) {
             (WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME);
 
     MainWindow::setClearColor(
-        ImVec4(0.0f, Helper::fromColorRGB(255), 0.0f, 1.0f));
+        Helper::fromConfigColor(Config::activeConfig.theme.obsBackground));
   } else {
     exStyle |= (WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
                 WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);

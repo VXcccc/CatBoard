@@ -3,8 +3,8 @@
 
 // maybe goona change location of this variable later
 
-#include "FontHandle.h"
 #include "Constants.h"
+#include "FontHandle.h"
 #include "InputHandle.h"
 #include "Paths.h"
 #include "Sound.h"
@@ -49,6 +49,8 @@ struct Theme {
   float rounding{0.0f};
 
   Outline outline{};
+
+  ColorRGBA obsBackground{0, 255, 0, 255};
 };
 
 struct SoundPackSelection {
@@ -63,7 +65,7 @@ struct OverlayPosition {
   int y{600};
 };
 
-struct Misc{
+struct Misc {
   bool vsync{false};
   bool obsMode{false};
 };

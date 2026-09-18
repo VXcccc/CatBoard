@@ -1,7 +1,6 @@
 #ifndef INPUTHANDLE_H
 #define INPUTHANDLE_H
 
-#include "Helpers.h"
 #include "nlohmann/detail/macro_scope.hpp"
 #include <nlohmann/json.hpp>
 #include <windows.h>

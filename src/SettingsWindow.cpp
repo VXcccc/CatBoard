@@ -265,6 +265,8 @@ struct SettingsEditState {
 
   Config::Misc misc{};
 
+  ImVec4 obsBackground;
+
   std::size_t currentLayout{};
   std::size_t currentConfig{};
   std::size_t currentSound{};
@@ -274,23 +276,12 @@ struct SettingsEditState {
   std::string configNameError;
 };
 
-Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color) {
-  return Config::Theme::ColorRGBA{
-      Helper::toColorRGB(color.x), Helper::toColorRGB(color.y),
-      Helper::toColorRGB(color.z), Helper::toColorRGB(color.w)};
-}
-
-ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
-  return ImVec4{Helper::fromColorRGB(color[0]), Helper::fromColorRGB(color[1]),
-                Helper::fromColorRGB(color[2]), Helper::fromColorRGB(color[3])};
-}
-
 void restoreFromConfig(SettingsEditState &state,
                        const Config::Settings &prevSettings) {
-  state.idleFillCol = fromConfigColor(prevSettings.theme.idleFill);
-  state.activeFillCol = fromConfigColor(prevSettings.theme.activeFill);
-  state.idleTextCol = fromConfigColor(prevSettings.theme.idleText);
-  state.activeTextCol = fromConfigColor(prevSettings.theme.activeText);
+  state.idleFillCol = Helper::fromConfigColor(prevSettings.theme.idleFill);
+  state.activeFillCol = Helper::fromConfigColor(prevSettings.theme.activeFill);
+  state.idleTextCol = Helper::fromConfigColor(prevSettings.theme.idleText);
+  state.activeTextCol = Helper::fromConfigColor(prevSettings.theme.activeText);
   state.rounding = prevSettings.theme.rounding;
 
   state.outline = prevSettings.theme.outline;
@@ -306,6 +297,9 @@ void restoreFromConfig(SettingsEditState &state,
   state.selectedFont = prevSettings.font;
 
   state.misc = prevSettings.misc;
+
+  state.obsBackground =
+      Helper::fromConfigColor(prevSettings.theme.obsBackground);
 
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -449,10 +443,11 @@ void drawAppearanceSection(SettingsEditState &state) {
   ImGui::SeparatorText("Appearance");
 
   ImGui::ColorEdit4("Idle fill color", &state.idleFillCol.x);
-  //idk im not sure about if statement above
-  // if(!state.misc.obsMode){
-  //   state.idleFillCol.x = std::clamp(state.idleFillCol.x, Helper::fromColorRGB(1), Helper::fromColorRGB(255));
-  // }
+  // idk im not sure about if statement above
+  //  if(!state.misc.obsMode){
+  //    state.idleFillCol.x = std::clamp(state.idleFillCol.x,
+  //    Helper::fromColorRGB(1), Helper::fromColorRGB(255));
+  //  }
   ImGui::ColorEdit4("Active fill color", &state.activeFillCol.x);
 
   ImGui::ColorEdit4("Idle text color", &state.idleTextCol.x);
@@ -463,9 +458,9 @@ void drawAppearanceSection(SettingsEditState &state) {
 
   ImGui::Checkbox("Enable outline", &state.outline.enable);
   if (state.outline.enable) {
-    ImVec4 outlineColor{fromConfigColor(state.outline.color)};
+    ImVec4 outlineColor{Helper::fromConfigColor(state.outline.color)};
     if (ImGui::ColorEdit4("Outline color", &outlineColor.x)) {
-      state.outline.color = toConfigColor(outlineColor);
+      state.outline.color = Helper::toConfigColor(outlineColor);
     };
 
     ImGui::SliderFloat("Thickness", &state.outline.thickness, 0.0f, 20.0f,
@@ -498,6 +493,17 @@ void drawLayoutsSection(SettingsEditState &state) {
   state.selectedFont.sizePixels =
       std::clamp(state.selectedFont.sizePixels, 1.0f, 300.0f);
 
+  if (ImGui::Button("Open fonts folder")) {
+    Paths::openFontsDirectory();
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Refresh fonts")) {
+    Fonts::refreshFonts();
+    validateCurrentIndex(state.currentFont, std::size(Fonts::fonts));
+  }
+
   ImGui::Text("Capitalization of keys: ");
 
   ImGui::RadioButton("Show all buttons defaulted", &state.letterCaseMode,
@@ -516,17 +522,6 @@ void drawLayoutsSection(SettingsEditState &state) {
                   &state.selectedFont.letterCase.options.capsInsensitiveKeys);
   ImGui::Checkbox("Follow shift for caps Lock sensitive keys",
                   &state.selectedFont.letterCase.options.capsSensitiveKeys);
-
-  if (ImGui::Button("Open fonts folder")) {
-    Paths::openFontsDirectory();
-  }
-
-  ImGui::SameLine();
-
-  if (ImGui::Button("Refresh fonts")) {
-    Fonts::refreshFonts();
-    validateCurrentIndex(state.currentFont, std::size(Fonts::fonts));
-  }
 }
 
 // Draw. functions
@@ -539,8 +534,10 @@ void drawVisualsTab(SettingsEditState &state) {
 
 void drawMiscTab(SettingsEditState &state) {
   ImGui::Checkbox("Enable V-Sync", &state.misc.vsync);
-  if (ImGui::Checkbox("Enable ObsMode", &state.misc.obsMode)) {
-    Tray::SetObsMode(MainWindow::getHWND(), state.misc.obsMode);
+  ImGui::Checkbox("Enable ObsMode", &state.misc.obsMode);
+
+  if (state.misc.obsMode) {
+    ImGui::ColorEdit4("Background Color", &state.obsBackground.x);
   }
 }
 
@@ -743,12 +740,13 @@ void RenderFrame() {
   Config::Settings newSettings = {
       Consts::CATBOARD_VERSION,
       Config::Theme{
-          toConfigColor(editState.idleFillCol),
-          toConfigColor(editState.activeFillCol),
-          toConfigColor(editState.idleTextCol),
-          toConfigColor(editState.activeTextCol),
+          Helper::toConfigColor(editState.idleFillCol),
+          Helper::toConfigColor(editState.activeFillCol),
+          Helper::toConfigColor(editState.idleTextCol),
+          Helper::toConfigColor(editState.activeTextCol),
           editState.rounding,
           editState.outline,
+          Helper::toConfigColor(editState.obsBackground),
       },
       editState.selectedLayout,
       Config::SoundPackSelection{

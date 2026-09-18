@@ -1,4 +1,8 @@
 #include "Helpers.h"
+#include "Config.h"
+#include "imgui.h"
+#include <algorithm>
+#include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
@@ -6,8 +10,6 @@
 #include <vector>
 #include <windows.h>
 #include <winuser.h>
-#include <algorithm>
-#include <cmath>
 
 namespace Helper {
 [[noreturn]] void fatalError(const wchar_t *message) {
@@ -28,6 +30,18 @@ float fromColorRGB(int value) {
   value = std::clamp(value, 0, 255);
   return static_cast<float>(value) / 255.0f;
 }
+
+Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color) {
+  return Config::Theme::ColorRGBA{
+      Helper::toColorRGB(color.x), Helper::toColorRGB(color.y),
+      Helper::toColorRGB(color.z), Helper::toColorRGB(color.w)};
+}
+
+ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
+  return ImVec4{Helper::fromColorRGB(color[0]), Helper::fromColorRGB(color[1]),
+                Helper::fromColorRGB(color[2]), Helper::fromColorRGB(color[3])};
+}
+
 
 void refresh(std::vector<std::string> &category,
              const std::filesystem::path &folder, std::string_view ext) {

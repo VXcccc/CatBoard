@@ -41,6 +41,7 @@ add_executable(${PROJECT_NAME} WIN32
     src/Helpers.cpp
     src/InputHandle.cpp
     src/Sound.cpp
+    src/MouseState.cpp
     src/FontHandle.cpp
     src/Resource/app.rc
 

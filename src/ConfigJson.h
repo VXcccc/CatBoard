@@ -28,4 +28,19 @@ void from_json(const json &j, Settings &settings);
 
 } // namespace Config
 
+namespace Fonts {
+
+using json = nlohmann::json;
+
+void to_json(json &j, const LetterCaseOptions &options);
+void from_json(const json &j, LetterCaseOptions &options);
+
+void to_json(json &j, const LetterCase &letterCase);
+void from_json(const json &j, LetterCase &letterCase);
+
+void to_json(json &j, const Font &font);
+void from_json(const json &j, Font &font);
+
+} // namespace Fonts
+
 #endif // CONFIG_JSON_H

@@ -13,6 +13,7 @@
 #include "FontHandle.h"
 #include "Helpers.h"
 #include "MainWindow.h"
+#include "MouseState.h"
 #include "SettingsWindow.h"
 #include "Sound.h"
 #include "SystemTray.h"
@@ -30,6 +31,7 @@
 #include <tchar.h>
 #include <windef.h>
 #include <windows.h>
+#include <winnt.h>
 #include <winuser.h>
 
 #include <strsafe.h>
@@ -46,10 +48,14 @@ static HWND s_hwnd = nullptr;
 
 static float g_main_scale{};
 
+static Mouse::MouseState g_mouseState{
+    0.5f, 8.0f}; // to do change sensitivity and decayrate to config varibales
+
 // Forward declarations of main functions
 void renderKeyboard(const Input::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     const std::array<bool, 256> &currentFullKeysDown);
+void renderMouseIndicator(ImVec2 center, float radius);
 bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown);
@@ -66,6 +72,8 @@ void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
 
 void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown);
 
+void handleObsMode();
+
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
@@ -74,6 +82,9 @@ void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 POINT getOverlayPosition(int windowWidth, int windowHeight);
+
+float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
+void pollMouseState(POINT &outPrevMousePos, Mouse::MouseState &mouseState);
 
 namespace MainWindow {
 static ImVec4 s_clearColor{Consts::defaultClearColor};
@@ -155,8 +166,8 @@ int main(int, char **) {
                     nullptr};
   ::RegisterClassExW(&wc);
 
-  int windowWidth {(int)(Input::activeLayout.windowWidth * g_main_scale)};
-  int windowHeight {(int)(Input::activeLayout.windowHeight * g_main_scale)};
+  int windowWidth{(int)(Input::activeLayout.windowWidth * g_main_scale)};
+  int windowHeight{(int)(Input::activeLayout.windowHeight * g_main_scale)};
 
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
 
@@ -274,6 +285,16 @@ int main(int, char **) {
   static std::array<bool, 256> currentFullKeysDown{};
   static bool firstFrame = true;
 
+  // Mouse varibales
+  POINT prevMousePos{};
+  GetCursorPos(&prevMousePos);
+
+  // deltaTime
+  LARGE_INTEGER freq;
+  LARGE_INTEGER lastDeltaTime;
+  QueryPerformanceFrequency(&freq);
+  QueryPerformanceCounter(&lastDeltaTime);
+
   while (!done) {
     // Poll and handle messages (inputs, window resize, etc.)
     // See the WndProc() function below for our to dispatch events to the Win32
@@ -287,11 +308,7 @@ int main(int, char **) {
       }
     }
 
-    static bool lastObsModeCondition{Config::activeConfig.misc.obsMode};
-    if (Config::activeConfig.misc.obsMode != lastObsModeCondition) {
-      Tray::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
-      lastObsModeCondition = Config::activeConfig.misc.obsMode;
-    }
+    handleObsMode();
 
     MSG msg;
     while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
@@ -325,6 +342,10 @@ int main(int, char **) {
 
     pollFullKeyboard(currentFullKeysDown);
 
+    pollMouseState(prevMousePos, g_mouseState);
+    float deltaTime{getDeltaTime(freq, lastDeltaTime)};
+    g_mouseState.updateMouseState(deltaTime, 37.0f);
+
     if (Input::g_bindJustRecorded) {
       prevFullKeyState = currentFullKeysDown;
       Input::g_bindJustRecorded = false;
@@ -342,9 +363,14 @@ int main(int, char **) {
 
     prevFullKeyState = currentFullKeysDown;
 
-    bool needsRender{anyKeyChanged || firstFrame ||
+    bool mouseIndicatorActive{
+        std::abs(g_mouseState.getOffsetX()) > g_mouseState.getSensivity() ||
+        std::abs(g_mouseState.getOffsetY()) > g_mouseState.getSensivity()};
+
+    bool needsRender{anyKeyChanged || firstFrame || mouseIndicatorActive ||
                      (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
                      SettingsWindow::IsVisible()};
+
     if (!needsRender) {
       SettingsWindow::RenderFrame();
       ::Sleep(1);
@@ -361,6 +387,7 @@ int main(int, char **) {
     ImGui::NewFrame();
 
     renderKeyboard(Input::activeLayout, currentKeysDown, currentFullKeysDown);
+    renderMouseIndicator(ImVec2(374, 184), 37.0f);
 
     // Rendering
     ImGui::Render();
@@ -377,7 +404,10 @@ int main(int, char **) {
 
     // Present
     // HRESULT hr = g_pSwapChain->Present(1, 0); // Present with vsync
-    HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
+    // HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
+    HRESULT hr = g_pSwapChain->Present(
+        static_cast<UINT>(Config::activeConfig.misc.vsync),
+        0); // dynamic vsync choice
 
     SettingsWindow::RenderFrame();
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
@@ -454,6 +484,16 @@ void renderKeyboard(
   ImGui::PopFont();
 }
 
+void renderMouseIndicator(ImVec2 center, float radius) {
+    ImDrawList* draw = ImGui::GetBackgroundDrawList();
+
+    draw->AddCircle(center, radius, IM_COL32(255, 255, 255, 255));
+
+    ImVec2 dotPos{center.x + g_mouseState.getOffsetX(),
+                  center.y + g_mouseState.getOffsetY()};
+    draw->AddCircleFilled(dotPos, 4.0f, IM_COL32(255, 80, 80, 255));
+}
+
 bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentKeysDown) {
@@ -505,7 +545,40 @@ void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
   }
 }
 
+void handleObsMode() {
+  static bool lastObsModeCondition{Config::activeConfig.misc.obsMode};
+  if (Config::activeConfig.misc.obsMode != lastObsModeCondition) {
+    Tray::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
+    lastObsModeCondition = Config::activeConfig.misc.obsMode;
+  }
+
+  if (Config::activeConfig.misc.obsMode) {
+    MainWindow::setClearColor(
+        Helper::fromConfigColor(Config::activeConfig.theme.obsBackground));
+  } else {
+    MainWindow::setClearColor(Consts::defaultClearColor);
+  }
+}
+
 // Helper functions
+
+void pollMouseState(POINT &outPrevMousePos, Mouse::MouseState &mouseState) {
+  POINT currentMousePos;
+  GetCursorPos(&currentMousePos);
+  mouseState.setDeltaX(currentMousePos, outPrevMousePos);
+  mouseState.setDeltaY(currentMousePos, outPrevMousePos);
+  outPrevMousePos = currentMousePos;
+}
+
+float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
+  LARGE_INTEGER now;
+  QueryPerformanceCounter(&now);
+  float dt = static_cast<float>(now.QuadPart - outLastDeltaTime.QuadPart) /
+             freq.QuadPart;
+  outLastDeltaTime = now;
+
+  return dt;
+}
 
 POINT getOverlayPosition(int windowWidth, int windowHeight) {
   POINT savedPos{Config::activeConfig.overlayPos.x,

@@ -22,9 +22,10 @@ void from_json(const json &j, Outline &outline) {
 }
 
 void to_json(json &j, const Theme &theme) {
-  j = {{"idleFill", theme.idleFill}, {"activeFill", theme.activeFill},
-       {"idleText", theme.idleText}, {"activeText", theme.activeText},
-       {"rounding", theme.rounding}, {"outline", theme.outline}};
+  j = {{"idleFill", theme.idleFill},          {"activeFill", theme.activeFill},
+       {"idleText", theme.idleText},          {"activeText", theme.activeText},
+       {"rounding", theme.rounding},          {"outline", theme.outline},
+       {"obsBackground", theme.obsBackground}};
 }
 
 void from_json(const json &j, Theme &theme) {
@@ -45,6 +46,9 @@ void from_json(const json &j, Theme &theme) {
 
   if (j.contains("outline"))
     j.at("outline").get_to(theme.outline);
+
+  if (j.contains("obsBackground"))
+    j.at("obsBackground").get_to(theme.obsBackground);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {
@@ -127,3 +131,58 @@ void from_json(const json &j, OverlayPosition &overlayPos) {
 }
 
 } // namespace Config
+
+namespace Fonts {
+
+void to_json(json &j, const LetterCaseOptions &options) {
+  j = {{"capsInsensitiveKeys", options.capsInsensitiveKeys},
+       {"capsSensitiveKeys", options.capsSensitiveKeys},
+       {"capsLockDisplay", options.capsLockDisplay}};
+}
+
+void from_json(const json &j, LetterCaseOptions &options) {
+  if (j.contains("capsInsensitiveKeys"))
+    j.at("capsInsensitiveKeys").get_to(options.capsInsensitiveKeys);
+
+  if (j.contains("capsSensitiveKeys"))
+    j.at("capsSensitiveKeys").get_to(options.capsSensitiveKeys);
+
+  if (j.contains("capsLockDisplay"))
+    j.at("capsLockDisplay").get_to(options.capsLockDisplay);
+}
+
+void to_json(json &j, const LetterCase &letterCase) {
+  j = {{"mode", letterCase.mode},
+       {"options", letterCase.options},
+       {"upper", letterCase.upper}};
+}
+
+void from_json(const json &j, LetterCase &letterCase) {
+  if (j.contains("mode"))
+    j.at("mode").get_to(letterCase.mode);
+
+  if (j.contains("options"))
+    j.at("options").get_to(letterCase.options);
+
+  if (j.contains("upper"))
+    j.at("upper").get_to(letterCase.upper);
+}
+
+void to_json(json &j, const Font &font) {
+  j = {{"name", font.name},
+       {"sizePixels", font.sizePixels},
+       {"letterCase", font.letterCase}};
+}
+
+void from_json(const json &j, Font &font) {
+  if (j.contains("name"))
+    j.at("name").get_to(font.name);
+
+  if (j.contains("sizePixels"))
+    j.at("sizePixels").get_to(font.sizePixels);
+
+  if (j.contains("letterCase"))
+    j.at("letterCase").get_to(font.letterCase);
+}
+
+} // namespace Fonts
