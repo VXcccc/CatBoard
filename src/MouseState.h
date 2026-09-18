@@ -56,7 +56,7 @@ private:
   float m_decayRate{8.0f};
 };
 
-void renderMouseIndicator(const ImVec2 &center, float radius,
+void renderMouseIndicator(const ImVec2 &center,
                           const Mouse::Type mouseStyleType);
 
 extern MouseState g_mouseState;

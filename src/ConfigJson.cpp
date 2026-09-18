@@ -36,7 +36,9 @@ void to_json(json &j, const Theme &theme) {
        {"lerpColor", theme.lerpColor},
        {"radius", theme.radius},
        {"smallRadius", theme.smallRadius},
-       {"outerThickness", theme.outerThickness}};
+       {"outerThickness", theme.outerThickness},
+       {"mouseSensitivity", theme.mouseSensitivity},
+       {"mouseDecayRate", theme.mouseDecayRate}};
 }
 
 void from_json(const json &j, Theme &theme) {
@@ -81,6 +83,12 @@ void from_json(const json &j, Theme &theme) {
 
   if (j.contains("outerThickness"))
     j.at("outerThickness").get_to(theme.outerThickness);
+
+  if (j.contains("mouseSensitivity"))
+    j.at("mouseSensitivity").get_to(theme.mouseSensitivity);
+
+  if (j.contains("mouseDecayRate"))
+    j.at("mouseDecayRate").get_to(theme.mouseDecayRate);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {

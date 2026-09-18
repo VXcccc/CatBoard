@@ -275,13 +275,7 @@ struct SettingsEditState {
 
 void restoreFromConfig(SettingsEditState &state,
                        const Config::Settings &prevSettings) {
-  state.theme.idleFill = prevSettings.theme.idleFill;
-  state.theme.activeFill = prevSettings.theme.activeFill;
-  state.theme.idleText = prevSettings.theme.idleText;
-  state.theme.activeText = prevSettings.theme.activeText;
-  state.theme.keyRounding = prevSettings.theme.keyRounding;
-
-  state.theme.keyOutline = prevSettings.theme.keyOutline;
+  state.theme = prevSettings.theme;
 
   state.selectedLayout = prevSettings.selectedLayout;
 
@@ -430,8 +424,7 @@ void drawMouseStyleCommbo(SettingsEditState &state,
                    state.currentMouseStyle,
                    [&state](std::size_t i, const std::string &name) {
                      state.currentMouseStyle = i;
-                     state.theme.mouseStyle.type =
-                         static_cast<Mouse::Type>(state.currentMouseStyle);
+                     state.theme.mouseStyle.type = static_cast<Mouse::Type>(i);
                      state.theme.mouseStyle.name = name;
                    });
 }
@@ -497,6 +490,28 @@ void drawMouseSection(SettingsEditState &state) {
     mouseStyleNames.push_back(mouseStyle.name);
   }
   drawMouseStyleCommbo(state, mouseStyleNames);
+
+
+  ImVec4 outerCircleCol{Helper::fromConfigColor(state.theme.outerCircle)};
+  if (ImGui::ColorEdit4("Outer circle color", &outerCircleCol.x)) {
+    state.theme.outerCircle = Helper::toConfigColor(outerCircleCol);
+  }
+
+  ImVec4 innerCircleCol{Helper::fromConfigColor(state.theme.innerCircle)};
+  if (ImGui::ColorEdit4("Inner circle color", &innerCircleCol.x)) {
+    state.theme.innerCircle = Helper::toConfigColor(innerCircleCol);
+  }
+
+  ImGui::Checkbox("Lerp color", &state.theme.lerpColor);
+
+  ImGui::SliderFloat("Radius", &state.theme.radius, 0.0f, 100.0f, "%.2f");
+
+  ImGui::SliderFloat("Small radius", &state.theme.smallRadius, 0.0f, 100.0f, "%.2f");
+
+  ImGui::SliderFloat("Outer thickness", &state.theme.outerThickness, 0.0f, 100.0f, "%.2f");
+
+  ImGui::SliderFloat("Sensitivity", &state.theme.mouseSensitivity, 0.0f, 10.0f, "%.2f");
+  ImGui::SliderFloat("Decay rate", &state.theme.mouseDecayRate, 0.0f, 100.0f, "%.2f");
 }
 
 void drawLayoutsSection(SettingsEditState &state) {

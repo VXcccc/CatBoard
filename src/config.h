@@ -51,14 +51,16 @@ struct Theme {
 
   ColorRGBA obsBackground{0, 255, 0, 255};
 
-  Mouse::Type mouseStyle{Mouse::Type::CatBoard};
-  ColorRGBA innerCircle{255, 255, 255, 255};
+  Mouse::MouseStyle mouseStyle{};
   ColorRGBA outerCircle{255, 255, 255, 255};
+  ColorRGBA innerCircle{255, 255, 255, 255};
   bool lerpColor{false};
 
   float radius{37.0f};
-  float smallRadius{radius / 5.0f};
+  float smallRadius{7.4f};
   float outerThickness{3.0f};
+  float mouseSensitivity{0.5f};
+  float mouseDecayRate{8.0f};
 };
 
 struct SoundPackSelection {

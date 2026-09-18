@@ -348,7 +348,7 @@ int main(int, char **) {
     // mouse poll
     pollMouseState(prevMousePos, Mouse::g_mouseState);
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
-    Mouse::g_mouseState.updateMouseState(deltaTime, 37.0f);
+    Mouse::g_mouseState.updateMouseState(deltaTime, Config::activeConfig.theme.radius);
 
     if (Input::g_bindJustRecorded) {
       prevFullKeyState = currentFullKeysDown;
@@ -393,7 +393,7 @@ int main(int, char **) {
 
     renderKeyboard(Input::activeLayout, currentKeysDown, currentFullKeysDown);
 
-    Mouse::renderMouseIndicator(ImVec2(374, 184), 37.0f,
+    Mouse::renderMouseIndicator(ImVec2(374, 184),
                                 Config::activeConfig.theme.mouseStyle.type);
     // Mouse::renderDefaultMouseIndicator(ImVec2(374, 184), 37.0f);
 
