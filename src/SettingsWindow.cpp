@@ -5,6 +5,7 @@
 #include "Helpers.h"
 #include "InputHandle.h"
 #include "MainWindow.h"
+#include "MouseState.h"
 #include "Paths.h"
 #include "Sound.h"
 #include "SystemTray.h"
@@ -243,14 +244,7 @@ static_assert(tabs.size() ==
 struct SettingsEditState {
   Config::Settings previous;
 
-  ImVec4 idleFillCol;
-  ImVec4 activeFillCol;
-  ImVec4 idleTextCol;
-  ImVec4 activeTextCol;
-
-  float rounding{};
-
-  Config::Outline outline;
+  Config::Theme theme;
 
   std::string selectedLayout;
 
@@ -267,10 +261,13 @@ struct SettingsEditState {
 
   ImVec4 obsBackground;
 
+  std::string configName{};
+
   std::size_t currentLayout{};
   std::size_t currentConfig{};
   std::size_t currentSound{};
   std::size_t currentFont{};
+  std::size_t currentMouseStyle{};
 
   std::string configNameInput{};
   std::string configNameError;
@@ -278,13 +275,13 @@ struct SettingsEditState {
 
 void restoreFromConfig(SettingsEditState &state,
                        const Config::Settings &prevSettings) {
-  state.idleFillCol = Helper::fromConfigColor(prevSettings.theme.idleFill);
-  state.activeFillCol = Helper::fromConfigColor(prevSettings.theme.activeFill);
-  state.idleTextCol = Helper::fromConfigColor(prevSettings.theme.idleText);
-  state.activeTextCol = Helper::fromConfigColor(prevSettings.theme.activeText);
-  state.rounding = prevSettings.theme.rounding;
+  state.theme.idleFill = prevSettings.theme.idleFill;
+  state.theme.activeFill = prevSettings.theme.activeFill;
+  state.theme.idleText = prevSettings.theme.idleText;
+  state.theme.activeText = prevSettings.theme.activeText;
+  state.theme.keyRounding = prevSettings.theme.keyRounding;
 
-  state.outline = prevSettings.theme.outline;
+  state.theme.keyOutline = prevSettings.theme.keyOutline;
 
   state.selectedLayout = prevSettings.selectedLayout;
 
@@ -301,9 +298,26 @@ void restoreFromConfig(SettingsEditState &state,
   state.obsBackground =
       Helper::fromConfigColor(prevSettings.theme.obsBackground);
 
+  state.configName = prevSettings.configName;
+
   Input::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
   Sound::setMasterVolume(prevSettings.soundPack.volume);
+}
+
+Config::Settings buildSettings(const SettingsEditState &state) {
+  return {Consts::CATBOARD_VERSION,
+          state.theme,
+          state.selectedLayout,
+          Config::SoundPackSelection{
+              state.selectedSoundPack.name, state.selectedSoundPack.enable,
+              state.selectedSoundPack.layoutKeysOnlySound,
+              static_cast<float>(state.volumePercent) / 100.0f},
+          state.binds,
+          Config::activeConfig.overlayPos,
+          state.selectedFont,
+          state.misc,
+          state.configName};
 }
 
 void handleCreateConfig(SettingsEditState &state) {
@@ -351,20 +365,20 @@ std::size_t findIndexByName(const std::vector<std::string> &vec,
 
 // Helper draw functions
 
-void drawLayoutCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
-  validateCurrentIndex(outCurrentItem, std::size(Input::layouts));
+void drawGenericCombo(
+    const char *label, const std::vector<std::string> &items,
+    const char *emptyLabel, std::size_t &outCurrentItem,
+    std::function<void(std::size_t, const std::string &)> onSelect) {
+  validateCurrentIndex(outCurrentItem, std::size(items));
 
-  const char *preview{Input::layouts.empty()
-                          ? "No layouts"
-                          : Input::layouts[outCurrentItem].c_str()};
-  if (ImGui::BeginCombo("Layout", preview)) {
-    for (std::size_t i{0}; i < std::size(Input::layouts); ++i) {
+  const char *preview{items.empty() ? emptyLabel
+                                    : items[outCurrentItem].c_str()};
+
+  if (ImGui::BeginCombo(label, preview)) {
+    for (std::size_t i{0}; i < items.size(); ++i) {
       bool isSelected{outCurrentItem == i};
-      if (ImGui::Selectable(Input::layouts[i].c_str(), isSelected)) {
-        if (Input::loadLayout(Input::layouts[i])) {
-          outCurrentItem = i;
-          state.selectedLayout = Input::layouts[i];
-        }
+      if (ImGui::Selectable(items[i].c_str(), isSelected)) {
+        onSelect(i, items[i]);
       }
       if (isSelected) {
         ImGui::SetItemDefaultFocus();
@@ -374,106 +388,121 @@ void drawLayoutCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
   }
 }
 
-void drawFontCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
-  validateCurrentIndex(outCurrentItem, std::size(Fonts::fonts));
-
-  const char *preview{
-      Fonts::fonts.empty() ? "No fonts" : Fonts::fonts[outCurrentItem].c_str()};
-  if (ImGui::BeginCombo("Font", preview)) {
-    for (std::size_t i{0}; i < std::size(Fonts::fonts); ++i) {
-      bool isSelected{outCurrentItem == i};
-      if (ImGui::Selectable(Fonts::fonts[i].c_str(), isSelected)) {
-        outCurrentItem = i;
-        state.selectedFont.name = Fonts::fonts[i];
-      }
-      if (isSelected) {
-        ImGui::SetItemDefaultFocus();
-      }
-    }
-    ImGui::EndCombo();
-  }
+void drawLayoutCombo(SettingsEditState &state) {
+  drawGenericCombo("Layout", Input::layouts, "No layouts", state.currentLayout,
+                   [&state](std::size_t i, const std::string &name) {
+                     if (Input::loadLayout(name)) {
+                       state.currentLayout = i;
+                       state.selectedLayout = name;
+                     }
+                   });
 }
 
-void drawConfigCombo(std::size_t &outCurrentItem) {
-  validateCurrentIndex(outCurrentItem, std::size(Config::configs));
-
-  const char *preview{Config::configs.empty()
-                          ? "No configs"
-                          : Config::configs[outCurrentItem].c_str()};
-
-  if (ImGui::BeginCombo("Config", preview)) {
-    for (std::size_t i{0}; i < std::size(Config::configs); ++i) {
-      bool isSelected{(outCurrentItem == i)};
-      if (ImGui::Selectable(Config::configs[i].c_str(), isSelected)) {
-        outCurrentItem = i;
-      }
-      if (isSelected)
-        ImGui::SetItemDefaultFocus();
-    }
-    ImGui::EndCombo();
-  }
+void drawFontCombo(SettingsEditState &state) {
+  drawGenericCombo("Font", Fonts::fonts, "No fonts", state.currentFont,
+                   [&state](std::size_t i, const std::string &name) {
+                     state.currentFont = i;
+                     state.selectedFont.name = name;
+                   });
 }
 
-void drawSoundCombo(std::size_t &outCurrentItem, SettingsEditState &state) {
-  validateCurrentIndex(outCurrentItem, std::size(Sound::sounds));
+void drawConfigCombo(SettingsEditState &state) {
+  drawGenericCombo("Config", Config::configs, "No configs", state.currentConfig,
+                   [&state](std::size_t i, const std::string &name) {
+                     state.currentConfig = i;
+                     state.configName = name;
+                   });
+}
 
-  const char *preview{Sound::sounds.empty()
-                          ? "No sounds"
-                          : Sound::sounds[outCurrentItem].c_str()};
-  if (ImGui::BeginCombo("Sound", preview)) {
-    for (std::size_t i{0}; i < std::size(Sound::sounds); ++i) {
-      bool isSelected{outCurrentItem == i};
-      if (ImGui::Selectable(Sound::sounds[i].c_str(), isSelected)) {
-        if (Sound::loadSoundPack(Sound::sounds[i])) {
-          outCurrentItem = i;
+void drawSoundCombo(SettingsEditState &state) {
+  drawGenericCombo("Sound", Sound::sounds, "No sounds", state.currentSound,
+                   [&state](std::size_t i, const std::string &name) {
+                     if (Sound::loadSoundPack(name)) {
+                       state.currentSound = i;
+                       state.selectedSoundPack.name = name;
+                     }
+                   });
+}
 
-          state.selectedSoundPack.name = Sound::sounds[i];
-        }
-      }
-      if (isSelected) {
-        ImGui::SetItemDefaultFocus();
-      }
-    }
-    ImGui::EndCombo();
-  }
+void drawMouseStyleCommbo(SettingsEditState &state,
+                          const std::vector<std::string> &mouseStyleNames) {
+  drawGenericCombo("Mouse style", mouseStyleNames, "No mouse styles",
+                   state.currentMouseStyle,
+                   [&state](std::size_t i, const std::string &name) {
+                     state.currentMouseStyle = i;
+                     state.theme.mouseStyle.type =
+                         static_cast<Mouse::Type>(state.currentMouseStyle);
+                     state.theme.mouseStyle.name = name;
+                   });
 }
 
 // Draw sections functions
-void drawAppearanceSection(SettingsEditState &state) {
-  ImGui::SeparatorText("Appearance");
+void drawKeyboardColors(SettingsEditState &state) {
 
-  ImGui::ColorEdit4("Idle fill color", &state.idleFillCol.x);
+  ImVec4 idleFillCol{Helper::fromConfigColor(state.theme.idleFill)};
+  if (ImGui::ColorEdit4("Idle fill color", &idleFillCol.x)) {
+    state.theme.idleFill = Helper::toConfigColor(idleFillCol);
+  }
   // idk im not sure about if statement above
   //  if(!state.misc.obsMode){
   //    state.idleFillCol.x = std::clamp(state.idleFillCol.x,
   //    Helper::fromColorRGB(1), Helper::fromColorRGB(255));
   //  }
-  ImGui::ColorEdit4("Active fill color", &state.activeFillCol.x);
 
-  ImGui::ColorEdit4("Idle text color", &state.idleTextCol.x);
-  ImGui::ColorEdit4("Active text color", &state.activeTextCol.x);
+  ImVec4 activeFillCol{Helper::fromConfigColor(state.theme.activeFill)};
+  if (ImGui::ColorEdit4("Active fill color", &activeFillCol.x)) {
+    state.theme.activeFill = Helper::toConfigColor(activeFillCol);
+  }
 
-  ImGui::SliderFloat("Rounding", &state.rounding, 0.0f, 20.0f, "%.2f");
-  state.rounding = std::clamp(state.rounding, 0.0f, 20.0f);
+  ImVec4 idleTextCol{Helper::fromConfigColor(state.theme.idleText)};
+  if (ImGui::ColorEdit4("Idle text color", &idleTextCol.x)) {
+    state.theme.idleText = Helper::toConfigColor(idleTextCol);
+  }
 
-  ImGui::Checkbox("Enable outline", &state.outline.enable);
-  if (state.outline.enable) {
-    ImVec4 outlineColor{Helper::fromConfigColor(state.outline.color)};
-    if (ImGui::ColorEdit4("Outline color", &outlineColor.x)) {
-      state.outline.color = Helper::toConfigColor(outlineColor);
+  ImVec4 activeTextCol{Helper::fromConfigColor(state.theme.activeText)};
+  if (ImGui::ColorEdit4("Active text color", &activeTextCol.x)) {
+    state.theme.activeText = Helper::toConfigColor(activeTextCol);
+  }
+}
+
+void drawKeyboardSection(SettingsEditState &state) {
+  ImGui::SeparatorText("Keyboard");
+
+  drawKeyboardColors(state);
+
+  ImGui::SliderFloat("Rounding", &state.theme.keyRounding, 0.0f, 20.0f, "%.2f");
+  state.theme.keyRounding = std::clamp(state.theme.keyRounding, 0.0f, 20.0f);
+
+  ImGui::Checkbox("Enable Outline", &state.theme.keyOutline.enable);
+  if (state.theme.keyOutline.enable) {
+    ImVec4 keyOutlineColor{
+        Helper::fromConfigColor(state.theme.keyOutline.color)};
+    if (ImGui::ColorEdit4("Outline color", &keyOutlineColor.x)) {
+      state.theme.keyOutline.color = Helper::toConfigColor(keyOutlineColor);
     };
 
-    ImGui::SliderFloat("Thickness", &state.outline.thickness, 0.0f, 20.0f,
-                       "%.2f");
+    ImGui::SliderFloat("Thickness", &state.theme.keyOutline.thickness, 0.0f,
+                       20.0f, "%.2f");
     // you can change this value if you want more thickness lol
-    state.outline.thickness = std::clamp(state.outline.thickness, 0.0f, 20.0f);
+    state.theme.keyOutline.thickness =
+        std::clamp(state.theme.keyOutline.thickness, 0.0f, 20.0f);
   }
+}
+
+void drawMouseSection(SettingsEditState &state) {
+  ImGui::SeparatorText("Mouse");
+
+  std::vector<std::string> mouseStyleNames{};
+  for (const auto mouseStyle : Mouse::mouseStyles) {
+    mouseStyleNames.push_back(mouseStyle.name);
+  }
+  drawMouseStyleCommbo(state, mouseStyleNames);
 }
 
 void drawLayoutsSection(SettingsEditState &state) {
   ImGui::SeparatorText("Layouts");
 
-  drawLayoutCombo(state.currentLayout, state);
+  drawLayoutCombo(state);
 
   if (ImGui::Button("Open layout folder")) {
     Paths::openLayoutDirectory();
@@ -486,7 +515,7 @@ void drawLayoutsSection(SettingsEditState &state) {
     validateCurrentIndex(state.currentLayout, std::size(Input::layouts));
   }
 
-  drawFontCombo(state.currentFont, state);
+  drawFontCombo(state);
 
   ImGui::SliderFloat("Font size", &state.selectedFont.sizePixels, 0.0f, 100.0f,
                      "%.2f");
@@ -527,7 +556,8 @@ void drawLayoutsSection(SettingsEditState &state) {
 // Draw. functions
 
 void drawVisualsTab(SettingsEditState &state) {
-  drawAppearanceSection(state);
+  drawKeyboardSection(state);
+  drawMouseSection(state);
 
   drawLayoutsSection(state);
 }
@@ -539,6 +569,9 @@ void drawMiscTab(SettingsEditState &state) {
   if (state.misc.obsMode) {
     ImGui::ColorEdit4("Background Color", &state.obsBackground.x);
   }
+
+  ImGui::SliderInt("FPS", &state.misc.fps, 5, 360);
+  state.misc.fps = std::clamp(state.misc.fps, 5, 2000);
 }
 
 void drawBindsTab(SettingsEditState &state) {
@@ -562,7 +595,7 @@ void drawSoundsTab(SettingsEditState &state) {
     }
     state.volumePercent = std::clamp(state.volumePercent, 0, 100);
 
-    drawSoundCombo(state.currentSound, state);
+    drawSoundCombo(state);
 
     if (ImGui::Button("Open sounds folder")) {
       Paths::openSoundsDirectory();
@@ -578,11 +611,11 @@ void drawSoundsTab(SettingsEditState &state) {
 }
 
 void drawConfigsTab(SettingsEditState &state) {
-  drawConfigCombo(state.currentConfig);
+  drawConfigCombo(state);
 
   if (ImGui::Button("Save config")) {
     Config::saveConfig(Config::configs[state.currentConfig],
-                       Config::activeConfig);
+                       buildSettings(state));
   }
 
   ImGui::SameLine();
@@ -687,11 +720,13 @@ void RenderFrame() {
     restoreFromConfig(editState, editState.previous);
 
     editState.currentConfig =
-        findIndexByName(Config::configs, Config::activeConfigName);
+        findIndexByName(Config::configs, Config::activeConfig.configName);
     editState.currentLayout =
         findIndexByName(Input::layouts, Config::activeConfig.selectedLayout);
     editState.currentSound =
         findIndexByName(Sound::sounds, Config::activeConfig.soundPack.name);
+    editState.currentFont =
+        (findIndexByName(Fonts::fonts, Config::activeConfig.font.name));
   }
   wasVisibleLastFrame = visibleNow;
 
@@ -737,26 +772,7 @@ void RenderFrame() {
     break;
   }
 
-  Config::Settings newSettings = {
-      Consts::CATBOARD_VERSION,
-      Config::Theme{
-          Helper::toConfigColor(editState.idleFillCol),
-          Helper::toConfigColor(editState.activeFillCol),
-          Helper::toConfigColor(editState.idleTextCol),
-          Helper::toConfigColor(editState.activeTextCol),
-          editState.rounding,
-          editState.outline,
-          Helper::toConfigColor(editState.obsBackground),
-      },
-      editState.selectedLayout,
-      Config::SoundPackSelection{
-          editState.selectedSoundPack.name, editState.selectedSoundPack.enable,
-          editState.selectedSoundPack.layoutKeysOnlySound,
-          static_cast<float>(editState.volumePercent) / 100.0f},
-      editState.binds,
-      Config::activeConfig.overlayPos,
-      editState.selectedFont,
-      editState.misc};
+  Config::Settings newSettings = buildSettings(editState);
 
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;

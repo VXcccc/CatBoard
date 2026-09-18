@@ -23,18 +23,23 @@
 #include <InputHandle.h>
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <conio.h>
 #include <cstdlib>
 #include <d3d11.h>
 #include <dxgi.h>
 #include <shellapi.h>
 #include <tchar.h>
+#include <thread>
 #include <windef.h>
 #include <windows.h>
 #include <winnt.h>
 #include <winuser.h>
 
 #include <strsafe.h>
+
+#include <mmsystem.h>
+#pragma comment(lib, "winmm.lib")
 
 // Data
 static ID3D11Device *g_pd3dDevice = nullptr;
@@ -48,14 +53,10 @@ static HWND s_hwnd = nullptr;
 
 static float g_main_scale{};
 
-static Mouse::MouseState g_mouseState{
-    0.5f, 8.0f}; // to do change sensitivity and decayrate to config varibales
-
 // Forward declarations of main functions
 void renderKeyboard(const Input::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     const std::array<bool, 256> &currentFullKeysDown);
-void renderMouseIndicator(ImVec2 center, float radius);
 bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown);
@@ -119,6 +120,7 @@ void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
 
 // Main code
 int main(int, char **) {
+  timeBeginPeriod(1);
   Config::Load();
 
   if (!(Input::installDefaultLayouts())) {
@@ -296,6 +298,7 @@ int main(int, char **) {
   QueryPerformanceCounter(&lastDeltaTime);
 
   while (!done) {
+    const auto frameStart{std::chrono::steady_clock::now()};
     // Poll and handle messages (inputs, window resize, etc.)
     // See the WndProc() function below for our to dispatch events to the Win32
     // backend.
@@ -342,9 +345,10 @@ int main(int, char **) {
 
     pollFullKeyboard(currentFullKeysDown);
 
-    pollMouseState(prevMousePos, g_mouseState);
+    // mouse poll
+    pollMouseState(prevMousePos, Mouse::g_mouseState);
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
-    g_mouseState.updateMouseState(deltaTime, 37.0f);
+    Mouse::g_mouseState.updateMouseState(deltaTime, 37.0f);
 
     if (Input::g_bindJustRecorded) {
       prevFullKeyState = currentFullKeysDown;
@@ -363,9 +367,10 @@ int main(int, char **) {
 
     prevFullKeyState = currentFullKeysDown;
 
-    bool mouseIndicatorActive{
-        std::abs(g_mouseState.getOffsetX()) > g_mouseState.getSensivity() ||
-        std::abs(g_mouseState.getOffsetY()) > g_mouseState.getSensivity()};
+    bool mouseIndicatorActive{std::abs(Mouse::g_mouseState.getOffsetX()) >
+                                  Mouse::g_mouseState.getSensivity() ||
+                              std::abs(Mouse::g_mouseState.getOffsetY()) >
+                                  Mouse::g_mouseState.getSensivity()};
 
     bool needsRender{anyKeyChanged || firstFrame || mouseIndicatorActive ||
                      (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
@@ -387,7 +392,13 @@ int main(int, char **) {
     ImGui::NewFrame();
 
     renderKeyboard(Input::activeLayout, currentKeysDown, currentFullKeysDown);
-    renderMouseIndicator(ImVec2(374, 184), 37.0f);
+
+    Mouse::renderMouseIndicator(ImVec2(374, 184), 37.0f,
+                                Config::activeConfig.theme.mouseStyle.type);
+    // Mouse::renderDefaultMouseIndicator(ImVec2(374, 184), 37.0f);
+
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+                1000.0f / io.Framerate, io.Framerate);
 
     // Rendering
     ImGui::Render();
@@ -411,6 +422,20 @@ int main(int, char **) {
 
     SettingsWindow::RenderFrame();
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
+
+    // fps limiter
+    const auto frameEnd{std::chrono::steady_clock::now()};
+
+    const double frameTime{
+        std::chrono::duration<double>(frameEnd - frameStart).count()};
+
+    double targetFrameTime{1.0 /
+                           static_cast<double>(Config::activeConfig.misc.fps)};
+
+    if (frameTime < targetFrameTime) {
+      std::this_thread::sleep_for(
+          std::chrono::duration<double>(targetFrameTime - frameTime));
+    }
   }
 
   // Cleanup
@@ -426,6 +451,8 @@ int main(int, char **) {
 
   // tray test
   Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
+
+  timeEndPeriod(1);
   return 0;
 }
 
@@ -462,13 +489,13 @@ void renderKeyboard(
              : Config::ToImU32(Config::activeConfig.theme
                                    .idleText)}; // oposite the fill color
 
-    float rounding{Config::activeConfig.theme.rounding};
+    float rounding{Config::activeConfig.theme.keyRounding};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-    if (Config::activeConfig.theme.outline.enable) {
+    if (Config::activeConfig.theme.keyOutline.enable) {
       ImU32 outlineColor{
-          Config::ToImU32(Config::activeConfig.theme.outline.color)};
-      float thickness{Config::activeConfig.theme.outline.thickness};
+          Config::ToImU32(Config::activeConfig.theme.keyOutline.color)};
+      float thickness{Config::activeConfig.theme.keyOutline.thickness};
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
     // outline
@@ -484,15 +511,7 @@ void renderKeyboard(
   ImGui::PopFont();
 }
 
-void renderMouseIndicator(ImVec2 center, float radius) {
-    ImDrawList* draw = ImGui::GetBackgroundDrawList();
-
-    draw->AddCircle(center, radius, IM_COL32(255, 255, 255, 255));
-
-    ImVec2 dotPos{center.x + g_mouseState.getOffsetX(),
-                  center.y + g_mouseState.getOffsetY()};
-    draw->AddCircleFilled(dotPos, 4.0f, IM_COL32(255, 80, 80, 255));
-}
+// to do make it by toogle
 
 bool detectAnyKeyChanged(const Input::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,

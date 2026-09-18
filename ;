@@ -1,0 +1,135 @@
+
+#include <cassert>
+#define _USE_MATH_DEFINES
+#include "MouseState.h"
+#include "Config.h"
+#include "cassert"
+#include "imgui.h"
+#include <algorithm>
+#include <cmath>
+
+namespace Mouse {
+std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)> mouseStyles{};
+static_assert(mouseStyles.size() ==
+                  static_cast<std::size_t>(Type::maxMouseStyles),
+              "tabs array is out of sync with SettingsTab enum");
+
+
+MouseState g_mouseState{
+    0.5f, 8.0f}; // to do change sensitivity and decayrate to config varibales
+
+float MouseState::getDistance() const {
+  return (std::sqrt(m_offsetX * m_offsetX + m_offsetY * m_offsetY));
+}
+
+void MouseState::updateMouseState(float deltaTime, float radius) {
+
+  m_offsetX += m_deltaX * m_sensitivity;
+  m_offsetY += m_deltaY * m_sensitivity;
+
+  float decay{std::exp(-m_decayRate * deltaTime)};
+  m_offsetX *= decay;
+  m_offsetY *= decay;
+
+  float dist{getDistance()};
+
+  if (dist > radius) {
+    float scale{radius / dist};
+    m_offsetX *= scale;
+    m_offsetY *= scale;
+  }
+}
+
+static ImU32 lerpColor(ImU32 colorA, ImU32 colorB, float t) {
+  t = std::clamp(t, 0.0f, 1.0f);
+
+  ImVec4 a = ImGui::ColorConvertU32ToFloat4(colorA);
+  ImVec4 b = ImGui::ColorConvertU32ToFloat4(colorB);
+
+  ImVec4 result{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
+                a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t};
+
+  return ImGui::ColorConvertFloat4ToU32(result);
+}
+
+void renderNohBoardMouseIndicator(ImVec2 center, float radius) {
+  ImDrawList *draw{ImGui::GetBackgroundDrawList()};
+
+  // change it to custom colors
+  const ImU32 innerColor{
+      Config::ToImU32(Config::activeConfig.theme.activeFill)};
+
+  const ImU32 outerColor{
+      Config::ToImU32(Config::activeConfig.theme.activeText)};
+
+  // outer circle
+  draw->AddCircle(center, radius, innerColor, 64, 3.0f);
+
+  const float offsetX{g_mouseState.getOffsetX()};
+  const float offsetY{g_mouseState.getOffsetY()};
+
+  const float distance{g_mouseState.getDistance()};
+
+  const float indicatorLength{(std::min)(distance, radius)};
+
+  if (indicatorLength > 1.0f) {
+
+    const float angle{std::atan2(offsetY, offsetX)};
+
+    // 0 = center 1 = edge
+
+    const float colorMultiplier{
+        std::clamp(indicatorLength / radius, 0.0f, 1.0f)};
+
+    // to do add toogle to this shi
+    const ImU32 indicatorColor{
+        lerpColor(innerColor, outerColor, colorMultiplier)};
+
+    constexpr float halfAngle{10.0f * static_cast<float>(M_PI) / 180.0f};
+    constexpr int segments{16};
+
+    const float startAngle{angle - halfAngle};
+    const float endAngle{angle + halfAngle};
+
+    ImVector<ImVec2> points;
+    points.reserve(segments + 2);
+
+    points.push_back(center);
+
+    for (int i = 0; i <= segments; ++i) {
+      const float t{static_cast<float>(i) / segments};
+
+      // linear interpolation
+      const float currentAngle{startAngle + (endAngle - startAngle) * t};
+
+      points.push_back({center.x + std::cos(currentAngle) * indicatorLength,
+                        center.y + std::sin(currentAngle) * indicatorLength});
+    }
+
+    draw->AddConvexPolyFilled(points.Data, points.Size, indicatorColor);
+
+    const float smallRadius{radius / 5.0f};
+
+    ImVec2 directionEdge{center.x + std::cos(angle) * radius,
+                         center.y + std::sin(angle) * radius};
+
+    draw->AddCircleFilled(directionEdge, smallRadius, indicatorColor);
+  }
+
+  // todo make it variable
+  const float smallRadius{radius / 5.0f};
+
+  draw->AddCircleFilled(center, smallRadius, innerColor);
+}
+
+void renderDefaultMouseIndicator(ImVec2 center, float radius) {
+  ImDrawList *draw = ImGui::GetBackgroundDrawList();
+
+  draw->AddCircle(center, radius, IM_COL32(255, 255, 255, 255));
+
+  ImVec2 dotPos{center.x + g_mouseState.getOffsetX(),
+                center.y + g_mouseState.getOffsetY()};
+  draw->AddCircleFilled(dotPos, 6.0f, IM_COL32(255, 80, 80, 255));
+}
+
+} // namespace Mouse

@@ -43,4 +43,14 @@ void from_json(const json &j, Font &font);
 
 } // namespace Fonts
 
+namespace Mouse {
+using json = nlohmann::json;
+
+void to_json(json &j, const Type &type);
+void from_json(const json &j, Type &type);
+
+void to_json(json &j, const MouseStyle &mouseStyle);
+void from_json(const json &j, MouseStyle &mouseStyle);
+} // namespace Mouse
+
 #endif // CONFIG_JSON_H

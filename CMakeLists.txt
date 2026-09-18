@@ -71,7 +71,8 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
     nlohmann_json::nlohmann_json
     d3d11 dxgi d3dcompiler dwmapi
     Vorbis::vorbisfile
-    miniaudio_libvorbis
+    miniaudio_libvorbis 
+    winmm
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD

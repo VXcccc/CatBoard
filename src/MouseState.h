@@ -1,8 +1,20 @@
 #pragma once
 
+#include "imgui.h"
+#include <string>
+#include <vector>
 #include <windows.h>
 
 namespace Mouse {
+
+enum class Type { CatBoard, NohBoard, maxMouseStyles };
+
+struct MouseStyle {
+  std::string name{"Cat Board"};
+  Type type{Type::CatBoard};
+};
+extern std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
+    mouseStyles;
 
 class MouseState {
 public:
@@ -31,6 +43,8 @@ public:
 
   void updateMouseState(float deltaTime, float radius);
 
+  float getDistance() const;
+
 private:
   int m_deltaX{0};
   int m_deltaY{0};
@@ -42,4 +56,8 @@ private:
   float m_decayRate{8.0f};
 };
 
+void renderMouseIndicator(const ImVec2 &center, float radius,
+                          const Mouse::Type mouseStyleType);
+
+extern MouseState g_mouseState;
 } // namespace Mouse

@@ -4,12 +4,11 @@
 // maybe goona change location of this variable later
 
 #include "Constants.h"
+#include "MouseState.h"
 #include "FontHandle.h"
 #include "InputHandle.h"
-#include "Paths.h"
 #include "Sound.h"
 #include "imgui.h"
-#include "nlohmann/detail/macro_scope.hpp"
 #include <array>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -38,6 +37,7 @@ struct Outline {
   float thickness{3.0f};
 };
 
+
 struct Theme {
   using ColorRGBA = std::array<int, 4>;
   ColorRGBA idleFill{1, 1, 1, 255};
@@ -46,11 +46,19 @@ struct Theme {
   ColorRGBA idleText{255, 255, 255, 255};
   ColorRGBA activeText{1, 1, 1, 255};
 
-  float rounding{0.0f};
-
-  Outline outline{};
+  float keyRounding{0.0f};
+  Outline keyOutline{};
 
   ColorRGBA obsBackground{0, 255, 0, 255};
+
+  Mouse::Type mouseStyle{Mouse::Type::CatBoard};
+  ColorRGBA innerCircle{255, 255, 255, 255};
+  ColorRGBA outerCircle{255, 255, 255, 255};
+  bool lerpColor{false};
+
+  float radius{37.0f};
+  float smallRadius{radius / 5.0f};
+  float outerThickness{3.0f};
 };
 
 struct SoundPackSelection {
@@ -68,6 +76,7 @@ struct OverlayPosition {
 struct Misc {
   bool vsync{false};
   bool obsMode{false};
+  int fps{60};
 };
 
 struct Settings {
@@ -79,12 +88,12 @@ struct Settings {
   OverlayPosition overlayPos{};
   Fonts::Font font{};
   Misc misc{};
+  std::string configName{"Default"};
 };
 
 // current config
 extern Settings activeConfig;
 extern std::vector<std::string> configs;
-extern std::string activeConfigName;
 
 bool loadConfig(std::string_view name);
 bool saveConfig(std::string_view name, const Config::Settings &settings);

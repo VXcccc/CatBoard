@@ -22,10 +22,21 @@ void from_json(const json &j, Outline &outline) {
 }
 
 void to_json(json &j, const Theme &theme) {
-  j = {{"idleFill", theme.idleFill},          {"activeFill", theme.activeFill},
-       {"idleText", theme.idleText},          {"activeText", theme.activeText},
-       {"rounding", theme.rounding},          {"outline", theme.outline},
-       {"obsBackground", theme.obsBackground}};
+  j = {{"idleFill", theme.idleFill},
+       {"activeFill", theme.activeFill},
+       {"idleText", theme.idleText},
+       {"activeText", theme.activeText},
+       {"keyRounding", theme.keyRounding},
+       {"keyOutline", theme.keyOutline},
+       {"obsBackground", theme.obsBackground},
+
+       {"mouseStyle", theme.mouseStyle},
+       {"innerCircle", theme.innerCircle},
+       {"outerCircle", theme.outerCircle},
+       {"lerpColor", theme.lerpColor},
+       {"radius", theme.radius},
+       {"smallRadius", theme.smallRadius},
+       {"outerThickness", theme.outerThickness}};
 }
 
 void from_json(const json &j, Theme &theme) {
@@ -41,14 +52,35 @@ void from_json(const json &j, Theme &theme) {
   if (j.contains("activeText"))
     j.at("activeText").get_to(theme.activeText);
 
-  if (j.contains("rounding"))
-    j.at("rounding").get_to(theme.rounding);
+  if (j.contains("keyRounding"))
+    j.at("keyRounding").get_to(theme.keyRounding);
 
-  if (j.contains("outline"))
-    j.at("outline").get_to(theme.outline);
+  if (j.contains("keyOutline"))
+    j.at("keyOutline").get_to(theme.keyOutline);
 
   if (j.contains("obsBackground"))
     j.at("obsBackground").get_to(theme.obsBackground);
+
+  if (j.contains("mouseStyle"))
+    j.at("mouseStyle").get_to(theme.mouseStyle);
+
+  if (j.contains("innerCircle"))
+    j.at("innerCircle").get_to(theme.innerCircle);
+
+  if (j.contains("outerCircle"))
+    j.at("outerCircle").get_to(theme.outerCircle);
+
+  if (j.contains("lerpColor"))
+    j.at("lerpColor").get_to(theme.lerpColor);
+
+  if (j.contains("radius"))
+    j.at("radius").get_to(theme.radius);
+
+  if (j.contains("smallRadius"))
+    j.at("smallRadius").get_to(theme.smallRadius);
+
+  if (j.contains("outerThickness"))
+    j.at("outerThickness").get_to(theme.outerThickness);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {
@@ -77,7 +109,8 @@ void to_json(json &j, const Settings &settings) {
        {"binds", settings.binds},
        {"overlayPos", settings.overlayPos},
        {"font", settings.font},
-       {"misc", settings.misc}};
+       {"misc", settings.misc},
+       {"configName", settings.configName}};
 }
 
 void from_json(const json &j, Settings &settings) {
@@ -104,10 +137,13 @@ void from_json(const json &j, Settings &settings) {
 
   if (j.contains("misc"))
     j.at("misc").get_to(settings.misc);
+
+  if (j.contains("configName"))
+    j.at("configName").get_to(settings.configName);
 }
 
 void to_json(json &j, const Misc &misc) {
-  j = {{"vsync", misc.vsync}, {"obsMode", misc.obsMode}};
+  j = {{"vsync", misc.vsync}, {"obsMode", misc.obsMode}, {"fps", misc.fps}};
 }
 
 void from_json(const json &j, Misc &misc) {
@@ -117,6 +153,9 @@ void from_json(const json &j, Misc &misc) {
 
   if (j.contains("obsMode"))
     j.at("obsMode").get_to(misc.obsMode);
+
+  if (j.contains("fps"))
+    j.at("fps").get_to(misc.fps);
 }
 
 void to_json(json &j, const OverlayPosition &overlayPos) {
@@ -152,9 +191,7 @@ void from_json(const json &j, LetterCaseOptions &options) {
 }
 
 void to_json(json &j, const LetterCase &letterCase) {
-  j = {{"mode", letterCase.mode},
-       {"options", letterCase.options},
-       {"upper", letterCase.upper}};
+  j = {{"mode", letterCase.mode}, {"options", letterCase.options}};
 }
 
 void from_json(const json &j, LetterCase &letterCase) {
@@ -163,9 +200,6 @@ void from_json(const json &j, LetterCase &letterCase) {
 
   if (j.contains("options"))
     j.at("options").get_to(letterCase.options);
-
-  if (j.contains("upper"))
-    j.at("upper").get_to(letterCase.upper);
 }
 
 void to_json(json &j, const Font &font) {
@@ -184,5 +218,24 @@ void from_json(const json &j, Font &font) {
   if (j.contains("letterCase"))
     j.at("letterCase").get_to(font.letterCase);
 }
-
 } // namespace Fonts
+
+namespace Mouse {
+void to_json(json &j, const Type &type) { j = static_cast<int>(type); }
+
+void from_json(const json &j, Type &type) {
+  type = static_cast<Type>(j.get<int>());
+}
+
+void to_json(json &j, const MouseStyle &mouseStyle) {
+  j = {{"name", mouseStyle.name}, {"type", mouseStyle.type}};
+}
+
+void from_json(const json &j, MouseStyle &mouseStyle) {
+  if (j.contains("name"))
+    j.at("name").get_to(mouseStyle.name);
+
+  if (j.contains("type"))
+    j.at("type").get_to(mouseStyle.type);
+}
+} // namespace Mouse

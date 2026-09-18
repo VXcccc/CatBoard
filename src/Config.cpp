@@ -20,7 +20,6 @@ namespace Config {
 Settings activeConfig{};
 static const Settings defaultConfig{};
 std::vector<std::string> configs{};
-std::string activeConfigName;
 
 void refreshConfigs() {
   Helper::refresh(configs, Paths::configDirectory(), ".json");
@@ -118,7 +117,6 @@ bool loadConfig(std::string_view name) {
     }
     const auto j = json::parse(file);
     activeConfig = j.get<Settings>();
-    activeConfigName = std::string{name};
   } catch (const std::exception &e) {
     // TODO: send message to imgui
     // notifyError{e.what()};
