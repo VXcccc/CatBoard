@@ -1,10 +1,10 @@
 #include "Layouts.h"
 #include "Config.h"
+#include "ConfigJson.h"
 #include "Constants.h"
 #include "Helpers.h"
 #include "MainWindow.h"
 #include "Paths.h"
-#include "ConfigJson.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -61,11 +61,42 @@ bool loadLayout(std::string_view name) {
   return false;
 }
 
+Helper::FileCreateResult saveLayout(std::string_view name,
+                                    const Layout &layout) {
+  if (!Paths::ensureLayoutDirectory()) {
+    return Helper::FileCreateResult::DirectoryError;
+  }
+
+  if (name.empty())
+    return Helper::FileCreateResult::EmptyName;
+  if (name.size() > 64)
+    return Helper::FileCreateResult::NameTooLong;
+
+  const auto path{Paths::getLayoutPath(name)};
+
+  std::ofstream file{path};
+  if (!file) {
+    return Helper::FileCreateResult::FileError;
+  }
+
+  file << json(layout).dump(4);
+  if (!file) {
+    return Helper::FileCreateResult::FileError;
+  }
+
+  return Helper::FileCreateResult::Success;
+}
+
 void saveUndoClearRedo(LayoutEditState &state) {
   if (state.undoLayouts.size() >= Consts::MAX_UNDO_STEPS) {
     state.undoLayouts.erase(state.undoLayouts.begin());
   }
   state.undoLayouts.emplace_back(state.layout);
+  state.redoLayouts.clear();
+}
+
+void clearUndo(LayoutEditState &state) {
+  state.undoLayouts.clear();
   state.redoLayouts.clear();
 }
 
@@ -328,9 +359,18 @@ void drawLayoutEditorTab(LayoutEditState &state) {
   ImGui::InputText("##LayoutName", &state.layoutNameInput);
   ImGui::SameLine();
   if (ImGui::Button("Save layout")) {
-    std::ofstream file{Paths::getLayoutPath(state.layoutNameInput)};
-    file << json(state.layout).dump(4);
-    refreshLayouts();
+    clearUndo(state);
+    state.layoutNameError = Helper::getFileCreateError(
+        saveLayout(state.layoutNameInput, state.layout));
+    if (state.layoutNameError.empty()) {
+      refreshLayouts();
+    }
+  }
+
+  if (!state.layoutNameError.empty()) {
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.2f, 0.2f, 1));
+    ImGui::TextUnformatted(state.layoutNameError.c_str());
+    ImGui::PopStyleColor();
   }
 
   ImGui::SliderInt("Window width", &state.layout.windowWidth, 0, 1920);

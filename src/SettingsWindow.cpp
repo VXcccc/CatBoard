@@ -317,33 +317,6 @@ Config::Settings buildSettings(const SettingsEditState &state) {
           state.configName};
 }
 
-void handleCreateConfig(SettingsEditState &state) {
-  const auto result = Config::createConfig(state.configNameInput);
-
-  switch (result) {
-  case Config::CreateConfigResult::Success:
-    state.configNameError.clear();
-    break;
-  case Config::CreateConfigResult::EmptyName:
-    state.configNameError = "Config name cannot be empty";
-    break;
-  case Config::CreateConfigResult::NameTooLong:
-    state.configNameError = "Config name is too long";
-    break;
-  case Config::CreateConfigResult::AlreadyExists:
-    state.configNameError = "Config already exists";
-    break;
-  case Config::CreateConfigResult::DirectoryError:
-    state.configNameError = "Could not create config directory";
-    break;
-  case Config::CreateConfigResult::FileError:
-    state.configNameError = "Could not create config file";
-    break;
-  default:
-    break;
-  }
-}
-
 void validateCurrentIndex(std::size_t &index, std::size_t size) {
   if (index >= size) {
     index = size == 0 ? 0 : size - 1;
@@ -690,7 +663,8 @@ void drawConfigsTab(SettingsEditState &state) {
   ImGui::InputText("##Config name", &state.configNameInput);
   ImGui::SameLine();
   if (ImGui::Button("Create config")) {
-    handleCreateConfig(state);
+    state.configNameError =
+        Helper::getFileCreateError(Config::createConfig(state.configNameInput));
     if (state.configNameError.empty()) {
       Config::refreshConfigs();
     }

@@ -33,6 +33,8 @@ struct LayoutEditState {
     std::vector<Layouts::Layout> undoLayouts{};
     std::vector<Layouts::Layout> redoLayouts{};
     bool mouseCenterSelected{false};
+
+    std::string layoutNameError{};
 };
 
 extern std::vector<std::string> layouts;

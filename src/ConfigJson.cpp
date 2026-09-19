@@ -67,10 +67,11 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
 }
 
 void to_json(json &j, const Theme &theme) {
-  j = {{"idleFill", theme.idleFill},          {"activeFill", theme.activeFill},
-       {"idleText", theme.idleText},          {"activeText", theme.activeText},
-       {"keyRounding", theme.keyRounding},    {"keyOutline", theme.keyOutline},
-       {"obsBackground", theme.obsBackground}};
+  j = {
+      {"idleFill", theme.idleFill},           {"activeFill", theme.activeFill},
+      {"idleText", theme.idleText},           {"activeText", theme.activeText},
+      {"keyRounding", theme.keyRounding},     {"keyOutline", theme.keyOutline},
+      {"obsBackground", theme.obsBackground}, {"mouseTheme", theme.mouseTheme}};
 }
 
 void from_json(const json &j, Theme &theme) {
@@ -94,6 +95,9 @@ void from_json(const json &j, Theme &theme) {
 
   if (j.contains("obsBackground"))
     j.at("obsBackground").get_to(theme.obsBackground);
+
+  if (j.contains("mouseTheme"))
+    j.at("mouseTheme").get_to(theme.mouseTheme);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {

@@ -1,7 +1,6 @@
 #include "Config.h"
-#include "Helpers.h"
 #include "ConfigJson.h"
-#include "Constants.h"
+#include "Helpers.h"
 #include "Paths.h"
 #include "imgui.h"
 #include <combaseapi.h>
@@ -63,31 +62,33 @@ ImU32 ToImU32(const Config::Theme::ColorRGBA &c) {
   return IM_COL32(c[0], c[1], c[2], c[3]);
 }
 
-Config::CreateConfigResult createConfig(std::string_view name) {
+Helper::FileCreateResult createConfig(std::string_view name) {
   if (!Paths::ensureConfigDirectory()) {
-    return CreateConfigResult::DirectoryError;
+    return Helper::FileCreateResult::DirectoryError;
   }
+  if (name.empty())
+    return Helper::FileCreateResult::EmptyName;
 
-  if (name.empty() || name.size() > 64)
-    return CreateConfigResult::NameTooLong;
+  if (name.size() > 64)
+    return Helper::FileCreateResult::NameTooLong;
 
   const auto path{Paths::getConfigPath(name)};
 
   if (std::filesystem::exists(path)) {
-    return CreateConfigResult::AlreadyExists;
+    return Helper::FileCreateResult::AlreadyExists;
   }
 
   std::ofstream file{path};
   if (!file) {
-    return CreateConfigResult::FileError;
+    return Helper::FileCreateResult::FileError;
   }
 
   file << json(defaultConfig).dump(4);
   if (!file) {
-    return CreateConfigResult::FileError;
+    return Helper::FileCreateResult::FileError;
   }
 
-  return CreateConfigResult::Success;
+  return Helper::FileCreateResult::Success;
 }
 
 bool saveConfig(std::string_view name, const Config::Settings &settings) {

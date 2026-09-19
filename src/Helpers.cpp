@@ -12,6 +12,7 @@
 #include <winuser.h>
 
 namespace Helper {
+
 [[noreturn]] void fatalError(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Fatal Error", MB_OK | MB_ICONERROR);
   std::exit(EXIT_FAILURE);
@@ -42,7 +43,6 @@ ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
                 Helper::fromColorRGB(color[2]), Helper::fromColorRGB(color[3])};
 }
 
-
 void refresh(std::vector<std::string> &category,
              const std::filesystem::path &folder, std::string_view ext) {
   category.clear();
@@ -59,6 +59,31 @@ void refresh(std::vector<std::string> &category,
 
     category.push_back(entry.path().stem().string());
   }
+}
+
+std::string getFileCreateError(Helper::FileCreateResult result) {
+  switch (result) {
+  case Helper::FileCreateResult::Success:
+    return {};
+
+  case Helper::FileCreateResult::EmptyName:
+    return "Name cannot be empty";
+
+  case Helper::FileCreateResult::NameTooLong:
+    return "Name is too long";
+
+  case Helper::FileCreateResult::AlreadyExists:
+    return "File already exists";
+
+  case Helper::FileCreateResult::DirectoryError:
+    return "Could not create or find directory";
+
+  case Helper::FileCreateResult::FileError:
+    return "Could not create file";
+
+  default:
+    return "Unknown error";
+  };
 }
 
 std::string VkToName(int vk) {

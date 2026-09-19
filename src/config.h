@@ -18,17 +18,12 @@
 #include <winuser.h>
 using json = nlohmann::json;
 
+namespace Helper{
+enum class FileCreateResult;
+}
+
 namespace Config {
 
-enum class CreateConfigResult {
-  Success,
-  EmptyName,
-  NameTooLong,
-  AlreadyExists,
-  DirectoryError,
-  FileError,
-  Max_ConfigResults
-};
 
 struct Outline {
   using ColorRGBA = std::array<int, 4>;
@@ -107,7 +102,7 @@ extern std::vector<std::string> configs;
 bool loadConfig(std::string_view name);
 bool saveConfig(std::string_view name, const Config::Settings &settings);
 bool deleteConfig(std::string_view name);
-CreateConfigResult createConfig(std::string_view name);
+Helper::FileCreateResult createConfig(std::string_view name);
 void refreshConfigs();
 
 void Load();
