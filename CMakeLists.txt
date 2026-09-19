@@ -43,6 +43,8 @@ add_executable(${PROJECT_NAME} WIN32
     src/Sound.cpp
     src/MouseState.cpp
     src/FontHandle.cpp
+    src/MainWindow.cpp
+    src/Layouts.cpp
     src/Resource/app.rc
 
     ${imgui_SOURCE_DIR}/imgui.cpp

@@ -12,29 +12,28 @@ namespace Mouse {
 std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
     mouseStyles{{{"Cat Board", Type::CatBoard}, {"Noh Board", Type::NohBoard}}};
 
-MouseState g_mouseState{
-    Config::activeConfig.theme.mouseSensitivity,
-    Config::activeConfig.theme.mouseDecayRate}; 
+MouseState g_mouseState{Config::activeConfig.theme.mouseTheme.sensitivity,
+                        Config::activeConfig.theme.mouseTheme.decayRate};
 
 float MouseState::getDistance() const {
   return (std::sqrt(m_offsetX * m_offsetX + m_offsetY * m_offsetY));
 }
 
 void MouseState::addRawDelta(int dx, int dy) {
-    m_pendingDeltaX += dx;
-    m_pendingDeltaY += dy;
+  m_pendingDeltaX += dx;
+  m_pendingDeltaY += dy;
 }
 
 void MouseState::consumePendingDelta() {
-    m_deltaX = m_pendingDeltaX;
-    m_deltaY = m_pendingDeltaY;
-    m_pendingDeltaX = 0;
-    m_pendingDeltaY = 0;
+  m_deltaX = m_pendingDeltaX;
+  m_deltaY = m_pendingDeltaY;
+  m_pendingDeltaX = 0;
+  m_pendingDeltaY = 0;
 }
 
 void MouseState::updateMouseState(float deltaTime, float radius) {
-  m_sensitivity = Config::activeConfig.theme.mouseSensitivity;
-  m_decayRate = Config::activeConfig.theme.mouseDecayRate;
+  m_sensitivity = Config::activeConfig.theme.mouseTheme.sensitivity;
+  m_decayRate = Config::activeConfig.theme.mouseTheme.decayRate;
 
   m_offsetX += m_deltaX * m_sensitivity;
   m_offsetY += m_deltaY * m_sensitivity;
@@ -50,6 +49,16 @@ void MouseState::updateMouseState(float deltaTime, float radius) {
     m_offsetX *= scale;
     m_offsetY *= scale;
   }
+}
+
+void MouseState::updateTrail(float deltaTime, float maxAge) {
+  for (auto &pt : m_trail) {
+    pt.age += deltaTime;
+  }
+  while (!m_trail.empty() && m_trail.front().age > maxAge) {
+    m_trail.pop_front();
+  }
+  m_trail.push_back({m_offsetX, m_offsetY, 0.0f});
 }
 
 static ImU32 lerpColor(ImU32 colorA, ImU32 colorB, float t) {
@@ -69,16 +78,16 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
 
   // change it to custom colors
   const ImU32 innerColor{
-      Config::ToImU32(Config::activeConfig.theme.innerCircle)};
+      Config::ToImU32(Config::activeConfig.theme.mouseTheme.innerCircle)};
 
   const ImU32 outerColor{
-      Config::ToImU32(Config::activeConfig.theme.outerCircle)};
+      Config::ToImU32(Config::activeConfig.theme.mouseTheme.outerCircle)};
 
-  float radius{Config::activeConfig.theme.radius};
+  float radius{Config::activeConfig.theme.mouseTheme.radius};
 
   // outer circle
   draw->AddCircle(center, radius, outerColor, 64,
-                  Config::activeConfig.theme.outerThickness);
+                  Config::activeConfig.theme.mouseTheme.outerThickness);
 
   const float offsetX{g_mouseState.getOffsetX()};
   const float offsetY{g_mouseState.getOffsetY()};
@@ -97,7 +106,7 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
         std::clamp(indicatorLength / radius, 0.0f, 1.0f)};
 
     const ImU32 indicatorColor{
-        Config::activeConfig.theme.lerpColor
+        Config::activeConfig.theme.mouseTheme.lerpColor
             ? lerpColor(innerColor, outerColor, colorMultiplier)
             : innerColor};
 
@@ -124,7 +133,7 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
 
     draw->AddConvexPolyFilled(points.Data, points.Size, indicatorColor);
 
-    const float smallRadius{Config::activeConfig.theme.smallRadius};
+    const float smallRadius{Config::activeConfig.theme.mouseTheme.smallRadius};
 
     ImVec2 directionEdge{center.x + std::cos(angle) * radius,
                          center.y + std::sin(angle) * radius};
@@ -132,37 +141,53 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
     draw->AddCircleFilled(directionEdge, smallRadius, indicatorColor);
   }
 
-  const float smallRadius{Config::activeConfig.theme.smallRadius};
+  const float smallRadius{Config::activeConfig.theme.mouseTheme.smallRadius};
 
   draw->AddCircleFilled(center, smallRadius, innerColor);
 }
 
 void renderDefaultMouseIndicator(const ImVec2 &center) {
-  float radius{Config::activeConfig.theme.radius};
+  float radius{Config::activeConfig.theme.mouseTheme.radius};
   ImDrawList *draw = ImGui::GetBackgroundDrawList();
 
   const ImU32 innerColor{
-      Config::ToImU32(Config::activeConfig.theme.innerCircle)};
+      Config::ToImU32(Config::activeConfig.theme.mouseTheme.innerCircle)};
 
   const ImU32 outerColor{
-      Config::ToImU32(Config::activeConfig.theme.outerCircle)};
+      Config::ToImU32(Config::activeConfig.theme.mouseTheme.outerCircle)};
 
   const float indicatorLength{(std::min)(g_mouseState.getDistance(), radius)};
 
   const float colorMultiplier{std::clamp(indicatorLength / radius, 0.0f, 1.0f)};
 
   const ImU32 indicatorColor{
-      Config::activeConfig.theme.lerpColor
+      Config::activeConfig.theme.mouseTheme.lerpColor
           ? lerpColor(innerColor, outerColor, colorMultiplier)
           : innerColor};
 
   draw->AddCircle(center, radius, outerColor, 64,
-                  Config::activeConfig.theme.outerThickness);
+                  Config::activeConfig.theme.mouseTheme.outerThickness);
 
   ImVec2 dotPos{center.x + g_mouseState.getOffsetX(),
                 center.y + g_mouseState.getOffsetY()};
-  draw->AddCircleFilled(dotPos, Config::activeConfig.theme.smallRadius,
+
+  draw->AddCircleFilled(dotPos,
+                        Config::activeConfig.theme.mouseTheme.smallRadius,
                         indicatorColor);
+}
+
+void renderMouseTrail(const ImVec2 &center, ImU32 baseColor, float maxAge) {
+  ImDrawList *draw = ImGui::GetBackgroundDrawList();
+
+  for (const auto &pt : Mouse::g_mouseState.getTrail()) {
+    float t = std::clamp(1.0f - (pt.age / maxAge), 0.0f, 1.0f);
+
+    ImU32 color =
+        (baseColor & 0x00FFFFFF) | (static_cast<ImU32>(t * 255) << 24);
+    float radius = 1.5f + 2.5f * t;
+
+    draw->AddCircleFilled({center.x + pt.x, center.y + pt.y}, radius, color);
+  }
 }
 
 void renderMouseIndicator(const ImVec2 &center,

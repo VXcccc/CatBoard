@@ -21,6 +21,10 @@ constexpr UINT ID_SETTINGS  {1005};
 constexpr std::size_t VOICE_COUNT {32};
 
 constexpr ImVec4 defaultClearColor{0.0f, 0.0f, 0.0f, 0.0f};
+
+constexpr std::size_t MAX_UNDO_STEPS{100};
+
+constexpr int MouseInputVKCODE{3333};
 }
 
 #endif // !CONSTANTS_H

@@ -1,10 +1,8 @@
 #include "FontHandle.h"
 #include "Helpers.h"
-#include "InputHandle.h"
 #include "Paths.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
-#include "imgui_impl_win32.h"
 #include <cctype>
 #include <string>
 #include <unordered_map>
@@ -57,7 +55,7 @@ bool installDefaultFonts() {
   return !ec;
 }
 
-bool isLetterKey(const Input::Key &key) {
+bool isLetterKey(const Layouts::Key &key) {
   return (key.keyCode >= 'A' && key.keyCode <= 'Z');
 }
 
@@ -92,7 +90,7 @@ std::string applyLetterCase(const std::string &label, Font &font) {
 }
 
 std::string handleCapsLock(const std::array<bool, 256> &currentFullKeysDown,
-                           Font &font, const Input::Key &key,
+                           Font &font, const Layouts::Key &key,
                            const bool capsLockDown) {
   font.letterCase.upper = !font.letterCase.upper;
   if (capsLockDown) {
@@ -104,7 +102,7 @@ std::string handleCapsLock(const std::array<bool, 256> &currentFullKeysDown,
 }
 
 std::string handleShift(const std::array<bool, 256> &currentFullKeysDown,
-                        Font &font, const Input::Key &key,
+                        Font &font, const Layouts::Key &key,
                         const bool shiftDown) {
   static const std::unordered_map<int, char> vkToShiftSymbol{
       {'1', '!'}, {'2', '@'},  {'3', '#'}, {'4', '$'}, {'5', '%'},
@@ -133,7 +131,7 @@ std::string handleShift(const std::array<bool, 256> &currentFullKeysDown,
 }
 
 std::string handleLetterCase(const std::array<bool, 256> &currentFullKeysDown,
-                             Font &font, const Input::Key &key) {
+                             Font &font, const Layouts::Key &key) {
   bool capsLockDown{(GetKeyState(VK_CAPITAL) & 1) != 0};
   bool shiftDown{currentFullKeysDown[VK_LSHIFT] ||
                  currentFullKeysDown[VK_RSHIFT]};

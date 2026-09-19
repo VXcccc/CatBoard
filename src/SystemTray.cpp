@@ -1,8 +1,5 @@
 #include "SystemTray.h"
-#include "Config.h"
 #include "Constants.h"
-#include "Helpers.h"
-#include "InputHandle.h"
 #include "MainWindow.h"
 #include "SettingsWindow.h"
 #include <basetsd.h>
@@ -14,7 +11,6 @@
 
 namespace Tray {
 NOTIFYICONDATA g_nid{};
-bool g_dragMode{false};
 bool g_showSettings{false};
 // static int g_interactiveRequests{0};
 
@@ -68,7 +64,7 @@ VOID APIENTRY DisplayContextMenu(HWND hWnd) {
   GetCursorPos(&pt);
 
   TrayMenu menu;
-  menu.addItem(Consts::ID_DRAGMODE, L"Drag mode", true, g_dragMode);
+  menu.addItem(Consts::ID_DRAGMODE, L"Drag mode", true, MainWindow::g_dragMode);
   menu.addItem(Consts::ID_SETTINGS, L"Settings");
   menu.addItem(Consts::ID_EXIT, L"Exit");
   menu.showAt(hWnd, pt);
@@ -97,63 +93,6 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd) {
 }
 
 // to do move this functions to mainWindow.h
-void SetDragMode(HWND hWnd, bool enabled) {
-  LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
-  if (enabled) {
-    exStyle &= ~WS_EX_TRANSPARENT;
-  } else {
-    exStyle |= WS_EX_TRANSPARENT;
-  }
-  SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
-  SetWindowPos(hWnd, nullptr, 0, 0, 0, 0,
-               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-}
-
-void SetObsMode(HWND hWnd, bool enabled) {
-  int windowWidth{
-      (int)(Input::activeLayout.windowWidth * MainWindow::getG_MainScale())};
-
-  int windowHeight{
-      (int)(Input::activeLayout.windowHeight * MainWindow::getG_MainScale())};
-
-  // adding 30 pixles cuz of sysmenu
-  int obsWindowHeight{
-      ((int)(Input::activeLayout.windowHeight * MainWindow::getG_MainScale())) +
-      (30)};
-
-  LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
-  LONG_PTR style{GetWindowLongPtr(hWnd, GWL_STYLE)};
-
-  if (enabled) {
-    exStyle &= ~(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
-                 WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
-
-    style = (style & ~WS_POPUP) |
-            (WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME);
-
-    MainWindow::setClearColor(
-        Helper::fromConfigColor(Config::activeConfig.theme.obsBackground));
-  } else {
-    exStyle |= (WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
-                WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
-
-    style =
-        (style & ~(WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_THICKFRAME)) |
-        WS_POPUP;
-  }
-
-  SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
-  SetWindowLongPtr(hWnd, GWL_STYLE, style);
-
-  if (!enabled) {
-    MainWindow::setClearColor(Consts::defaultClearColor);
-    SetLayeredWindowAttributes(hWnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
-  }
-
-  SetWindowPos(hWnd, enabled ? HWND_NOTOPMOST : HWND_TOPMOST, 0, 0, windowWidth,
-               enabled ? obsWindowHeight : windowHeight,
-               SWP_NOMOVE | SWP_FRAMECHANGED);
-}
 
 void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd) {
   UINT uId{static_cast<UINT>(LOWORD(wParam))};
@@ -163,8 +102,8 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd) {
     SettingsWindow::Show();
     return;
   case Consts::ID_DRAGMODE:
-    g_dragMode = !g_dragMode;
-    SetDragMode(hWnd, g_dragMode);
+    MainWindow::g_dragMode = !MainWindow::g_dragMode;
+    MainWindow::SetDragMode(hWnd, MainWindow::g_dragMode);
     return;
   case Consts::ID_EXIT:
     Shell_NotifyIcon(NIM_DELETE, &g_nid);

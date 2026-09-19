@@ -1,12 +1,11 @@
 #pragma once
 
 #include "imgui.h"
+#include <deque>
 #include <string>
-#include <vector>
 #include <windows.h>
 
 namespace Mouse {
-
 
 enum class Type { CatBoard, NohBoard, maxMouseStyles };
 
@@ -16,6 +15,11 @@ struct MouseStyle {
 };
 extern std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
     mouseStyles;
+
+struct TrailPoint {
+  float x, y;
+  float age{0.0f};
+};
 
 class MouseState {
 public:
@@ -47,7 +51,10 @@ public:
   float getDistance() const;
 
   void addRawDelta(int dx, int dy);
-  void consumePendingDelta() ;
+  void consumePendingDelta();
+
+  void updateTrail(float deltaTime, float maxAge);
+  const std::deque<TrailPoint> &getTrail() const { return m_trail; }
 
 private:
   int m_pendingDeltaX{0};
@@ -61,10 +68,14 @@ private:
 
   float m_sensitivity{0.5f};
   float m_decayRate{8.0f};
+
+  std::deque<TrailPoint> m_trail;
 };
 
 void renderMouseIndicator(const ImVec2 &center,
                           const Mouse::Type mouseStyleType);
+
+void renderMouseTrail(const ImVec2 &center, ImU32 baseColor, float maxAge);
 
 extern MouseState g_mouseState;
 } // namespace Mouse

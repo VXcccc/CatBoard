@@ -4,6 +4,7 @@
 #include "FontHandle.h"
 #include "Helpers.h"
 #include "InputHandle.h"
+#include "Layouts.h"
 #include "MainWindow.h"
 #include "MouseState.h"
 #include "Paths.h"
@@ -216,6 +217,7 @@ bool IsVisible() { return s_visible; }
 // Tabs handling
 enum class SettingsTab {
   Visuals,
+  LayoutEditor,
   Sounds,
   Misc,
   Binds,
@@ -230,6 +232,7 @@ struct Tab {
 
 std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
     {{"Visuals", SettingsTab::Visuals},
+     {"Layout Editor", SettingsTab::LayoutEditor},
      {"Sounds", SettingsTab::Sounds},
      {"Misc", SettingsTab::Misc},
      {"Binds", SettingsTab::Binds},
@@ -294,7 +297,7 @@ void restoreFromConfig(SettingsEditState &state,
 
   state.configName = prevSettings.configName;
 
-  Input::loadLayout(prevSettings.selectedLayout);
+  Layouts::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
   Sound::setMasterVolume(prevSettings.soundPack.volume);
 }
@@ -383,9 +386,10 @@ void drawGenericCombo(
 }
 
 void drawLayoutCombo(SettingsEditState &state) {
-  drawGenericCombo("Layout", Input::layouts, "No layouts", state.currentLayout,
+  drawGenericCombo("Layout", Layouts::layouts, "No layouts",
+                   state.currentLayout,
                    [&state](std::size_t i, const std::string &name) {
-                     if (Input::loadLayout(name)) {
+                     if (Layouts::loadLayout(name)) {
                        state.currentLayout = i;
                        state.selectedLayout = name;
                      }
@@ -424,8 +428,9 @@ void drawMouseStyleCommbo(SettingsEditState &state,
                    state.currentMouseStyle,
                    [&state](std::size_t i, const std::string &name) {
                      state.currentMouseStyle = i;
-                     state.theme.mouseStyle.type = static_cast<Mouse::Type>(i);
-                     state.theme.mouseStyle.name = name;
+                     state.theme.mouseTheme.style.type =
+                         static_cast<Mouse::Type>(i);
+                     state.theme.mouseTheme.style.name = name;
                    });
 }
 
@@ -485,33 +490,47 @@ void drawKeyboardSection(SettingsEditState &state) {
 void drawMouseSection(SettingsEditState &state) {
   ImGui::SeparatorText("Mouse");
 
-  std::vector<std::string> mouseStyleNames{};
-  for (const auto mouseStyle : Mouse::mouseStyles) {
-    mouseStyleNames.push_back(mouseStyle.name);
+  ImGui::Checkbox("Enable mouse input display",
+                  &state.theme.mouseTheme.enabled);
+
+  if (state.theme.mouseTheme.enabled) {
+    std::vector<std::string> mouseStyleNames{};
+    for (const auto mouseStyle : Mouse::mouseStyles) {
+      mouseStyleNames.push_back(mouseStyle.name);
+    }
+    drawMouseStyleCommbo(state, mouseStyleNames);
+
+    ImVec4 outerCircleCol{
+        Helper::fromConfigColor(state.theme.mouseTheme.outerCircle)};
+    if (ImGui::ColorEdit4("Outer circle color", &outerCircleCol.x)) {
+      state.theme.mouseTheme.outerCircle =
+          Helper::toConfigColor(outerCircleCol);
+    }
+
+    ImVec4 innerCircleCol{
+        Helper::fromConfigColor(state.theme.mouseTheme.innerCircle)};
+    if (ImGui::ColorEdit4("Inner circle color", &innerCircleCol.x)) {
+      state.theme.mouseTheme.innerCircle =
+          Helper::toConfigColor(innerCircleCol);
+    }
+
+    ImGui::Checkbox("Lerp color", &state.theme.mouseTheme.lerpColor);
+
+    ImGui::SliderFloat("Radius", &state.theme.mouseTheme.radius, 0.0f, 100.0f,
+                       "%.2f");
+
+    ImGui::SliderFloat("Small radius", &state.theme.mouseTheme.smallRadius,
+                       0.0f, 100.0f, "%.2f");
+
+    ImGui::SliderFloat("Outer thickness",
+                       &state.theme.mouseTheme.outerThickness, 0.0f, 100.0f,
+                       "%.2f");
+
+    ImGui::SliderFloat("Sensitivity", &state.theme.mouseTheme.sensitivity, 0.0f,
+                       10.0f, "%.2f");
+    ImGui::SliderFloat("Decay rate", &state.theme.mouseTheme.decayRate, 0.0f,
+                       100.0f, "%.2f");
   }
-  drawMouseStyleCommbo(state, mouseStyleNames);
-
-
-  ImVec4 outerCircleCol{Helper::fromConfigColor(state.theme.outerCircle)};
-  if (ImGui::ColorEdit4("Outer circle color", &outerCircleCol.x)) {
-    state.theme.outerCircle = Helper::toConfigColor(outerCircleCol);
-  }
-
-  ImVec4 innerCircleCol{Helper::fromConfigColor(state.theme.innerCircle)};
-  if (ImGui::ColorEdit4("Inner circle color", &innerCircleCol.x)) {
-    state.theme.innerCircle = Helper::toConfigColor(innerCircleCol);
-  }
-
-  ImGui::Checkbox("Lerp color", &state.theme.lerpColor);
-
-  ImGui::SliderFloat("Radius", &state.theme.radius, 0.0f, 100.0f, "%.2f");
-
-  ImGui::SliderFloat("Small radius", &state.theme.smallRadius, 0.0f, 100.0f, "%.2f");
-
-  ImGui::SliderFloat("Outer thickness", &state.theme.outerThickness, 0.0f, 100.0f, "%.2f");
-
-  ImGui::SliderFloat("Sensitivity", &state.theme.mouseSensitivity, 0.0f, 10.0f, "%.2f");
-  ImGui::SliderFloat("Decay rate", &state.theme.mouseDecayRate, 0.0f, 100.0f, "%.2f");
 }
 
 void drawLayoutsSection(SettingsEditState &state) {
@@ -526,8 +545,8 @@ void drawLayoutsSection(SettingsEditState &state) {
   ImGui::SameLine();
 
   if (ImGui::Button("Refresh layouts")) {
-    Input::refreshLayouts();
-    validateCurrentIndex(state.currentLayout, std::size(Input::layouts));
+    Layouts::refreshLayouts();
+    validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
   }
 
   drawFontCombo(state);
@@ -639,7 +658,7 @@ void drawConfigsTab(SettingsEditState &state) {
     if (Config::loadConfig(Config::configs[state.currentConfig])) {
       restoreFromConfig(state, Config::activeConfig);
 
-      if (!Input::loadLayout(Config::activeConfig.selectedLayout)) {
+      if (!Layouts::loadLayout(Config::activeConfig.selectedLayout)) {
         Helper::errorMesBox(L"Failed to load keyboard layout from config");
       }
 
@@ -724,10 +743,11 @@ void RenderFrame() {
   bool visibleNow = SettingsWindow::IsVisible();
 
   static SettingsEditState editState{};
+  static Layouts::LayoutEditState layoutEditState{};
   static SettingsTab currentTab = SettingsTab::Visuals;
 
   if (visibleNow && !wasVisibleLastFrame) {
-    Input::refreshLayouts();
+    Layouts::refreshLayouts();
     Config::refreshConfigs();
     Sound::refreshSounds();
 
@@ -737,7 +757,7 @@ void RenderFrame() {
     editState.currentConfig =
         findIndexByName(Config::configs, Config::activeConfig.configName);
     editState.currentLayout =
-        findIndexByName(Input::layouts, Config::activeConfig.selectedLayout);
+        findIndexByName(Layouts::layouts, Config::activeConfig.selectedLayout);
     editState.currentSound =
         findIndexByName(Sound::sounds, Config::activeConfig.soundPack.name);
     editState.currentFont =
@@ -770,6 +790,9 @@ void RenderFrame() {
   switch (currentTab) {
   case SettingsTab::Visuals:
     drawVisualsTab(editState);
+    break;
+  case SettingsTab::LayoutEditor:
+    Layouts::drawLayoutEditorTab(layoutEditState);
     break;
   case SettingsTab::Sounds:
     drawSoundsTab(editState);

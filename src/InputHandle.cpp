@@ -2,21 +2,14 @@
 #include "Config.h"
 #include "Helpers.h"
 #include "MainWindow.h"
-#include "Paths.h"
 #include "SettingsWindow.h"
 #include "SystemTray.h"
 #include <array>
 #include <nlohmann/json.hpp>
 #include <windows.h>
 using json = nlohmann::json;
-#include <fstream>
-#include <string_view>
-#include <vector>
 
 namespace Input {
-std::vector<std::string> layouts{};
-Layout activeLayout{};
-std::string defaultLayoutName{"layout7t"};
 
 bool g_bindJustRecorded{false};
 
@@ -25,57 +18,12 @@ BindsArray defaultBinds{
     Bind{"Hide overlay", VK_F6, "F6", BindType::hideOverlay},
     Bind{"Open settings", VK_F9, "F9", BindType::openSettings}};
 
-void refreshLayouts() {
-  Helper::refresh(layouts, Paths::layoutDirectory(), ".json");
-}
-
-bool installDefaultLayouts() {
-  const auto source{Paths::getExecutableDir() /
-                    "Layouts"}; // TODO fix this function(cuz idk how its gonna
-                                // work without layouts dir in executable dir)
-  const auto destination{Paths::layoutDirectory()};
-
-  if (std::filesystem::exists(destination)) {
-    return true;
-  }
-
-  std::error_code ec;
-
-  std::filesystem::copy(source, destination,
-                        std::filesystem::copy_options::recursive, ec);
-
-  return !ec;
-}
-
-bool loadLayoutFile(std::string_view name) {
-  try {
-    std::ifstream file{Paths::getLayoutPath(name)};
-
-    if (!file)
-      return false;
-
-    activeLayout = json::parse(file).get<Layout>();
-    return true;
-  } catch (const std::exception &) {
-    return false;
-  }
-}
-
-bool loadLayout(std::string_view name) {
-  if (loadLayoutFile(name))
-    return true;
-
-  if (name != defaultLayoutName)
-    return loadLayoutFile(defaultLayoutName);
-
-  return false;
-}
 
 void handleBindType(const BindType type, HWND hWnd) {
   switch (type) {
   case BindType::dragMode:
-    Tray::g_dragMode = !Tray::g_dragMode;
-    Tray::SetDragMode(hWnd, Tray::g_dragMode);
+    MainWindow::g_dragMode = !MainWindow::g_dragMode;
+    MainWindow::SetDragMode(hWnd, MainWindow::g_dragMode);
     break;
   case BindType::hideOverlay:
     if (!MainWindow::IsVisible()) {

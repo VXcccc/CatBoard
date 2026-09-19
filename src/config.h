@@ -4,9 +4,10 @@
 // maybe goona change location of this variable later
 
 #include "Constants.h"
-#include "MouseState.h"
 #include "FontHandle.h"
 #include "InputHandle.h"
+#include "Layouts.h"
+#include "MouseState.h"
 #include "Sound.h"
 #include "imgui.h"
 #include <array>
@@ -37,6 +38,21 @@ struct Outline {
   float thickness{3.0f};
 };
 
+struct MouseTheme {
+  using ColorRGBA = std::array<int, 4>;
+  bool enabled{true};
+
+  Mouse::MouseStyle style{};
+  ColorRGBA outerCircle{255, 255, 255, 255};
+  ColorRGBA innerCircle{255, 255, 255, 255};
+  bool lerpColor{false};
+
+  float radius{37.0f};
+  float smallRadius{7.4f};
+  float outerThickness{3.0f};
+  float sensitivity{0.5f};
+  float decayRate{8.0f};
+};
 
 struct Theme {
   using ColorRGBA = std::array<int, 4>;
@@ -51,16 +67,7 @@ struct Theme {
 
   ColorRGBA obsBackground{0, 255, 0, 255};
 
-  Mouse::MouseStyle mouseStyle{};
-  ColorRGBA outerCircle{255, 255, 255, 255};
-  ColorRGBA innerCircle{255, 255, 255, 255};
-  bool lerpColor{false};
-
-  float radius{37.0f};
-  float smallRadius{7.4f};
-  float outerThickness{3.0f};
-  float mouseSensitivity{0.5f};
-  float mouseDecayRate{8.0f};
+  MouseTheme mouseTheme{};
 };
 
 struct SoundPackSelection {
@@ -84,7 +91,7 @@ struct Misc {
 struct Settings {
   int version{Consts::CATBOARD_VERSION};
   Theme theme{};
-  std::string selectedLayout{Input::defaultLayoutName};
+  std::string selectedLayout{Layouts::defaultLayoutName};
   SoundPackSelection soundPack{};
   Input::BindsArray binds{Input::defaultBinds};
   OverlayPosition overlayPos{};

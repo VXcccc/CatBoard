@@ -12,6 +12,7 @@
 #include "Constants.h"
 #include "FontHandle.h"
 #include "Helpers.h"
+#include "Layouts.h"
 #include "MainWindow.h"
 #include "MouseState.h"
 #include "SettingsWindow.h"
@@ -54,17 +55,17 @@ static HWND s_hwnd = nullptr;
 static float g_main_scale{};
 
 // Forward declarations of main functions
-void renderKeyboard(const Input::Layout &layout,
+void renderKeyboard(const Layouts::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     const std::array<bool, 256> &currentFullKeysDown);
-bool detectAnyKeyChanged(const Input::Layout &layout,
+bool detectAnyKeyChanged(const Layouts::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown);
-void commitKeyState(const Input::Layout &layout,
+void commitKeyState(const Layouts::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     std::array<bool, 256> &outPrevKeyState);
 
-void handleKeySound(const Input::Layout &layout,
+void handleKeySound(const Layouts::Layout &layout,
                     const std::array<bool, 256> &prevKeyState,
                     const std::array<bool, 256> &currentDown);
 
@@ -87,7 +88,6 @@ POINT getOverlayPosition(int windowWidth, int windowHeight);
 bool RegisterRawMouseInput(HWND hwnd);
 
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
-void pollMouseState(POINT &outPrevMousePos, Mouse::MouseState &mouseState);
 
 namespace MainWindow {
 static ImVec4 s_clearColor{Consts::defaultClearColor};
@@ -106,10 +106,21 @@ void Hide() {
 bool IsVisible() { return s_visible; }
 
 void ApplyOverlayPosition() {
-  int windowWidth = (int)(Input::activeLayout.windowWidth * g_main_scale);
-  int windowHeight = (int)(Input::activeLayout.windowHeight * g_main_scale);
+  int windowWidth = (int)(Layouts::activeLayout.windowWidth * g_main_scale);
+  int windowHeight = (int)(Layouts::activeLayout.windowHeight * g_main_scale);
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
   SetWindowPos(s_hwnd, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+}
+
+void ApplyOverlaySize() {
+  int windowWidth =
+      static_cast<int>(Layouts::activeLayout.windowWidth * g_main_scale);
+
+  int windowHeight =
+      static_cast<int>(Layouts::activeLayout.windowHeight * g_main_scale);
+
+  SetWindowPos(s_hwnd, nullptr, 0, 0, windowWidth, windowHeight,
+               SWP_NOMOVE | SWP_NOZORDER);
 }
 
 HWND getHWND() { return s_hwnd; }
@@ -125,13 +136,13 @@ int main(int, char **) {
   timeBeginPeriod(1);
   Config::Load();
 
-  if (!(Input::installDefaultLayouts())) {
+  if (!(Layouts::installDefaultLayouts())) {
     Helper::fatalError(L"Failed to install default layouts");
   }
 
-  Input::refreshLayouts();
+  Layouts::refreshLayouts();
 
-  if (!(Input::loadLayout(Config::activeConfig.selectedLayout))) {
+  if (!(Layouts::loadLayout(Config::activeConfig.selectedLayout))) {
     Helper::fatalError(L"Failed to load keyboard layout");
   }
 
@@ -170,8 +181,8 @@ int main(int, char **) {
                     nullptr};
   ::RegisterClassExW(&wc);
 
-  int windowWidth{(int)(Input::activeLayout.windowWidth * g_main_scale)};
-  int windowHeight{(int)(Input::activeLayout.windowHeight * g_main_scale)};
+  int windowWidth{(int)(Layouts::activeLayout.windowWidth * g_main_scale)};
+  int windowHeight{(int)(Layouts::activeLayout.windowHeight * g_main_scale)};
 
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
 
@@ -183,7 +194,9 @@ int main(int, char **) {
 
   ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
-  RegisterRawMouseInput(s_hwnd);
+  if (!RegisterRawMouseInput(s_hwnd)) {
+    Helper::fatalError(L"Failed to register mouse input");
+  }
 
   // Initialize Direct3D
   if (!CreateDeviceD3D(s_hwnd)) {
@@ -271,7 +284,7 @@ int main(int, char **) {
   // creating tray icon
   Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
 
-  Tray::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
+  MainWindow::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
 
   // Our state
   bool show_demo_window = true;
@@ -290,7 +303,6 @@ int main(int, char **) {
   static std::array<bool, 256> prevFullKeyState{};
   static std::array<bool, 256> currentFullKeysDown{};
   static bool firstFrame = true;
-
 
   // deltaTime
   LARGE_INTEGER freq;
@@ -341,7 +353,7 @@ int main(int, char **) {
       CreateRenderTarget();
     }
 
-    bool anyKeyChanged{detectAnyKeyChanged(Input::activeLayout, prevKeyState,
+    bool anyKeyChanged{detectAnyKeyChanged(Layouts::activeLayout, prevKeyState,
                                            currentKeysDown)};
 
     pollFullKeyboard(currentFullKeysDown);
@@ -349,7 +361,9 @@ int main(int, char **) {
     // mouse poll
     Mouse::g_mouseState.consumePendingDelta();
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
-    Mouse::g_mouseState.updateMouseState(deltaTime, Config::activeConfig.theme.radius);
+    Mouse::g_mouseState.updateMouseState(
+        deltaTime, Config::activeConfig.theme.mouseTheme.radius);
+    // Mouse::g_mouseState.updateTrail(deltaTime, 0.5f);
 
     if (Input::g_bindJustRecorded) {
       prevFullKeyState = currentFullKeysDown;
@@ -360,7 +374,7 @@ int main(int, char **) {
 
     if (Config::activeConfig.soundPack.enable) {
       if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
-        handleKeySound(Input::activeLayout, prevKeyState, currentKeysDown);
+        handleKeySound(Layouts::activeLayout, prevKeyState, currentKeysDown);
       } else {
         handleKeySoundFull(prevFullKeyState, currentFullKeysDown);
       }
@@ -384,7 +398,7 @@ int main(int, char **) {
     }
     firstFrame = false;
 
-    commitKeyState(Input::activeLayout, currentKeysDown, prevKeyState);
+    commitKeyState(Layouts::activeLayout, currentKeysDown, prevKeyState);
 
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
@@ -392,15 +406,18 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    renderKeyboard(Input::activeLayout, currentKeysDown, currentFullKeysDown);
+    renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown);
 
-    //todo edit layout file to add center variable
-    Mouse::renderMouseIndicator(ImVec2(374, 184),
-                                Config::activeConfig.theme.mouseStyle.type);
+    if (Config::activeConfig.theme.mouseTheme.enabled) {
+      Mouse::renderMouseIndicator(
+          ImVec2(Layouts::activeLayout.mouse.mouseCenterX,
+                 Layouts::activeLayout.mouse.mouseCenterY),
+          Config::activeConfig.theme.mouseTheme.style.type);
+    }
 
-    //debug
-    // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-    //             1000.0f / io.Framerate, io.Framerate);
+    // debug
+    //  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+    //              1000.0f / io.Framerate, io.Framerate);
 
     // Rendering
     ImGui::Render();
@@ -425,8 +442,8 @@ int main(int, char **) {
     SettingsWindow::RenderFrame();
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 
-    //todo move it to seperate function
-    // fps limiter
+    // todo move it to seperate function
+    //  fps limiter
     const auto frameEnd{std::chrono::steady_clock::now()};
 
     const double frameTime{
@@ -452,8 +469,10 @@ int main(int, char **) {
   ::DestroyWindow(s_hwnd);
   ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
-  // tray test
   Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
+
+  // applying config before quit
+  Config::Apply(Config::activeConfig);
 
   timeEndPeriod(1);
   return 0;
@@ -462,61 +481,64 @@ int main(int, char **) {
 // Main functions
 
 void renderKeyboard(
-    const Input::Layout &layout, const std::array<bool, 256> &currentKeysDown,
+    const Layouts::Layout &layout, const std::array<bool, 256> &currentKeysDown,
     const std::array<bool, 256>
         &currentFullKeysDown) { // todo maybe remove currentFullKeysDown
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   ImGui::PushFont(Fonts::activeFont);
 
-  for (const auto &key : Input::activeLayout.keys) {
-    bool down{currentKeysDown[key.keyCode]};
-    // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
+  for (const auto &key : Layouts::activeLayout.keys) {
+    if (key.keyCode != Consts::MouseInputVKCODE) {
+      bool down{currentKeysDown[key.keyCode]};
+      // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
 
-    // i did first if statement for peoples who have caps binded to smth, you
-    // can remove it if you want to show caps lock toogle state without changing
-    // buttons labels
-    if (Config::activeConfig.font.letterCase.options.capsLockDisplay) {
-      if (key.keyCode == VK_CAPITAL) {
-        down = (GetKeyState(VK_CAPITAL) & 1) != 0;
+      // i did first if statement for peoples who have caps binded to smth, you
+      // can remove it if you want to show caps lock toogle state without
+      // changing buttons labels
+      if (Config::activeConfig.font.letterCase.options.capsLockDisplay) {
+        if (key.keyCode == VK_CAPITAL) {
+          down = (GetKeyState(VK_CAPITAL) & 1) != 0;
+        }
       }
+
+      ImVec2 topLeft{key.x, key.y};
+      ImVec2 bottomRight{key.x + key.w, key.y + key.h};
+
+      ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
+                      : Config::ToImU32(Config::activeConfig.theme.idleFill)};
+
+      ImU32 textColor{
+          down ? Config::ToImU32(Config::activeConfig.theme.activeText)
+               : Config::ToImU32(Config::activeConfig.theme
+                                     .idleText)}; // oposite the fill color
+
+      float rounding{Config::activeConfig.theme.keyRounding};
+
+      draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
+      if (Config::activeConfig.theme.keyOutline.enable) {
+        ImU32 outlineColor{
+            Config::ToImU32(Config::activeConfig.theme.keyOutline.color)};
+        float thickness{Config::activeConfig.theme.keyOutline.thickness};
+        draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0,
+                      thickness);
+      }
+      // outline
+
+      std::string displayLabel{Fonts::handleLetterCase(
+          currentFullKeysDown, Config::activeConfig.font, key)};
+
+      ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
+      ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
+                     key.y + (key.h - textSize.y) * 0.5f};
+      draw->AddText(textPos, textColor, displayLabel.c_str());
     }
-
-    ImVec2 topLeft{key.x, key.y};
-    ImVec2 bottomRight{key.x + key.w, key.y + key.h};
-
-    ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
-                    : Config::ToImU32(Config::activeConfig.theme.idleFill)};
-
-    ImU32 textColor{
-        down ? Config::ToImU32(Config::activeConfig.theme.activeText)
-             : Config::ToImU32(Config::activeConfig.theme
-                                   .idleText)}; // oposite the fill color
-
-    float rounding{Config::activeConfig.theme.keyRounding};
-
-    draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-    if (Config::activeConfig.theme.keyOutline.enable) {
-      ImU32 outlineColor{
-          Config::ToImU32(Config::activeConfig.theme.keyOutline.color)};
-      float thickness{Config::activeConfig.theme.keyOutline.thickness};
-      draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
-    }
-    // outline
-
-    std::string displayLabel{Fonts::handleLetterCase(
-        currentFullKeysDown, Config::activeConfig.font, key)};
-
-    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-    ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
-                   key.y + (key.h - textSize.y) * 0.5f};
-    draw->AddText(textPos, textColor, displayLabel.c_str());
   }
   ImGui::PopFont();
 }
 
 // to do make it by toogle
 
-bool detectAnyKeyChanged(const Input::Layout &layout,
+bool detectAnyKeyChanged(const Layouts::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentKeysDown) {
   bool anyKeyChanged = false;
@@ -537,7 +559,7 @@ void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown) {
   }
 }
 
-void commitKeyState(const Input::Layout &layout,
+void commitKeyState(const Layouts::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     std::array<bool, 256> &outPrevKeyState) {
   for (const auto &key : layout.keys) {
@@ -546,7 +568,7 @@ void commitKeyState(const Input::Layout &layout,
 }
 
 // sound functions
-void handleKeySound(const Input::Layout &layout,
+void handleKeySound(const Layouts::Layout &layout,
                     const std::array<bool, 256> &prevKeyState,
                     const std::array<bool, 256> &currentKeysDown) {
   for (const auto &key : layout.keys) {
@@ -570,7 +592,7 @@ void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
 void handleObsMode() {
   static bool lastObsModeCondition{Config::activeConfig.misc.obsMode};
   if (Config::activeConfig.misc.obsMode != lastObsModeCondition) {
-    Tray::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
+    MainWindow::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
     lastObsModeCondition = Config::activeConfig.misc.obsMode;
   }
 
@@ -584,15 +606,14 @@ void handleObsMode() {
 
 // Helper functions
 bool RegisterRawMouseInput(HWND hwnd) {
-    RAWINPUTDEVICE rid{};
-    rid.usUsagePage = 0x01; // Generic Desktop Controls
-    rid.usUsage = 0x02;     // Mouse
-    rid.dwFlags = RIDEV_INPUTSINK; // input without focus
-    rid.hwndTarget = hwnd;
+  RAWINPUTDEVICE rid{};
+  rid.usUsagePage = 0x01;        // Generic Desktop Controls
+  rid.usUsage = 0x02;            // Mouse
+  rid.dwFlags = RIDEV_INPUTSINK; // input without focus
+  rid.hwndTarget = hwnd;
 
-    return RegisterRawInputDevices(&rid, 1, sizeof(rid));
+  return RegisterRawInputDevices(&rid, 1, sizeof(rid));
 }
-
 
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
   LARGE_INTEGER now;
@@ -706,21 +727,23 @@ void CleanupRenderTarget() {
     g_mainRenderTargetView = nullptr;
   }
 }
-void WM_RawMouseInputHandle(LPARAM lParam){
-      UINT dataSize;
-      GetRawInputData((HRAWINPUT)lParam, RID_INPUT, nullptr, &dataSize, sizeof(RAWINPUTHEADER));
+void WM_RawMouseInputHandle(LPARAM lParam) {
+  UINT dataSize;
+  GetRawInputData((HRAWINPUT)lParam, RID_INPUT, nullptr, &dataSize,
+                  sizeof(RAWINPUTHEADER));
 
-      if (dataSize > 0) {
-          std::vector<BYTE> buffer(dataSize);
-          if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer.data(), &dataSize, sizeof(RAWINPUTHEADER)) == dataSize) {
-              RAWINPUT* raw = (RAWINPUT*)buffer.data();
-              if (raw->header.dwType == RIM_TYPEMOUSE) {
-                  LONG rawDeltaX = raw->data.mouse.lLastX;
-                  LONG rawDeltaY = raw->data.mouse.lLastY;
-                  Mouse::g_mouseState.addRawDelta(rawDeltaX, rawDeltaY); 
-              }
-          }
+  if (dataSize > 0) {
+    std::vector<BYTE> buffer(dataSize);
+    if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, buffer.data(), &dataSize,
+                        sizeof(RAWINPUTHEADER)) == dataSize) {
+      RAWINPUT *raw = (RAWINPUT *)buffer.data();
+      if (raw->header.dwType == RIM_TYPEMOUSE) {
+        LONG rawDeltaX = raw->data.mouse.lLastX;
+        LONG rawDeltaY = raw->data.mouse.lLastY;
+        Mouse::g_mouseState.addRawDelta(rawDeltaX, rawDeltaY);
       }
+    }
+  }
 }
 
 // Forward declare message handler from imgui_impl_win32.cpp
@@ -744,8 +767,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
   switch (msg) {
   case WM_INPUT: {
-      WM_RawMouseInputHandle(lParam);
-      break; 
+    WM_RawMouseInputHandle(lParam);
+    break;
   }
   case WM_SIZE:
     if (wParam == SIZE_MINIMIZED)
@@ -766,7 +789,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     Tray::On_WM_COMMAND(wParam, lParam, hWnd);
     return 0;
   case WM_NCHITTEST:
-    if (Tray::g_dragMode) {
+    if (MainWindow::g_dragMode) {
       LRESULT position = DefWindowProc(hWnd, msg, wParam, lParam);
       return position == HTCLIENT ? HTCAPTION : position;
     }

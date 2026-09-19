@@ -1,5 +1,4 @@
 #include "ConfigJson.h"
-#include "InputHandle.h"
 #include <nlohmann/json.hpp>
 
 namespace Config {
@@ -21,24 +20,57 @@ void from_json(const json &j, Outline &outline) {
     j.at("thickness").get_to(outline.thickness);
 }
 
-void to_json(json &j, const Theme &theme) {
-  j = {{"idleFill", theme.idleFill},
-       {"activeFill", theme.activeFill},
-       {"idleText", theme.idleText},
-       {"activeText", theme.activeText},
-       {"keyRounding", theme.keyRounding},
-       {"keyOutline", theme.keyOutline},
-       {"obsBackground", theme.obsBackground},
+void to_json(json &j, const MouseTheme &mouseTheme) {
+  j = {{"enabled", mouseTheme.enabled},
+       {"style", mouseTheme.style},
+       {"innerCircle", mouseTheme.innerCircle},
+       {"outerCircle", mouseTheme.outerCircle},
+       {"lerpColor", mouseTheme.lerpColor},
+       {"radius", mouseTheme.radius},
+       {"smallRadius", mouseTheme.smallRadius},
+       {"outerThickness", mouseTheme.outerThickness},
+       {"sensitivity", mouseTheme.sensitivity},
+       {"decayRate", mouseTheme.decayRate}};
+}
 
-       {"mouseStyle", theme.mouseStyle},
-       {"innerCircle", theme.innerCircle},
-       {"outerCircle", theme.outerCircle},
-       {"lerpColor", theme.lerpColor},
-       {"radius", theme.radius},
-       {"smallRadius", theme.smallRadius},
-       {"outerThickness", theme.outerThickness},
-       {"mouseSensitivity", theme.mouseSensitivity},
-       {"mouseDecayRate", theme.mouseDecayRate}};
+void from_json(const json &j, MouseTheme &mouseTheme) {
+
+  if (j.contains("enabled"))
+    j.at("enabled").get_to(mouseTheme.enabled);
+
+  if (j.contains("style"))
+    j.at("style").get_to(mouseTheme.style);
+
+  if (j.contains("innerCircle"))
+    j.at("innerCircle").get_to(mouseTheme.innerCircle);
+
+  if (j.contains("outerCircle"))
+    j.at("outerCircle").get_to(mouseTheme.outerCircle);
+
+  if (j.contains("lerpColor"))
+    j.at("lerpColor").get_to(mouseTheme.lerpColor);
+
+  if (j.contains("radius"))
+    j.at("radius").get_to(mouseTheme.radius);
+
+  if (j.contains("smallRadius"))
+    j.at("smallRadius").get_to(mouseTheme.smallRadius);
+
+  if (j.contains("outerThickness"))
+    j.at("outerThickness").get_to(mouseTheme.outerThickness);
+
+  if (j.contains("sensitivity"))
+    j.at("sensitivity").get_to(mouseTheme.sensitivity);
+
+  if (j.contains("decayRate"))
+    j.at("decayRate").get_to(mouseTheme.decayRate);
+}
+
+void to_json(json &j, const Theme &theme) {
+  j = {{"idleFill", theme.idleFill},          {"activeFill", theme.activeFill},
+       {"idleText", theme.idleText},          {"activeText", theme.activeText},
+       {"keyRounding", theme.keyRounding},    {"keyOutline", theme.keyOutline},
+       {"obsBackground", theme.obsBackground}};
 }
 
 void from_json(const json &j, Theme &theme) {
@@ -62,33 +94,6 @@ void from_json(const json &j, Theme &theme) {
 
   if (j.contains("obsBackground"))
     j.at("obsBackground").get_to(theme.obsBackground);
-
-  if (j.contains("mouseStyle"))
-    j.at("mouseStyle").get_to(theme.mouseStyle);
-
-  if (j.contains("innerCircle"))
-    j.at("innerCircle").get_to(theme.innerCircle);
-
-  if (j.contains("outerCircle"))
-    j.at("outerCircle").get_to(theme.outerCircle);
-
-  if (j.contains("lerpColor"))
-    j.at("lerpColor").get_to(theme.lerpColor);
-
-  if (j.contains("radius"))
-    j.at("radius").get_to(theme.radius);
-
-  if (j.contains("smallRadius"))
-    j.at("smallRadius").get_to(theme.smallRadius);
-
-  if (j.contains("outerThickness"))
-    j.at("outerThickness").get_to(theme.outerThickness);
-
-  if (j.contains("mouseSensitivity"))
-    j.at("mouseSensitivity").get_to(theme.mouseSensitivity);
-
-  if (j.contains("mouseDecayRate"))
-    j.at("mouseDecayRate").get_to(theme.mouseDecayRate);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {
@@ -247,3 +252,75 @@ void from_json(const json &j, MouseStyle &mouseStyle) {
     j.at("type").get_to(mouseStyle.type);
 }
 } // namespace Mouse
+
+namespace Layouts {
+void to_json(nlohmann::json &j, const Key &key) {
+  j = {
+      {"keyCode", key.keyCode},
+      {"label", key.label},
+      {"x", key.x},
+      {"y", key.y},
+      {"w", key.w},
+      {"h", key.h},
+  };
+}
+
+void from_json(const nlohmann::json &j, Key &key) {
+  if (j.contains("keyCode"))
+    j.at("keyCode").get_to(key.keyCode);
+
+  if (j.contains("label"))
+    j.at("label").get_to(key.label);
+
+  if (j.contains("x"))
+    j.at("x").get_to(key.x);
+
+  if (j.contains("y"))
+    j.at("y").get_to(key.y);
+
+  if (j.contains("w"))
+    j.at("w").get_to(key.w);
+
+  if (j.contains("h"))
+    j.at("h").get_to(key.h);
+}
+
+void to_json(nlohmann::json &j, const Mouse &mouse) {
+  j = {
+      {"mouseCenterX", mouse.mouseCenterX},
+      {"mouseCenterY", mouse.mouseCenterY},
+  };
+}
+
+void from_json(const nlohmann::json &j, Mouse &mouse) {
+  if (j.contains("mouseCenterX"))
+    j.at("mouseCenterX").get_to(mouse.mouseCenterX);
+
+  if (j.contains("mouseCenterY"))
+    j.at("mouseCenterY").get_to(mouse.mouseCenterY);
+}
+
+void to_json(nlohmann::json &j, const Layout &layout) {
+  j = {
+      {"windowWidth", layout.windowWidth},
+      {"windowHeight", layout.windowHeight},
+      {"mouse", layout.mouse},
+      {"keys", layout.keys},
+  };
+}
+
+void from_json(const nlohmann::json &j, Layout &layout) {
+  if (j.contains("windowWidth"))
+    j.at("windowWidth").get_to(layout.windowWidth);
+
+  if (j.contains("windowHeight"))
+    j.at("windowHeight").get_to(layout.windowHeight);
+
+  if (j.contains("mouse"))
+    j.at("mouse").get_to(layout.mouse);
+
+  if (j.contains("keys"))
+    j.at("keys").get_to(layout.keys);
+}
+
+} // namespace Layouts
