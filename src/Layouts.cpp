@@ -87,37 +87,116 @@ Helper::FileCreateResult saveLayout(std::string_view name,
   return Helper::FileCreateResult::Success;
 }
 
+bool deleteLayout(std::string_view name) {
+  const auto path = Paths::getLayoutPath(name);
+
+  if (!std::filesystem::exists(path)) {
+    return false;
+  }
+
+  return std::filesystem::remove(path);
+}
+
 void saveUndoClearRedo(LayoutEditState &state) {
   if (state.undoLayouts.size() >= Consts::MAX_UNDO_STEPS) {
     state.undoLayouts.erase(state.undoLayouts.begin());
   }
-  state.undoLayouts.emplace_back(state.layout);
+  if (state.undoIndexes.size() >= Consts::MAX_UNDO_STEPS) {
+    state.undoIndexes.erase(state.undoIndexes.begin());
+  }
+
+  state.undoLayouts.push_back(state.layout);
   state.redoLayouts.clear();
+
+  state.undoIndexes.push_back(state.selectedKeyIndex);
+  state.redoIndexes.clear();
 }
 
 void clearUndo(LayoutEditState &state) {
   state.undoLayouts.clear();
+  state.undoIndexes.clear();
+
   state.redoLayouts.clear();
+  state.redoIndexes.clear();
 }
 
 void undo(LayoutEditState &state) {
   if (state.undoLayouts.empty())
     return;
-  state.redoLayouts.emplace_back(state.layout);
+  state.redoLayouts.push_back(state.layout);
+  state.redoIndexes.push_back(state.selectedKeyIndex);
+
   state.layout = state.undoLayouts.back();
   state.undoLayouts.pop_back();
-  state.selectedKeyIndex = -1;
+
+  if (!state.undoIndexes.empty()) {
+    state.selectedKeyIndex = state.undoIndexes.back();
+    state.undoIndexes.pop_back();
+  }
+
   state.mouseCenterSelected = false;
 }
 
 void redo(LayoutEditState &state) {
   if (state.redoLayouts.empty())
     return;
-  state.undoLayouts.emplace_back(state.layout);
+  state.undoLayouts.push_back(state.layout);
+  state.undoIndexes.push_back(state.selectedKeyIndex);
+
   state.layout = state.redoLayouts.back();
   state.redoLayouts.pop_back();
-  state.selectedKeyIndex = -1;
+
+  if (!state.redoIndexes.empty()) {
+    state.selectedKeyIndex = state.redoIndexes.back();
+    state.redoIndexes.pop_back();
+  }
+
   state.mouseCenterSelected = false;
+}
+
+void recordKeyCode(LayoutEditState &state, Key &key) {
+  if (state.recordingKeyCode) {
+    for (int vk{1}; vk < 256; ++vk) {
+      if (GetAsyncKeyState(vk) & 0x8000) {
+        saveUndoClearRedo(state);
+        key.keyCode = vk;
+        if (key.label.empty()) {
+          key.label = Helper::VkToName(vk);
+        }
+        state.recordingKeyCode = false;
+        break;
+      }
+    }
+  }
+}
+
+void addKey(LayoutEditState &state) {
+  std::pair<float, float> lastKeySize{
+      state.layout.keys.empty()
+          ? std::pair<float, float>{40.0f, 40.0f}
+          : std::pair<float, float>{state.layout.keys.back().w,
+                                    state.layout.keys.back().h}};
+
+  std::pair<float, float> lastKeyPos{
+      state.layout.keys.empty()
+          ? std::pair<float, float>{10.0f, 10.0f}
+          : std::pair<float, float>{state.layout.keys.back().x +
+                                        lastKeySize.first + 1.0f,
+                                    state.layout.keys.back().y}};
+
+  Key newKey{0,
+             "",
+             lastKeyPos.first,
+             lastKeyPos.second,
+             lastKeySize.first,
+             lastKeySize.second};
+  saveUndoClearRedo(state);
+  state.layout.keys.push_back(newKey);
+  state.selectedKeyIndex = (int)state.layout.keys.size() - 1;
+  state.mouseCenterSelected = false;
+
+  //insta record after adding key
+  state.recordingKeyCode = true;
 }
 
 void deleteSelectedKey(LayoutEditState &state) {
@@ -231,6 +310,7 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     ImGui::PopID();
   }
 
+  // mouse
   {
     ImVec2 mousePos{origin.x + state.layout.mouse.mouseCenterX,
                     origin.y + state.layout.mouse.mouseCenterY};
@@ -301,16 +381,7 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   if (ImGui::Button(state.recordingKeyCode ? "Press a key..." : "Record key")) {
     state.recordingKeyCode = true;
   }
-  if (state.recordingKeyCode) {
-    for (int vk{1}; vk < 256; ++vk) {
-      if (GetAsyncKeyState(vk) & 0x8000) {
-        key.keyCode = vk;
-        state.recordingKeyCode = false;
-        break;
-      }
-    }
-    saveUndoClearRedo(state);
-  }
+  recordKeyCode(state, key);
 
   ImGui::DragFloat("X", &key.x, 1.0f);
   if (ImGui::IsItemActivated())
@@ -334,26 +405,29 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   }
 }
 
+
 void drawLayoutEditorTab(LayoutEditState &state) {
   if (ImGui::Button("Edit current layout")) {
+    saveUndoClearRedo(state);
     state.layout = activeLayout;
     state.selectedKeyIndex = -1;
     state.mouseCenterSelected = false;
   }
 
-  if (ImGui::Button("Add key")) {
-    std::pair<float, float> lastKeySize =
-        state.layout.keys.empty()
-            ? std::pair<float, float>{40.0f, 40.0f}
-            : std::pair<float, float>{state.layout.keys.back().w,
-                                      state.layout.keys.back().h};
+  ImGui::SameLine();
 
-    Key newKey{0, "", 10, 10, lastKeySize.first, lastKeySize.second};
+  if (ImGui::Button("Reset layout")) {
     saveUndoClearRedo(state);
-    state.layout.keys.emplace_back(newKey);
-    state.selectedKeyIndex = (int)state.layout.keys.size() - 1;
+    state.layout.keys.clear();
+    state.selectedKeyIndex = -1;
     state.mouseCenterSelected = false;
   }
+
+  if (ImGui::Button("Add key")) {
+    addKey(state);
+  }
+
+  ImGui::SameLine();
 
   ImGui::SetNextItemWidth(150);
   ImGui::InputText("##LayoutName", &state.layoutNameInput);
@@ -368,13 +442,15 @@ void drawLayoutEditorTab(LayoutEditState &state) {
   }
 
   if (!state.layoutNameError.empty()) {
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.2f, 0.2f, 1));
-    ImGui::TextUnformatted(state.layoutNameError.c_str());
-    ImGui::PopStyleColor();
+    Helper::drawErrorInSettings(state.layoutNameError);
   }
 
-  ImGui::SliderInt("Window width", &state.layout.windowWidth, 0, 1920);
-  ImGui::SliderInt("Window height", &state.layout.windowHeight, 0, 1080);
+  // todo get a user resolution to clamp beetwen them
+  ImGui::SliderInt("Window width", &state.layout.windowWidth, 10, 1920);
+  state.layout.windowWidth = std::clamp(state.layout.windowWidth, 10, 1920);
+
+  ImGui::SliderInt("Window height", &state.layout.windowHeight, 10, 1080);
+  state.layout.windowHeight = std::clamp(state.layout.windowHeight, 10, 1080);
 
   ImGui::Separator();
 

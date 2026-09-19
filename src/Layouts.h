@@ -26,14 +26,17 @@ struct Layout {
 };
 
 struct LayoutEditState {
-    Layout layout; 
+    Layout layout{40, 40}; 
     int selectedKeyIndex{-1};
     bool recordingKeyCode{false};
     std::string layoutNameInput;
-    std::vector<Layouts::Layout> undoLayouts{};
-    std::vector<Layouts::Layout> redoLayouts{};
-    bool mouseCenterSelected{false};
 
+    std::vector<Layouts::Layout> undoLayouts{};
+    std::vector<int> undoIndexes{};
+    std::vector<Layouts::Layout> redoLayouts{};
+    std::vector<int> redoIndexes{};
+
+    bool mouseCenterSelected{false};
     std::string layoutNameError{};
 };
 
@@ -45,6 +48,7 @@ extern std::string defaultLayoutName;
 bool installDefaultLayouts();
 void refreshLayouts();
 bool loadLayout(std::string_view name);
+bool deleteLayout(std::string_view name);
 
 // void drawLayoutEditorCanvas(LayoutEditState &state);
 // void drawLayoutEditorProperties(LayoutEditState &state);

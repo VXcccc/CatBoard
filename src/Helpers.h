@@ -21,6 +21,8 @@ enum class FileCreateResult {
 [[noreturn]] void fatalError(const wchar_t *message);
 void errorMesBox(const wchar_t *message);
 
+void drawErrorInSettings(std::string &error);
+
 void refresh(std::vector<std::string> &category,
              const std::filesystem::path &folder, std::string_view ext);
 
@@ -34,6 +36,7 @@ Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color);
 ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color);
 
 std::string getFileCreateError(Helper::FileCreateResult result);
+
 
 }; // namespace Helper
 

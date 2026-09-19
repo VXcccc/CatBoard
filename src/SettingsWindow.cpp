@@ -217,7 +217,7 @@ bool IsVisible() { return s_visible; }
 // Tabs handling
 enum class SettingsTab {
   Visuals,
-  LayoutEditor,
+  Layouts,
   Sounds,
   Misc,
   Binds,
@@ -232,7 +232,7 @@ struct Tab {
 
 std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
     {{"Visuals", SettingsTab::Visuals},
-     {"Layout Editor", SettingsTab::LayoutEditor},
+     {"Layouts", SettingsTab::Layouts},
      {"Sounds", SettingsTab::Sounds},
      {"Misc", SettingsTab::Misc},
      {"Binds", SettingsTab::Binds},
@@ -266,6 +266,7 @@ struct SettingsEditState {
 
   std::string configName{};
 
+  // not writing this to the config
   std::size_t currentLayout{};
   std::size_t currentConfig{};
   std::size_t currentSound{};
@@ -274,6 +275,9 @@ struct SettingsEditState {
 
   std::string configNameInput{};
   std::string configNameError;
+  std::string layoutDeleteError{};
+
+  bool showLayoutEditor{};
 };
 
 void restoreFromConfig(SettingsEditState &state,
@@ -507,20 +511,7 @@ void drawMouseSection(SettingsEditState &state) {
 }
 
 void drawLayoutsSection(SettingsEditState &state) {
-  ImGui::SeparatorText("Layouts");
-
-  drawLayoutCombo(state);
-
-  if (ImGui::Button("Open layout folder")) {
-    Paths::openLayoutDirectory();
-  }
-
-  ImGui::SameLine();
-
-  if (ImGui::Button("Refresh layouts")) {
-    Layouts::refreshLayouts();
-    validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
-  }
+  ImGui::SeparatorText("Font");
 
   drawFontCombo(state);
 
@@ -567,6 +558,48 @@ void drawVisualsTab(SettingsEditState &state) {
   drawMouseSection(state);
 
   drawLayoutsSection(state);
+}
+
+void drawLayoutsTab(SettingsEditState &state,
+                    Layouts::LayoutEditState &layoutEditState) {
+  drawLayoutCombo(state);
+
+  if (ImGui::Button("Open layout folder")) {
+    Paths::openLayoutDirectory();
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Refresh layouts")) {
+    Layouts::refreshLayouts();
+    validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Delete layout")) {
+    if (state.selectedLayout != Layouts::defaultLayoutName &&
+        Layouts::layouts.size() > 1) {
+      state.layoutDeleteError.clear();
+
+      Layouts::deleteLayout(state.selectedLayout);
+      Layouts::refreshLayouts();
+      validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
+    } else {
+      state.layoutDeleteError = "You can not delete default or last layout";
+    }
+  }
+
+  if (!state.layoutDeleteError.empty()) {
+    Helper::drawErrorInSettings(state.layoutDeleteError);
+  }
+
+  ImGui::SeparatorText("Editor");
+
+  ImGui::Checkbox("Show layout editor", &state.showLayoutEditor);
+  if (state.showLayoutEditor) {
+    Layouts::drawLayoutEditorTab(layoutEditState);
+  }
 }
 
 void drawMiscTab(SettingsEditState &state) {
@@ -671,9 +704,7 @@ void drawConfigsTab(SettingsEditState &state) {
   }
 
   if (!state.configNameError.empty()) {
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1, 0.2f, 0.2f, 1));
-    ImGui::TextUnformatted(state.configNameError.c_str());
-    ImGui::PopStyleColor();
+    Helper::drawErrorInSettings(state.configNameError);
   }
 
   if (ImGui::Button("Open config folder")) {
@@ -765,8 +796,8 @@ void RenderFrame() {
   case SettingsTab::Visuals:
     drawVisualsTab(editState);
     break;
-  case SettingsTab::LayoutEditor:
-    Layouts::drawLayoutEditorTab(layoutEditState);
+  case SettingsTab::Layouts:
+    drawLayoutsTab(editState, layoutEditState);
     break;
   case SettingsTab::Sounds:
     drawSoundsTab(editState);
@@ -790,7 +821,8 @@ void RenderFrame() {
   Config::activeConfig = newSettings;
 
   if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds ||
-      currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc) {
+      currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc ||
+      currentTab == SettingsTab::Layouts) {
     drawApplyCancel(editState, newSettings);
   }
 

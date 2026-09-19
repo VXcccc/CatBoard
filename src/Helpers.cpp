@@ -1,11 +1,13 @@
 #include "Helpers.h"
 #include "Config.h"
+#include "Constants.h"
 #include "imgui.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
 #include <filesystem>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 #include <windows.h>
@@ -20,6 +22,32 @@ namespace Helper {
 
 void errorMesBox(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Error", MB_OK | MB_ICONERROR);
+}
+
+void drawErrorInSettings(std::string &error) {
+  static double hideAt = 0.0;
+  static std::string lastError;
+
+  if (error.empty()) {
+    lastError.clear();
+    hideAt = 0.0;
+    return;
+  }
+  if (error != lastError) {
+    lastError = error;
+    hideAt = ImGui::GetTime() + Consts::ERROR_DELETE_TIME;
+  }
+  if (ImGui::GetTime() >= hideAt) {
+    error.clear();
+    lastError.clear();
+    hideAt = 0.0;
+    return;
+  }
+
+  ImVec4 redColor{1, 0.2f, 0.2f, 1};
+  ImGui::PushStyleColor(ImGuiCol_Text, redColor);
+  ImGui::TextUnformatted(error.c_str());
+  ImGui::PopStyleColor();
 }
 
 int toColorRGB(float value) {

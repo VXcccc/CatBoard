@@ -488,7 +488,6 @@ void renderKeyboard(
   ImGui::PushFont(Fonts::activeFont);
 
   for (const auto &key : Layouts::activeLayout.keys) {
-    if (key.keyCode != Consts::MouseInputVKCODE) {
       bool down{currentKeysDown[key.keyCode]};
       // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
 
@@ -532,7 +531,6 @@ void renderKeyboard(
                      key.y + (key.h - textSize.y) * 0.5f};
       draw->AddText(textPos, textColor, displayLabel.c_str());
     }
-  }
   ImGui::PopFont();
 }
 
