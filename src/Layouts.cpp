@@ -8,10 +8,12 @@
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 #include <string_view>
 #include <vector>
+#include <winuser.h>
 using json = nlohmann::json;
 
 namespace Layouts {
@@ -157,6 +159,9 @@ void redo(LayoutEditState &state) {
 void recordKeyCode(LayoutEditState &state, Key &key) {
   if (state.recordingKeyCode) {
     for (int vk{1}; vk < 256; ++vk) {
+      if (vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU) {
+        continue;
+      }
       if (GetAsyncKeyState(vk) & 0x8000) {
         saveUndoClearRedo(state);
         key.keyCode = vk;
@@ -171,17 +176,14 @@ void recordKeyCode(LayoutEditState &state, Key &key) {
 }
 
 void addKey(LayoutEditState &state) {
-  std::pair<float, float> lastKeySize{
-      state.layout.keys.empty()
-          ? std::pair<float, float>{40.0f, 40.0f}
-          : std::pair<float, float>{state.layout.keys.back().w,
-                                    state.layout.keys.back().h}};
+  std::pair<float, float> lastKeySize{state.defaultKeyWidth,
+                                      state.defaultKeyHeight};
 
   std::pair<float, float> lastKeyPos{
       state.layout.keys.empty()
           ? std::pair<float, float>{10.0f, 10.0f}
           : std::pair<float, float>{state.layout.keys.back().x +
-                                        lastKeySize.first + 1.0f,
+                                        lastKeySize.first + state.gap,
                                     state.layout.keys.back().y}};
 
   Key newKey{0,
@@ -195,8 +197,9 @@ void addKey(LayoutEditState &state) {
   state.selectedKeyIndex = (int)state.layout.keys.size() - 1;
   state.mouseCenterSelected = false;
 
-  //insta record after adding key
+  // insta record after adding key
   state.recordingKeyCode = true;
+  state.focusLabelInput = true;
 }
 
 void deleteSelectedKey(LayoutEditState &state) {
@@ -208,6 +211,13 @@ void deleteSelectedKey(LayoutEditState &state) {
 }
 
 void handleEditorShortcuts(LayoutEditState &state) {
+  std::array<std::pair<ImGuiKey, ImVec2>, 4> moveKeys{{
+      {ImGuiKey_UpArrow, {0.0f, -state.step}},
+      {ImGuiKey_DownArrow, {0.0f, state.step}},
+      {ImGuiKey_LeftArrow, {-state.step, 0.0f}},
+      {ImGuiKey_RightArrow, {state.step, 0.0f}},
+  }};
+
   if (ImGui::GetIO().WantTextInput)
     return;
 
@@ -221,9 +231,31 @@ void handleEditorShortcuts(LayoutEditState &state) {
     return;
   }
 
+  ImVec2 delta{};
+
   if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !state.mouseCenterSelected) {
     saveUndoClearRedo(state);
     deleteSelectedKey(state);
+  }
+
+  // arrows handle
+  for (const auto &[key, movement] : moveKeys) {
+    if (ImGui::IsKeyPressed(key)) {
+      delta.x += movement.x;
+      delta.y += movement.y;
+    }
+  }
+
+  if (delta.x == 0.0f && delta.y == 0.0f)
+    return;
+  saveUndoClearRedo(state);
+
+  if (state.selectedKeyIndex >= 0 &&
+      state.selectedKeyIndex < static_cast<int>(state.layout.keys.size())) {
+
+    auto &key{state.layout.keys[state.selectedKeyIndex]};
+    key.x += delta.x;
+    key.y += delta.y;
   }
 }
 
@@ -255,6 +287,8 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     ImVec2 keyPosMax{keyPos.x + key.w, keyPos.y + key.h};
 
     ImGui::PushID(i);
+    ImGui::SetNextItemSelectionUserData(i);
+
     ImGui::SetCursorScreenPos(keyPos);
     ImGui::SetNextItemAllowOverlap();
     ImGui::InvisibleButton("body", ImVec2(key.w, key.h));
@@ -341,23 +375,24 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
   }
 
   // debug
-  char debugText[96];
-  snprintf(debugText, sizeof(debugText),
-           "selectedKeyIndex: %d, mouseCenterSelected: %d",
-           state.selectedKeyIndex, state.mouseCenterSelected);
-  draw->AddText({origin.x + 10.0f, origin.y + 10.0f},
-                IM_COL32(255, 255, 0, 255), debugText);
+
+  // char debugText[96];
+  // snprintf(debugText, sizeof(debugText),
+  //          "selectedKeyIndex: %d, mouseCenterSelected: %d",
+  //          state.selectedKeyIndex, state.mouseCenterSelected);
+  // draw->AddText({origin.x + 10.0f, origin.y + 10.0f},
+  //               IM_COL32(255, 255, 0, 255), debugText);
 }
 
 void drawLayoutEditorProperties(LayoutEditState &state) {
   if (state.mouseCenterSelected) {
     ImGui::Text("Mouse center");
 
-    ImGui::DragFloat("X", &state.layout.mouse.mouseCenterX, 1.0f);
+    ImGui::DragFloat("X", &state.layout.mouse.mouseCenterX, state.step);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
-    ImGui::DragFloat("Y", &state.layout.mouse.mouseCenterY, 1.0f);
+    ImGui::DragFloat("Y", &state.layout.mouse.mouseCenterY, state.step);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
@@ -372,6 +407,10 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
 
   Key &key{state.layout.keys[state.selectedKeyIndex]};
 
+  if (state.focusLabelInput) {
+    ImGui::SetKeyboardFocusHere();
+    state.focusLabelInput = false;
+  }
   ImGui::InputText("##label", &key.label);
   if (ImGui::IsItemActivated())
     saveUndoClearRedo(state);
@@ -383,19 +422,19 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   }
   recordKeyCode(state, key);
 
-  ImGui::DragFloat("X", &key.x, 1.0f);
+  ImGui::DragFloat("X", &key.x, state.step);
   if (ImGui::IsItemActivated())
     saveUndoClearRedo(state);
 
-  ImGui::DragFloat("Y", &key.y, 1.0f);
+  ImGui::DragFloat("Y", &key.y, state.step);
   if (ImGui::IsItemActivated())
     saveUndoClearRedo(state);
 
-  ImGui::DragFloat("W", &key.w, 1.0f, 1.0f, 2000.0f);
+  ImGui::DragFloat("W", &key.w, state.step, 1.0f, 2000.0f);
   if (ImGui::IsItemActivated())
     saveUndoClearRedo(state);
 
-  ImGui::DragFloat("H", &key.h, 1.0f, 1.0f, 2000.0f);
+  ImGui::DragFloat("H", &key.h, state.step, 1.0f, 2000.0f);
   if (ImGui::IsItemActivated())
     saveUndoClearRedo(state);
 
@@ -405,13 +444,17 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   }
 }
 
-
 void drawLayoutEditorTab(LayoutEditState &state) {
+  ImDrawList *draw{ImGui::GetWindowDrawList()};
+
+  ImGui::BeginChild("Options", ImVec2(410, 120), true);
+
   if (ImGui::Button("Edit current layout")) {
     saveUndoClearRedo(state);
     state.layout = activeLayout;
     state.selectedKeyIndex = -1;
     state.mouseCenterSelected = false;
+    state.layoutNameInput = Config::activeConfig.selectedLayout;
   }
 
   ImGui::SameLine();
@@ -446,11 +489,39 @@ void drawLayoutEditorTab(LayoutEditState &state) {
   }
 
   // todo get a user resolution to clamp beetwen them
+  ImGui::SetNextItemWidth(300);
   ImGui::SliderInt("Window width", &state.layout.windowWidth, 10, 1920);
   state.layout.windowWidth = std::clamp(state.layout.windowWidth, 10, 1920);
 
+  ImGui::SetNextItemWidth(300);
   ImGui::SliderInt("Window height", &state.layout.windowHeight, 10, 1080);
   state.layout.windowHeight = std::clamp(state.layout.windowHeight, 10, 1080);
+
+  ImGui::EndChild();
+
+  ImGui::SameLine();
+
+  ImGui::BeginChild("add key options", ImVec2(410, 120), true);
+
+  ImGui::SetNextItemWidth(300);
+  ImGui::SliderFloat("Gap", &state.gap, 0.0f, 10.0f, "%.2f");
+  state.gap = std::clamp(state.gap, -20.0f, 100.0f); // freedom
+
+  ImGui::SetNextItemWidth(300);
+  ImGui::SliderFloat("Step", &state.step, 0.0f, 10.0f, "%.2f");
+  state.step = std::clamp(state.step, 0.0f, 100.0f);
+
+  ImGui::SetNextItemWidth(300);
+  ImGui::SliderFloat("Key width", &state.defaultKeyWidth, 10.0f, 200.0f,
+                     "%.0f");
+  state.defaultKeyWidth = std::clamp(state.defaultKeyWidth, 10.0f, 200.0f);
+
+  ImGui::SetNextItemWidth(300);
+  ImGui::SliderFloat("Key height", &state.defaultKeyHeight, 10.0f, 200.0f,
+                     "%.0f");
+  state.defaultKeyHeight = std::clamp(state.defaultKeyHeight, 10.0f, 200.0f);
+
+  ImGui::EndChild();
 
   ImGui::Separator();
 

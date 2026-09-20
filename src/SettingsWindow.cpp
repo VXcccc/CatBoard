@@ -510,7 +510,7 @@ void drawMouseSection(SettingsEditState &state) {
   }
 }
 
-void drawLayoutsSection(SettingsEditState &state) {
+void drawFontSection(SettingsEditState &state) {
   ImGui::SeparatorText("Font");
 
   drawFontCombo(state);
@@ -557,7 +557,7 @@ void drawVisualsTab(SettingsEditState &state) {
   drawKeyboardSection(state);
   drawMouseSection(state);
 
-  drawLayoutsSection(state);
+  drawFontSection(state);
 }
 
 void drawLayoutsTab(SettingsEditState &state,
