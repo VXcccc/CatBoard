@@ -1,6 +1,7 @@
 #include "Helpers.h"
 #include "Config.h"
 #include "Constants.h"
+#include "SettingsWindow.h"
 #include "imgui.h"
 #include <algorithm>
 #include <cmath>
@@ -9,6 +10,7 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 #include <windows.h>
 #include <winuser.h>
@@ -49,6 +51,7 @@ void drawErrorInSettings(std::string &error) {
   ImGui::TextUnformatted(error.c_str());
   ImGui::PopStyleColor();
 }
+
 
 int toColorRGB(float value) {
   value = std::clamp(value, 0.0f, 1.0f);

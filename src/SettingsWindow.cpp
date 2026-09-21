@@ -91,6 +91,8 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam,
   return ::DefWindowProcW(hWnd, msg, wParam, lParam);
 }
 
+HWND GetHWND() { return s_hwnd; }
+
 bool Create(HINSTANCE hInstance, ID3D11Device *device,
             ID3D11DeviceContext *deviceContext) {
   s_device = device;
@@ -109,7 +111,7 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
 
   s_hwnd = ::CreateWindowExW(0, wc.lpszClassName, L"CatBoard Settings",
                              WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
-                             600, 400, nullptr, nullptr, hInstance, nullptr);
+                             900, 600, nullptr, nullptr, hInstance, nullptr);
 
   RECT rc;
 
@@ -780,7 +782,8 @@ void RenderFrame() {
   ImGui::Begin("SettingsRoot", nullptr,
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
-                   ImGuiWindowFlags_NoSavedSettings);
+                   ImGuiWindowFlags_NoSavedSettings |
+                   ImGuiWindowFlags_HorizontalScrollbar);
 
   for (size_t i{0}; i < std::size(tabs); ++i) {
     if (ImGui::Button(tabs[i].label,

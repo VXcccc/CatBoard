@@ -13,6 +13,7 @@
 #include <fstream>
 #include <string_view>
 #include <vector>
+#include <winscard.h>
 #include <winuser.h>
 using json = nlohmann::json;
 
@@ -20,6 +21,12 @@ namespace Layouts {
 std::vector<std::string> layouts{};
 Layout activeLayout{};
 std::string defaultLayoutName{"layout7t"};
+
+bool operator==(const Key &k1, const Key &k2) {
+  return (k1.x == k2.x && k1.y == k2.y && k1.w == k2.w && k1.h == k2.h &&
+          k1.label == k2.label && k1.keyCode == k2.keyCode);
+}
+bool operator!=(const Key &k1, const Key &k2) { return !(k1 == k2); }
 
 void refreshLayouts() {
   Helper::refresh(layouts, Paths::layoutDirectory(), ".json");
@@ -103,37 +110,37 @@ void saveUndoClearRedo(LayoutEditState &state) {
   if (state.undoLayouts.size() >= Consts::MAX_UNDO_STEPS) {
     state.undoLayouts.erase(state.undoLayouts.begin());
   }
-  if (state.undoIndexes.size() >= Consts::MAX_UNDO_STEPS) {
-    state.undoIndexes.erase(state.undoIndexes.begin());
+  if (state.undoSelections.size() >= Consts::MAX_UNDO_STEPS) {
+    state.undoSelections.erase(state.undoSelections.begin());
   }
 
   state.undoLayouts.push_back(state.layout);
   state.redoLayouts.clear();
 
-  state.undoIndexes.push_back(state.selectedKeyIndex);
-  state.redoIndexes.clear();
+  state.undoSelections.push_back(state.selection);
+  state.redoSelections.clear();
 }
 
 void clearUndo(LayoutEditState &state) {
   state.undoLayouts.clear();
-  state.undoIndexes.clear();
+  state.undoSelections.clear();
 
   state.redoLayouts.clear();
-  state.redoIndexes.clear();
+  state.redoSelections.clear();
 }
 
 void undo(LayoutEditState &state) {
   if (state.undoLayouts.empty())
     return;
   state.redoLayouts.push_back(state.layout);
-  state.redoIndexes.push_back(state.selectedKeyIndex);
+  state.redoSelections.push_back(state.selection);
 
   state.layout = state.undoLayouts.back();
   state.undoLayouts.pop_back();
 
-  if (!state.undoIndexes.empty()) {
-    state.selectedKeyIndex = state.undoIndexes.back();
-    state.undoIndexes.pop_back();
+  if (!state.undoLayouts.empty()) {
+    state.selection = state.undoSelections.back();
+    state.undoSelections.pop_back();
   }
 
   state.mouseCenterSelected = false;
@@ -143,17 +150,147 @@ void redo(LayoutEditState &state) {
   if (state.redoLayouts.empty())
     return;
   state.undoLayouts.push_back(state.layout);
-  state.undoIndexes.push_back(state.selectedKeyIndex);
+  state.undoSelections.push_back(state.selection);
 
   state.layout = state.redoLayouts.back();
   state.redoLayouts.pop_back();
 
-  if (!state.redoIndexes.empty()) {
-    state.selectedKeyIndex = state.redoIndexes.back();
-    state.redoIndexes.pop_back();
+  if (!state.redoSelections.empty()) {
+    state.selection = state.redoSelections.back();
+    state.redoSelections.pop_back();
   }
 
   state.mouseCenterSelected = false;
+}
+
+void setKeyProperty(Key &key, KeyProp prop, float value) {
+  switch (prop) {
+  case KeyProp::X:
+    key.x = value;
+    break;
+  case KeyProp::Y:
+    key.y = value;
+    break;
+  case KeyProp::W:
+    key.w = value;
+    break;
+  case KeyProp::H:
+    key.h = value;
+    break;
+  default:
+    break;
+  }
+}
+
+float getKeyProperty(const Key &key, KeyProp prop) {
+  switch (prop) {
+  case KeyProp::X:
+    return key.x;
+  case KeyProp::Y:
+    return key.y;
+  case KeyProp::W:
+    return key.w;
+  case KeyProp::H:
+    return key.h;
+  default:
+    break;
+  }
+
+  return 0.0f;
+}
+
+bool isKeysPropsEqual(LayoutEditState &state, KeyProp prop) {
+  if (state.selection.Size < 2)
+    return true;
+
+  void *it{nullptr};
+  ImGuiID id{};
+
+  if (!state.selection.GetNextSelectedItem(&it, &id))
+    return true;
+
+  const float firstValue{
+      getKeyProperty(state.layout.keys[static_cast<int>(id)], prop)};
+
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    const float value{
+        getKeyProperty(state.layout.keys[static_cast<int>(id)], prop)};
+
+    if (value != firstValue)
+      return false;
+  }
+
+  return true;
+}
+
+void setSelectedKeysProperty(LayoutEditState &state, KeyProp prop,
+                             float value) {
+  void *it{nullptr};
+  ImGuiID id{};
+
+  if (!state.selection.GetNextSelectedItem(&it, &id))
+    return;
+
+  const int firstIdx{static_cast<int>(id)};
+  Key &firstKey{state.layout.keys[firstIdx]};
+
+  const bool sameY{isKeysPropsEqual(state, KeyProp::Y)};
+  const bool sameX{isKeysPropsEqual(state, KeyProp::X)};
+
+  const float oldValue{getKeyProperty(firstKey, prop)};
+  const float delta{value - oldValue};
+
+  setKeyProperty(firstKey, prop, value);
+
+  int offset{1};
+
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    const int idx{static_cast<int>(id)};
+    Key &key{state.layout.keys[idx]};
+
+    if (state.moveWhenMultiResize) {
+      if (prop == KeyProp::W && sameY) {
+        key.x += delta * offset;
+      } else if (prop == KeyProp::H && sameX) {
+        key.y += delta * offset;
+      }
+    }
+
+    setKeyProperty(key, prop, value);
+
+    ++offset;
+  }
+}
+
+void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop) {
+  if (!isKeysPropsEqual(state, prop))
+    return;
+
+  void *it{nullptr};
+  ImGuiID id{};
+
+  if (!state.selection.GetNextSelectedItem(&it, &id))
+    return;
+
+  float value{getKeyProperty(state.layout.keys[static_cast<int>(id)], prop)};
+
+  float min{0.0f};
+  float max{0.0f};
+
+  if (prop == KeyProp::W || prop == KeyProp::H) {
+    min = 1.0f;
+    max = 2000.0f;
+  }
+
+  const bool changed{
+      ImGui::DragFloat(KeyPropName[static_cast<int>(prop)].c_str(), &value,
+                       state.step, min, max)};
+
+  if (ImGui::IsItemActivated())
+    saveUndoClearRedo(state);
+
+  if (changed)
+    setSelectedKeysProperty(state, prop, value);
 }
 
 void recordKeyCode(LayoutEditState &state, Key &key) {
@@ -194,7 +331,7 @@ void addKey(LayoutEditState &state) {
              lastKeySize.second};
   saveUndoClearRedo(state);
   state.layout.keys.push_back(newKey);
-  state.selectedKeyIndex = (int)state.layout.keys.size() - 1;
+  state.selection.SetItemSelected((int)state.layout.keys.size() - 1, true);
   state.mouseCenterSelected = false;
 
   // insta record after adding key
@@ -202,12 +339,34 @@ void addKey(LayoutEditState &state) {
   state.focusLabelInput = true;
 }
 
-void deleteSelectedKey(LayoutEditState &state) {
-  if (state.selectedKeyIndex < 0 ||
-      state.selectedKeyIndex >= (int)state.layout.keys.size())
-    return;
-  state.layout.keys.erase(state.layout.keys.begin() + state.selectedKeyIndex);
-  state.selectedKeyIndex = -1;
+void deleteSelectedKeys(LayoutEditState &state) {
+  std::vector<int> indices;
+  void *it{nullptr};
+  ImGuiID id;
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    indices.push_back(static_cast<int>(id));
+  }
+
+  std::sort(indices.rbegin(), indices.rend());
+
+  for (int i : indices) {
+    if (i >= 0 && i < (int)state.layout.keys.size()) {
+      state.layout.keys.erase(state.layout.keys.begin() + i);
+    }
+  }
+
+  state.selection.Clear();
+}
+
+void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
+  void *it{nullptr};
+  ImGuiID id;
+
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    int idx{static_cast<int>(id)};
+    state.layout.keys[idx].x += delta.x;
+    state.layout.keys[idx].y += delta.y;
+  }
 }
 
 void handleEditorShortcuts(LayoutEditState &state) {
@@ -231,12 +390,12 @@ void handleEditorShortcuts(LayoutEditState &state) {
     return;
   }
 
-  ImVec2 delta{};
-
   if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !state.mouseCenterSelected) {
     saveUndoClearRedo(state);
-    deleteSelectedKey(state);
+    deleteSelectedKeys(state);
   }
+
+  ImVec2 delta{};
 
   // arrows handle
   for (const auto &[key, movement] : moveKeys) {
@@ -250,18 +409,14 @@ void handleEditorShortcuts(LayoutEditState &state) {
     return;
   saveUndoClearRedo(state);
 
-  if (state.selectedKeyIndex >= 0 &&
-      state.selectedKeyIndex < static_cast<int>(state.layout.keys.size())) {
-
-    auto &key{state.layout.keys[state.selectedKeyIndex]};
-    key.x += delta.x;
-    key.y += delta.y;
+  if (state.selection.Size > 0 &&
+      state.selection.Size < static_cast<int>(state.layout.keys.size())) {
+    moveSelectedKeys(state, delta);
   }
 }
 
 void drawLayoutEditorCanvas(LayoutEditState &state) {
   handleEditorShortcuts(state);
-
   ImVec2 origin{ImGui::GetCursorScreenPos()};
   ImDrawList *draw{ImGui::GetWindowDrawList()};
   const auto whiteCol32 = IM_COL32(255, 255, 255, 255);
@@ -270,79 +425,6 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
                 {origin.x + state.layout.windowWidth,
                  origin.y + state.layout.windowHeight},
                 IM_COL32(255, 255, 255, 80));
-
-  ImGui::SetCursorScreenPos(origin);
-  ImGui::SetNextItemAllowOverlap();
-  ImGui::InvisibleButton(
-      "canvas bg", ImVec2(state.layout.windowWidth, state.layout.windowHeight));
-
-  if (ImGui::IsItemClicked()) {
-    state.selectedKeyIndex = -1;
-    state.mouseCenterSelected = false;
-  }
-
-  for (int i{0}; i < static_cast<int>(state.layout.keys.size()); ++i) {
-    Key &key{state.layout.keys[i]};
-    ImVec2 keyPos{origin.x + key.x, origin.y + key.y};
-    ImVec2 keyPosMax{keyPos.x + key.w, keyPos.y + key.h};
-
-    ImGui::PushID(i);
-    ImGui::SetNextItemSelectionUserData(i);
-
-    ImGui::SetCursorScreenPos(keyPos);
-    ImGui::SetNextItemAllowOverlap();
-    ImGui::InvisibleButton("body", ImVec2(key.w, key.h));
-
-    if (ImGui::IsItemActivated()) {
-      state.selectedKeyIndex = i;
-      state.mouseCenterSelected = false;
-      saveUndoClearRedo(state);
-    }
-    if (ImGui::IsItemActive() &&
-        ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-      ImVec2 delta{ImGui::GetIO().MouseDelta};
-      key.x += delta.x;
-      key.y += delta.y;
-    }
-
-    bool isSelected{!state.mouseCenterSelected && state.selectedKeyIndex == i};
-    ImU32 fill{isSelected ? IM_COL32(80, 140, 255, 180)
-                          : IM_COL32(60, 60, 60, 180)};
-
-    draw->AddRectFilled(keyPos, keyPosMax, fill,
-                        Config::activeConfig.theme.keyRounding);
-    draw->AddRect(keyPos, keyPosMax, whiteCol32,
-                  Config::activeConfig.theme.keyRounding);
-
-    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-    ImVec2 textPos{keyPos.x + (key.w - textSize.x) * 0.5f,
-                   keyPos.y + (key.h - textSize.y) * 0.5f};
-    draw->AddText(textPos, whiteCol32, key.label.c_str());
-
-    constexpr float handleSize{5.0f};
-    ImVec2 handlePos{keyPos.x + key.w - handleSize,
-                     keyPos.y + key.h - handleSize};
-    ImGui::SetCursorScreenPos(handlePos);
-    ImGui::InvisibleButton("resize", ImVec2(handleSize, handleSize));
-
-    if (ImGui::IsItemActivated()) {
-      state.selectedKeyIndex = i;
-      state.mouseCenterSelected = false;
-      saveUndoClearRedo(state);
-    }
-    if (ImGui::IsItemActive() &&
-        ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-      ImVec2 delta{ImGui::GetIO().MouseDelta};
-      key.w = (std::max)(10.0f, key.w + delta.x);
-      key.h = (std::max)(10.0f, key.h + delta.y);
-    }
-
-    draw->AddRectFilled(handlePos,
-                        {handlePos.x + handleSize, handlePos.y + handleSize},
-                        IM_COL32(255, 255, 255, 255));
-
-    ImGui::PopID();
-  }
 
   // mouse
   {
@@ -356,7 +438,7 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
 
     if (ImGui::IsItemActivated()) {
       state.mouseCenterSelected = true;
-      state.selectedKeyIndex = -1;
+      state.selection.Clear();
       saveUndoClearRedo(state);
     }
     if (ImGui::IsItemActive() &&
@@ -374,14 +456,66 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     ImGui::PopID();
   }
 
-  // debug
+  ImGuiMultiSelectFlags msFlags{ImGuiMultiSelectFlags_BoxSelect2d |
+                                ImGuiMultiSelectFlags_NoRangeSelect |
+                                ImGuiMultiSelectFlags_ClearOnEscape |
+                                ImGuiMultiSelectFlags_ClearOnClickVoid};
 
-  // char debugText[96];
-  // snprintf(debugText, sizeof(debugText),
-  //          "selectedKeyIndex: %d, mouseCenterSelected: %d",
-  //          state.selectedKeyIndex, state.mouseCenterSelected);
-  // draw->AddText({origin.x + 10.0f, origin.y + 10.0f},
-  //               IM_COL32(255, 255, 0, 255), debugText);
+  ImGuiMultiSelectIO *msIo{ImGui::BeginMultiSelect(
+      msFlags, state.selection.Size, (int)state.layout.keys.size())};
+  state.selection.ApplyRequests(msIo);
+
+  for (int i{0}; i < static_cast<int>(state.layout.keys.size()); ++i) {
+    Key &key{state.layout.keys[i]};
+    ImVec2 keyPos{origin.x + key.x, origin.y + key.y};
+    ImVec2 keyPosMax{keyPos.x + key.w, keyPos.y + key.h};
+    bool isSelected{state.selection.Contains((ImGuiID)i)};
+
+    ImGui::PushID(i);
+    ImGui::SetCursorScreenPos(keyPos);
+    ImGui::SetNextItemSelectionUserData(i);
+    ImGui::Selectable("##body", isSelected, ImGuiSelectableFlags_None,
+                      ImVec2(key.w, key.h));
+
+    if (ImGui::IsItemActivated()) {
+      state.mouseCenterSelected = false;
+      saveUndoClearRedo(state);
+    }
+    if (ImGui::IsItemActive() &&
+        ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+
+      ImVec2 delta{ImGui::GetIO().MouseDelta};
+
+      moveSelectedKeys(state, delta);
+
+      if (!state.selection.Contains(static_cast<ImGuiID>(i))) {
+        key.x += delta.x;
+        key.y += delta.y;
+      }
+    }
+
+    ImU32 fill{isSelected ? IM_COL32(80, 140, 255, 180)
+                          : IM_COL32(60, 60, 60, 180)};
+
+    draw->AddRectFilled(keyPos, keyPosMax, fill,
+                        Config::activeConfig.theme.keyRounding);
+    draw->AddRect(keyPos, keyPosMax, whiteCol32,
+                  Config::activeConfig.theme.keyRounding);
+
+    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
+    ImVec2 textPos{keyPos.x + (key.w - textSize.x) * 0.5f,
+                   keyPos.y + (key.h - textSize.y) * 0.5f};
+    draw->AddText(textPos, whiteCol32, key.label.c_str());
+
+    ImGui::PopID();
+  }
+
+  msIo = ImGui::EndMultiSelect();
+  state.selection.ApplyRequests(msIo);
+
+  // debug
+  // Helper::drawDebugText("mouseCenterSelected: %d, selectedKeyIndex: %d",
+  //                       state.mouseCenterSelected, state.selectedKeyIndex);
 }
 
 void drawLayoutEditorProperties(LayoutEditState &state) {
@@ -399,54 +533,58 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
     return;
   }
 
-  if (state.selectedKeyIndex < 0 ||
-      state.selectedKeyIndex >= (int)state.layout.keys.size()) {
-    ImGui::TextDisabled("No key selected");
+  if (state.selection.Size == 0) {
+    ImGui::TextDisabled("No keys selected");
     return;
   }
 
-  Key &key{state.layout.keys[state.selectedKeyIndex]};
+  void *it{nullptr};
+  ImGuiID id;
 
-  if (state.focusLabelInput) {
-    ImGui::SetKeyboardFocusHere();
-    state.focusLabelInput = false;
+  if (!state.selection.GetNextSelectedItem(&it, &id))
+    return;
+
+  int idx{static_cast<int>(id)};
+
+  Key &key{state.layout.keys[idx]};
+
+  if (state.selection.Size == 1) {
+    if (state.focusLabelInput) {
+      ImGui::SetKeyboardFocusHere();
+      state.focusLabelInput = false;
+    }
+
+    ImGui::InputText("##label", &key.label);
+    if (ImGui::IsItemActivated())
+      saveUndoClearRedo(state);
+
+    ImGui::Text("Key code: %d", key.keyCode);
+    ImGui::SameLine();
+    if (ImGui::Button(state.recordingKeyCode ? "Press a key..."
+                                             : "Record key")) {
+      state.recordingKeyCode = true;
+    }
+
+    recordKeyCode(state, key);
+
+  } else if (state.selection.Size > 1) {
+    ImGui::Text("%d keys selected", state.selection.Size);
   }
-  ImGui::InputText("##label", &key.label);
-  if (ImGui::IsItemActivated())
-    saveUndoClearRedo(state);
 
-  ImGui::Text("Key code: %d", key.keyCode);
-  ImGui::SameLine();
-  if (ImGui::Button(state.recordingKeyCode ? "Press a key..." : "Record key")) {
-    state.recordingKeyCode = true;
-  }
-  recordKeyCode(state, key);
+  drawMultiKeyProperty(state, KeyProp::X);
+  drawMultiKeyProperty(state, KeyProp::Y);
+  drawMultiKeyProperty(state, KeyProp::W);
+  drawMultiKeyProperty(state, KeyProp::H);
 
-  ImGui::DragFloat("X", &key.x, state.step);
-  if (ImGui::IsItemActivated())
+  std::string deleteButtonLabel{state.selection.Size > 1 ? "Delete keys"
+                                                         : "Delete key"};
+  if (ImGui::Button(deleteButtonLabel.c_str())) {
     saveUndoClearRedo(state);
-
-  ImGui::DragFloat("Y", &key.y, state.step);
-  if (ImGui::IsItemActivated())
-    saveUndoClearRedo(state);
-
-  ImGui::DragFloat("W", &key.w, state.step, 1.0f, 2000.0f);
-  if (ImGui::IsItemActivated())
-    saveUndoClearRedo(state);
-
-  ImGui::DragFloat("H", &key.h, state.step, 1.0f, 2000.0f);
-  if (ImGui::IsItemActivated())
-    saveUndoClearRedo(state);
-
-  if (ImGui::Button("Delete key")) {
-    saveUndoClearRedo(state);
-    deleteSelectedKey(state);
+    deleteSelectedKeys(state);
   }
 }
 
-void drawLayoutEditorTab(LayoutEditState &state) {
-  ImDrawList *draw{ImGui::GetWindowDrawList()};
-
+void drawLayoutEditorOptions(LayoutEditState &state) {
   ImGui::BeginChild("Options", ImVec2(410, 120), true);
 
   if (ImGui::Button("Edit current layout")) {
@@ -521,9 +659,17 @@ void drawLayoutEditorTab(LayoutEditState &state) {
                      "%.0f");
   state.defaultKeyHeight = std::clamp(state.defaultKeyHeight, 10.0f, 200.0f);
 
-  ImGui::EndChild();
+  ImGui::Checkbox("Move with multi resize", &state.moveWhenMultiResize);
 
-  ImGui::Separator();
+  ImGui::EndChild();
+}
+
+void drawLayoutEditorTab(LayoutEditState &state) {
+  ImDrawList *draw{ImGui::GetWindowDrawList()};
+
+  drawLayoutEditorOptions(state);
+
+  ImGui::SeparatorText("");
 
   ImGui::BeginChild(
       "canvas",

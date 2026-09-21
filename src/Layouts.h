@@ -2,8 +2,13 @@
 
 #include "imgui.h"
 #include <nlohmann/json.hpp>
+#include <string>
 
 namespace Layouts {
+
+enum class KeyProp { X, Y, W, H, maxProps };
+constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::maxProps)>
+    KeyPropName{"X", "Y", "W", "H"};
 
 struct Key {
   int keyCode;
@@ -13,10 +18,12 @@ struct Key {
   float w;
   float h;
 };
+bool operator==(const Key &k1, const Key &k2);
+bool operator!=(const Key &k1, const Key &k2);
 
 struct Mouse {
-  float mouseCenterX{0.0f};
-  float mouseCenterY{0.0f};
+  float mouseCenterX{10.0f};
+  float mouseCenterY{10.0f};
 };
 
 struct Layout {
@@ -27,15 +34,15 @@ struct Layout {
 };
 
 struct LayoutEditState {
-  Layout layout{40, 40};
+  Layout layout{230, 230};
   int selectedKeyIndex{-1};
   bool recordingKeyCode{false};
   std::string layoutNameInput;
 
   std::vector<Layouts::Layout> undoLayouts{};
-  std::vector<int> undoIndexes{};
+  std::vector<ImGuiSelectionBasicStorage> undoSelections{};
   std::vector<Layouts::Layout> redoLayouts{};
-  std::vector<int> redoIndexes{};
+  std::vector<ImGuiSelectionBasicStorage> redoSelections{};
 
   bool mouseCenterSelected{false};
   std::string layoutNameError{};
@@ -48,6 +55,7 @@ struct LayoutEditState {
   bool focusLabelInput{false};
 
   ImGuiSelectionBasicStorage selection;
+  bool moveWhenMultiResize{true};
 };
 
 extern std::vector<std::string> layouts;
