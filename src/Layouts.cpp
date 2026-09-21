@@ -9,8 +9,10 @@
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <string_view>
 #include <vector>
 #include <winscard.h>
@@ -369,6 +371,24 @@ void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
   }
 }
 
+void changeSelectedLetterCase(
+    LayoutEditState &state,
+    std::function<char(unsigned char)> lambdaTransform) {
+
+  if (state.selection.Size == 0)
+    return;
+  saveUndoClearRedo(state);
+  void *it{nullptr};
+  ImGuiID id{};
+
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    const int idx{static_cast<int>(id)};
+    std::string &label{state.layout.keys[idx].label};
+
+    std::transform(label.begin(), label.end(), label.begin(), lambdaTransform);
+  }
+}
+
 void handleEditorShortcuts(LayoutEditState &state) {
   std::array<std::pair<ImGuiKey, ImVec2>, 4> moveKeys{{
       {ImGuiKey_UpArrow, {0.0f, -state.step}},
@@ -396,18 +416,25 @@ void handleEditorShortcuts(LayoutEditState &state) {
   }
 
   ImVec2 delta{};
+  bool startedNewMove{false};
 
   // arrows handle
   for (const auto &[key, movement] : moveKeys) {
-    if (ImGui::IsKeyPressed(key)) {
+    if (ImGui::IsKeyPressed(key, true)) {
       delta.x += movement.x;
       delta.y += movement.y;
+    }
+    if (ImGui::IsKeyPressed(key, false)) {
+      startedNewMove = true;
     }
   }
 
   if (delta.x == 0.0f && delta.y == 0.0f)
     return;
-  saveUndoClearRedo(state);
+
+  if (startedNewMove) {
+    saveUndoClearRedo(state);
+  }
 
   if (state.selection.Size > 0 &&
       state.selection.Size < static_cast<int>(state.layout.keys.size())) {
@@ -575,6 +602,18 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   drawMultiKeyProperty(state, KeyProp::Y);
   drawMultiKeyProperty(state, KeyProp::W);
   drawMultiKeyProperty(state, KeyProp::H);
+
+  if (ImGui::Button("UPPER")) {
+    changeSelectedLetterCase(state,
+                             [](unsigned char c) { return std::toupper(c); });
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("lower")) {
+    changeSelectedLetterCase(state,
+                             [](unsigned char c) { return std::tolower(c); });
+  }
 
   std::string deleteButtonLabel{state.selection.Size > 1 ? "Delete keys"
                                                          : "Delete key"};
