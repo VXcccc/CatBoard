@@ -262,6 +262,7 @@ void to_json(nlohmann::json &j, const Key &key) {
   j = {
       {"keyCode", key.keyCode},
       {"label", key.label},
+      {"shiftLabel", key.shiftLabel},
       {"x", key.x},
       {"y", key.y},
       {"w", key.w},
@@ -275,6 +276,9 @@ void from_json(const nlohmann::json &j, Key &key) {
 
   if (j.contains("label"))
     j.at("label").get_to(key.label);
+
+  if (j.contains("shiftLabel"))
+    j.at("shiftLabel").get_to(key.shiftLabel);
 
   if (j.contains("x"))
     j.at("x").get_to(key.x);

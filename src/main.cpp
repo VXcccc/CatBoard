@@ -29,6 +29,8 @@
 #include <cstdlib>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <hidclass.h>
+#include <hidusage.h>
 #include <shellapi.h>
 #include <tchar.h>
 #include <thread>
@@ -243,7 +245,9 @@ int main(int, char **) {
   }
   Fonts::refreshFonts();
   if (!(Fonts::loadFont(Config::activeConfig.font))) {
-    Helper::fatalError(L"Failed to load font");
+    if (!(Fonts::loadFont(Fonts::Font{}))) {
+      Helper::fatalError(L"Failed to load font");
+    }
   }
 
   SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext);
@@ -321,6 +325,8 @@ int main(int, char **) {
         Config::activeConfig.font.sizePixels != lastAppliedFont.sizePixels) {
       if (Fonts::loadFont(Config::activeConfig.font)) {
         lastAppliedFont = Config::activeConfig.font;
+      } else {
+        Fonts::loadFont(Fonts::Font{});
       }
     }
 
@@ -488,49 +494,48 @@ void renderKeyboard(
   ImGui::PushFont(Fonts::activeFont);
 
   for (const auto &key : Layouts::activeLayout.keys) {
-      bool down{currentKeysDown[key.keyCode]};
-      // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
+    bool down{currentKeysDown[key.keyCode]};
+    // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
 
-      // i did first if statement for peoples who have caps binded to smth, you
-      // can remove it if you want to show caps lock toogle state without
-      // changing buttons labels
-      if (Config::activeConfig.font.letterCase.options.capsLockDisplay) {
-        if (key.keyCode == VK_CAPITAL) {
-          down = (GetKeyState(VK_CAPITAL) & 1) != 0;
-        }
+    // i did first if statement for peoples who have caps binded to smth, you
+    // can remove it if you want to show caps lock toogle state without
+    // changing buttons labels
+    if (Config::activeConfig.font.letterCase.options.capsLockDisplay) {
+      if (key.keyCode == VK_CAPITAL) {
+        down = (GetKeyState(VK_CAPITAL) & 1) != 0;
       }
-
-      ImVec2 topLeft{key.x, key.y};
-      ImVec2 bottomRight{key.x + key.w, key.y + key.h};
-
-      ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
-                      : Config::ToImU32(Config::activeConfig.theme.idleFill)};
-
-      ImU32 textColor{
-          down ? Config::ToImU32(Config::activeConfig.theme.activeText)
-               : Config::ToImU32(Config::activeConfig.theme
-                                     .idleText)}; // oposite the fill color
-
-      float rounding{Config::activeConfig.theme.keyRounding};
-
-      draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-      if (Config::activeConfig.theme.keyOutline.enable) {
-        ImU32 outlineColor{
-            Config::ToImU32(Config::activeConfig.theme.keyOutline.color)};
-        float thickness{Config::activeConfig.theme.keyOutline.thickness};
-        draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0,
-                      thickness);
-      }
-      // outline
-
-      std::string displayLabel{Fonts::handleLetterCase(
-          currentFullKeysDown, Config::activeConfig.font, key)};
-
-      ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-      ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
-                     key.y + (key.h - textSize.y) * 0.5f};
-      draw->AddText(textPos, textColor, displayLabel.c_str());
     }
+
+    ImVec2 topLeft{key.x, key.y};
+    ImVec2 bottomRight{key.x + key.w, key.y + key.h};
+
+    ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
+                    : Config::ToImU32(Config::activeConfig.theme.idleFill)};
+
+    ImU32 textColor{
+        down ? Config::ToImU32(Config::activeConfig.theme.activeText)
+             : Config::ToImU32(Config::activeConfig.theme
+                                   .idleText)}; // oposite the fill color
+
+    float rounding{Config::activeConfig.theme.keyRounding};
+
+    draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
+    if (Config::activeConfig.theme.keyOutline.enable) {
+      ImU32 outlineColor{
+          Config::ToImU32(Config::activeConfig.theme.keyOutline.color)};
+      float thickness{Config::activeConfig.theme.keyOutline.thickness};
+      draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
+    }
+    // outline
+
+    std::string displayLabel{Fonts::handleLetterCase(
+        currentFullKeysDown, Config::activeConfig.font, key)};
+
+    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
+    ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
+                   key.y + (key.h - textSize.y) * 0.5f};
+    draw->AddText(textPos, textColor, displayLabel.c_str());
+  }
   ImGui::PopFont();
 }
 
@@ -605,8 +610,8 @@ void handleObsMode() {
 // Helper functions
 bool RegisterRawMouseInput(HWND hwnd) {
   RAWINPUTDEVICE rid{};
-  rid.usUsagePage = 0x01;        // Generic Desktop Controls
-  rid.usUsage = 0x02;            // Mouse
+  rid.usUsagePage = HID_USAGE_GENERIC_POINTER;
+  rid.usUsage = HID_USAGE_GENERIC_MOUSE;
   rid.dwFlags = RIDEV_INPUTSINK; // input without focus
   rid.hwndTarget = hwnd;
 

@@ -164,7 +164,14 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   ImGuiContext *prev = ImGui::GetCurrentContext();
   ImGui::SetCurrentContext(s_imguiContext);
 
-  ImGui::GetIO().IniFilename = nullptr; // .ini for settings
+  ImGuiIO &io = ImGui::GetIO();
+
+  Fonts::Font settingsFont{"JetBrainsMonoNerdFontMono-Bold", 17.0f};
+  ImFont *font = io.Fonts->AddFontFromFileTTF(
+      Paths::getFontPath(settingsFont.name).string().c_str(),
+      settingsFont.sizePixels);
+
+  io.IniFilename = nullptr; // .ini for settings
   ImGui::StyleColorsDark();
   ImGui_ImplWin32_Init(s_hwnd);
   ImGui_ImplDX11_Init(s_device, s_deviceContext);
@@ -787,7 +794,7 @@ void RenderFrame() {
 
   for (size_t i{0}; i < std::size(tabs); ++i) {
     if (ImGui::Button(tabs[i].label,
-                      ImVec2((500.0f / std::size(tabs) - 9),
+                      ImVec2(ImGui::GetWindowSize().x / std::size(tabs) - 12.0f,
                              25.0f))) // todo remove magic numbers
       currentTab = tabs[i].type;
 

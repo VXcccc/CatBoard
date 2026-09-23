@@ -12,7 +12,6 @@
 #include <cctype>
 #include <filesystem>
 #include <fstream>
-#include <functional>
 #include <string_view>
 #include <vector>
 #include <winscard.h>
@@ -26,7 +25,8 @@ std::string defaultLayoutName{"layout7t"};
 
 bool operator==(const Key &k1, const Key &k2) {
   return (k1.x == k2.x && k1.y == k2.y && k1.w == k2.w && k1.h == k2.h &&
-          k1.label == k2.label && k1.keyCode == k2.keyCode);
+          k1.label == k2.label && k1.keyCode == k2.keyCode &&
+          k1.shiftLabel == k2.shiftLabel);
 }
 bool operator!=(const Key &k1, const Key &k2) { return !(k1 == k2); }
 
@@ -295,6 +295,30 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop) {
     setSelectedKeysProperty(state, prop, value);
 }
 
+float mostFreqWH(const std::vector<Key> &keys, KeyProp prop) {
+
+  int maxCount{0};
+  float result{0.0f};
+
+  for (const auto &key : keys) {
+    const float value{getKeyProperty(key, prop)};
+
+    int count{0};
+    for (const auto &otherKey : keys) {
+      if (value == getKeyProperty(otherKey, prop)) {
+        ++count;
+      }
+    }
+
+    if (count > maxCount || (count == maxCount && value > result)) {
+      maxCount = count;
+      result = value;
+    }
+  }
+
+  return result;
+}
+
 void recordKeyCode(LayoutEditState &state, Key &key) {
   if (state.recordingKeyCode) {
     for (int vk{1}; vk < 256; ++vk) {
@@ -308,6 +332,8 @@ void recordKeyCode(LayoutEditState &state, Key &key) {
           key.label = Helper::VkToName(vk);
         }
         state.recordingKeyCode = false;
+
+        state.focusLabelInput = true;
         break;
       }
     }
@@ -315,6 +341,7 @@ void recordKeyCode(LayoutEditState &state, Key &key) {
 }
 
 void addKey(LayoutEditState &state) {
+  state.selection.Clear();
   std::pair<float, float> lastKeySize{state.defaultKeyWidth,
                                       state.defaultKeyHeight};
 
@@ -327,6 +354,7 @@ void addKey(LayoutEditState &state) {
 
   Key newKey{0,
              "",
+             "",
              lastKeyPos.first,
              lastKeyPos.second,
              lastKeySize.first,
@@ -338,7 +366,7 @@ void addKey(LayoutEditState &state) {
 
   // insta record after adding key
   state.recordingKeyCode = true;
-  state.focusLabelInput = true;
+  // state.focusLabelInput = true;
 }
 
 void deleteSelectedKeys(LayoutEditState &state) {
@@ -371,13 +399,14 @@ void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
   }
 }
 
-void changeSelectedLetterCase(
-    LayoutEditState &state,
-    std::function<char(unsigned char)> lambdaTransform) {
+void changeSelectedLetterCase(LayoutEditState &state, bool upper) {
 
   if (state.selection.Size == 0)
     return;
   saveUndoClearRedo(state);
+
+  auto lambda{upper ? [](unsigned char c) { return std::toupper(c); }
+                    : [](unsigned char c) { return std::tolower(c); }};
   void *it{nullptr};
   ImGuiID id{};
 
@@ -385,7 +414,7 @@ void changeSelectedLetterCase(
     const int idx{static_cast<int>(id)};
     std::string &label{state.layout.keys[idx].label};
 
-    std::transform(label.begin(), label.end(), label.begin(), lambdaTransform);
+    std::transform(label.begin(), label.end(), label.begin(), lambda);
   }
 }
 
@@ -453,6 +482,9 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
                  origin.y + state.layout.windowHeight},
                 IM_COL32(255, 255, 255, 80));
 
+  auto &colors = ImGui::GetStyle().Colors;
+
+  colors[ImGuiCol_NavHighlight] = ImVec4(0, 0, 0, 0);
   // mouse
   {
     ImVec2 mousePos{origin.x + state.layout.mouse.mouseCenterX,
@@ -581,7 +613,11 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
       state.focusLabelInput = false;
     }
 
-    ImGui::InputText("##label", &key.label);
+    ImGui::InputText("Label", &key.label);
+    if (ImGui::IsItemActivated())
+      saveUndoClearRedo(state);
+
+    ImGui::InputText("Shift label", &key.shiftLabel);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
@@ -604,15 +640,13 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   drawMultiKeyProperty(state, KeyProp::H);
 
   if (ImGui::Button("UPPER")) {
-    changeSelectedLetterCase(state,
-                             [](unsigned char c) { return std::toupper(c); });
+    changeSelectedLetterCase(state, true);
   }
 
   ImGui::SameLine();
 
   if (ImGui::Button("lower")) {
-    changeSelectedLetterCase(state,
-                             [](unsigned char c) { return std::tolower(c); });
+    changeSelectedLetterCase(state, false);
   }
 
   std::string deleteButtonLabel{state.selection.Size > 1 ? "Delete keys"
@@ -629,9 +663,11 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
   if (ImGui::Button("Edit current layout")) {
     saveUndoClearRedo(state);
     state.layout = activeLayout;
-    state.selectedKeyIndex = -1;
+    state.selection.Clear();
     state.mouseCenterSelected = false;
     state.layoutNameInput = Config::activeConfig.selectedLayout;
+    state.defaultKeyHeight = mostFreqWH(state.layout.keys, KeyProp::H);
+    state.defaultKeyWidth = mostFreqWH(state.layout.keys, KeyProp::W);
   }
 
   ImGui::SameLine();
@@ -639,7 +675,7 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
   if (ImGui::Button("Reset layout")) {
     saveUndoClearRedo(state);
     state.layout.keys.clear();
-    state.selectedKeyIndex = -1;
+    state.selection.Clear();
     state.mouseCenterSelected = false;
   }
 
@@ -653,12 +689,52 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
   ImGui::InputText("##LayoutName", &state.layoutNameInput);
   ImGui::SameLine();
   if (ImGui::Button("Save layout")) {
-    clearUndo(state);
-    state.layoutNameError = Helper::getFileCreateError(
-        saveLayout(state.layoutNameInput, state.layout));
-    if (state.layoutNameError.empty()) {
-      refreshLayouts();
+    const auto path = Paths::getLayoutPath(state.layoutNameInput);
+
+    if (std::filesystem::exists(path)) {
+      ImGui::OpenPopup("Save Layout");
+    } else {
+      clearUndo(state);
+
+      state.layoutNameError = Helper::getFileCreateError(
+          saveLayout(state.layoutNameInput, state.layout));
+
+      if (state.layoutNameError.empty()) {
+        refreshLayouts();
+      }
     }
+  }
+
+  if (ImGui::BeginPopupModal("Save Layout", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+
+    ImGui::Text("A layout with this name already exists.\n"
+                "Do you want to overwrite it?");
+
+    if (ImGui::Button("Yes", ImVec2(100, 0))) {
+      clearUndo(state);
+
+      state.layoutNameError = Helper::getFileCreateError(
+          saveLayout(state.layoutNameInput, state.layout));
+
+      if (state.layoutNameError.empty()) {
+        refreshLayouts();
+
+        if (state.layoutNameInput == Config::activeConfig.selectedLayout) {
+          loadLayout(state.layoutNameInput);
+        }
+      }
+
+      ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("No", ImVec2(100, 0))) {
+      ImGui::CloseCurrentPopup();
+    }
+
+    ImGui::EndPopup();
   }
 
   if (!state.layoutNameError.empty()) {

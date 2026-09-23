@@ -13,6 +13,7 @@ constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::maxProps)>
 struct Key {
   int keyCode;
   std::string label;
+  std::string shiftLabel;
   float x;
   float y;
   float w;
@@ -35,7 +36,6 @@ struct Layout {
 
 struct LayoutEditState {
   Layout layout{230, 230};
-  int selectedKeyIndex{-1};
   bool recordingKeyCode{false};
   std::string layoutNameInput;
 

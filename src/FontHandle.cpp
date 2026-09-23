@@ -1,4 +1,5 @@
 #include "FontHandle.h"
+#include "Constants.h"
 #include "Helpers.h"
 #include "Paths.h"
 #include "imgui.h"
@@ -19,11 +20,16 @@ const float defaultPixelsSize{20.0f};
 bool loadFont(const Font &font) {
   ImGuiIO &io{ImGui::GetIO()};
 
+  const auto path{Paths::getFontPath(font.name)};
+
+  if (!std::filesystem::exists(path)) {
+    return false;
+  }
+
   io.Fonts->Clear();
 
-  std::string pathString{Paths::getFontPath(font.name).string()};
   activeFont =
-      io.Fonts->AddFontFromFileTTF(pathString.c_str(), font.sizePixels);
+      io.Fonts->AddFontFromFileTTF(path.string().c_str(), font.sizePixels);
 
   if (!activeFont) {
     return false;
@@ -55,17 +61,51 @@ bool installDefaultFonts() {
   return !ec;
 }
 
-bool isLetterKey(const Layouts::Key &key) {
-  return (key.keyCode >= 'A' && key.keyCode <= 'Z');
+// bool isLetterKey(const Layouts::Key &key) {
+//   return (key.keyCode >= 'A' && key.keyCode <= 'Z');
+// }
+
+bool isLetterKey(int vkCode) {
+  HWND foreground{GetForegroundWindow()};
+  DWORD threadId{GetWindowThreadProcessId(foreground, nullptr)};
+  HKL layout{GetKeyboardLayout(threadId)};
+
+  BYTE keyState[256]{};
+  WCHAR buffer[5]{};
+  UINT scanCode{MapVirtualKeyExW(vkCode, MAPVK_VK_TO_VSC, layout)};
+
+  int result{ToUnicodeEx(vkCode, scanCode, keyState, buffer, 5, 0, layout)};
+  return result > 0 && iswalpha(buffer[0]);
 }
 
+// std::string changeStringCase(std::string_view label, bool upper) {
+//   auto lambda{upper ? [](unsigned char c) { return std::toupper(c); }
+//                     : [](unsigned char c) { return std::tolower(c); }};
+//
+//   std::string result{label};
+//   std::transform(result.begin(), result.end(), result.begin(), lambda);
+//
+//   return result;
+// }
+
 std::string changeStringCase(std::string_view label, bool upper) {
-  auto lambda{upper ? [](unsigned char c) { return std::toupper(c); }
-                    : [](unsigned char c) { return std::tolower(c); }};
+  int wlen{MultiByteToWideChar(CP_UTF8, 0, label.data(), (int)label.size(),
+                               nullptr, 0)};
+  std::wstring wide(wlen, L'\0');
+  MultiByteToWideChar(CP_UTF8, 0, label.data(), (int)label.size(), wide.data(),
+                      wlen);
 
-  std::string result{label};
-  std::transform(result.begin(), result.end(), result.begin(), lambda);
+  if (upper) {
+    CharUpperBuffW(wide.data(), (DWORD)wide.size());
+  } else {
+    CharLowerBuffW(wide.data(), (DWORD)wide.size());
+  }
 
+  int u8len{WideCharToMultiByte(CP_UTF8, 0, wide.data(), (int)wide.size(),
+                                nullptr, 0, nullptr, nullptr)};
+  std::string result(u8len, '\0');
+  WideCharToMultiByte(CP_UTF8, 0, wide.data(), (int)wide.size(), result.data(),
+                      u8len, nullptr, nullptr);
   return result;
 }
 
@@ -94,7 +134,7 @@ std::string handleCapsLock(const std::array<bool, 256> &currentFullKeysDown,
                            const bool capsLockDown) {
   font.letterCase.upper = !font.letterCase.upper;
   if (capsLockDown) {
-    if (isLetterKey(key)) {
+    if (isLetterKey(key.keyCode)) {
       return changeStringCase(key.label, font.letterCase.upper);
     }
   }
@@ -104,24 +144,21 @@ std::string handleCapsLock(const std::array<bool, 256> &currentFullKeysDown,
 std::string handleShift(const std::array<bool, 256> &currentFullKeysDown,
                         Font &font, const Layouts::Key &key,
                         const bool shiftDown) {
-  static const std::unordered_map<int, char> vkToShiftSymbol{
-      {'1', '!'}, {'2', '@'},  {'3', '#'}, {'4', '$'}, {'5', '%'},
-      {'6', '^'}, {'7', '&'},  {'8', '*'}, {'9', '('}, {'0', ')'},
-      {'-', '_'}, {'=', '+'},  {'[', '{'}, {']', '}'}, {'\\', '|'},
-      {';', ':'}, {'\'', '"'}, {',', '<'}, {'.', '>'}, {'/', '?'}};
 
   font.letterCase.upper = !font.letterCase.upper;
 
   if (shiftDown) {
     if (font.letterCase.options.capsInsensitiveKeys) {
-      auto it{vkToShiftSymbol.find(key.keyCode)};
-      if (it != vkToShiftSymbol.end()) {
-        return {it->second};
+      if (key.shiftLabel == Consts::BLANK_LABEL) {
+        return {""};
+      }
+      if (!key.shiftLabel.empty()) {
+        return {key.shiftLabel};
       }
     }
 
     if (font.letterCase.options.capsSensitiveKeys) {
-      if (isLetterKey(key)) {
+      if (isLetterKey(key.keyCode)) {
         return changeStringCase(key.label, font.letterCase.upper);
       }
     }
