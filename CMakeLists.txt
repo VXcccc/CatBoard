@@ -59,7 +59,10 @@ add_executable(${PROJECT_NAME} WIN32
     ${miniaudio_SOURCE_DIR}/miniaudio.c
 )
 
-target_compile_definitions(${PROJECT_NAME} PRIVATE UNICODE _UNICODE)
+target_compile_definitions(${PROJECT_NAME} PRIVATE
+  UNICODE
+  _UNICODE
+)
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src
@@ -71,9 +74,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
     nlohmann_json::nlohmann_json
-    d3d11 dxgi d3dcompiler dwmapi
+    d3d11 dxgi d3dcompiler dwmapi dcomp
     Vorbis::vorbisfile
-    miniaudio_libvorbis 
+    miniaudio_libvorbis
     winmm
 )
 

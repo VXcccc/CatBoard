@@ -29,6 +29,7 @@
 #include <cstdlib>
 #include <d3d11.h>
 #include <dxgi.h>
+#include <dxgi1_2.h>
 #include <hidclass.h>
 #include <hidusage.h>
 #include <shellapi.h>
@@ -44,15 +45,21 @@
 #include <mmsystem.h>
 #pragma comment(lib, "winmm.lib")
 
+#include <dcomp.h>
+#pragma comment(lib, "dcomp.lib")
+
 // Data
 static ID3D11Device *g_pd3dDevice = nullptr;
 static ID3D11DeviceContext *g_pd3dDeviceContext = nullptr;
-static IDXGISwapChain *g_pSwapChain = nullptr;
+static IDXGISwapChain1 *g_pSwapChain = nullptr;
 static bool g_SwapChainOccluded = false;
 static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
 static bool s_visible = true;
 static HWND s_hwnd = nullptr;
+static IDCompositionDevice *g_dcompDevice = nullptr;
+static IDCompositionTarget *g_dcompTarget = nullptr;
+static IDCompositionVisual *g_dcompVisual = nullptr;
 
 static float g_main_scale{};
 
@@ -188,13 +195,13 @@ int main(int, char **) {
 
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
 
-  s_hwnd = ::CreateWindowExW(WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
-                                 WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
-                             wc.lpszClassName, L"CatBoard Overlay", WS_POPUP,
-                             pos.x, pos.y, windowWidth, windowHeight, nullptr,
-                             nullptr, wc.hInstance, nullptr);
+  s_hwnd = ::CreateWindowExW(
+      WS_EX_NOREDIRECTIONBITMAP | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
+          WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+      wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, pos.x, pos.y,
+      windowWidth, windowHeight, nullptr, nullptr, wc.hInstance, nullptr);
 
-  ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
+  // ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
   if (!RegisterRawMouseInput(s_hwnd)) {
     Helper::fatalError(L"Failed to register mouse input");
@@ -656,45 +663,50 @@ POINT getOverlayPosition(int windowWidth, int windowHeight) {
 }
 
 bool CreateDeviceD3D(HWND hWnd) {
-  // Setup swap chain
-  // This is a basic setup. Optimally could use e.g.
-  // DXGI_SWAP_EFFECT_FLIP_DISCARD and handle fullscreen mode differently. See
-  // #8979 for suggestions.
-  DXGI_SWAP_CHAIN_DESC sd;
-  ZeroMemory(&sd, sizeof(sd));
-  sd.BufferCount = 2;
-  sd.BufferDesc.Width = 0;
-  sd.BufferDesc.Height = 0;
-  sd.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-  sd.BufferDesc.RefreshRate.Numerator = 60;
-  sd.BufferDesc.RefreshRate.Denominator = 1;
-  sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
-  sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-  sd.OutputWindow = hWnd;
-  sd.SampleDesc.Count = 1;
-  sd.SampleDesc.Quality = 0;
-  sd.Windowed = TRUE;
-  sd.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
-
-  UINT createDeviceFlags = 0;
-  // createDeviceFlags |= D3D11_CREATE_DEVICE_DEBUG;
   D3D_FEATURE_LEVEL featureLevel;
-  const D3D_FEATURE_LEVEL featureLevelArray[2] = {
-      D3D_FEATURE_LEVEL_11_0,
-      D3D_FEATURE_LEVEL_10_0,
-  };
-  HRESULT res = D3D11CreateDeviceAndSwapChain(
-      nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, createDeviceFlags,
-      featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain,
-      &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-  if (res == DXGI_ERROR_UNSUPPORTED) // Try high-performance WARP software
-                                     // driver if hardware is not available.
-    res = D3D11CreateDeviceAndSwapChain(
-        nullptr, D3D_DRIVER_TYPE_WARP, nullptr, createDeviceFlags,
-        featureLevelArray, 2, D3D11_SDK_VERSION, &sd, &g_pSwapChain,
-        &g_pd3dDevice, &featureLevel, &g_pd3dDeviceContext);
-  if (res != S_OK)
-    return false;
+  const D3D_FEATURE_LEVEL featureLevelArray[2]{D3D_FEATURE_LEVEL_11_0,
+                                               D3D_FEATURE_LEVEL_10_0};
+
+  D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr,
+                    D3D11_CREATE_DEVICE_BGRA_SUPPORT, featureLevelArray, 2,
+                    D3D11_SDK_VERSION, &g_pd3dDevice, &featureLevel,
+                    &g_pd3dDeviceContext);
+
+  IDXGIDevice *dxgiDevice{nullptr};
+  g_pd3dDevice->QueryInterface(IID_PPV_ARGS(&dxgiDevice));
+  IDXGIAdapter *dxgiAdapter{nullptr};
+  dxgiDevice->GetAdapter(&dxgiAdapter);
+  IDXGIFactory2 *dxgiFactory{nullptr};
+  dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory));
+
+  DXGI_SWAP_CHAIN_DESC1 sd{};
+  sd.Width =
+      static_cast<UINT>(Layouts::activeLayout.windowWidth * g_main_scale);
+  sd.Height =
+      static_cast<UINT>(Layouts::activeLayout.windowHeight * g_main_scale);
+  sd.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
+
+  sd.BufferCount = 2;
+  sd.SampleDesc.Count = 1;
+  sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_SEQUENTIAL;
+
+  sd.Scaling = DXGI_SCALING_STRETCH;
+  sd.AlphaMode = DXGI_ALPHA_MODE_PREMULTIPLIED;
+  sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+
+  dxgiFactory->CreateSwapChainForComposition(g_pd3dDevice, &sd, nullptr,
+                                             &g_pSwapChain);
+
+  DCompositionCreateDevice(dxgiDevice, IID_PPV_ARGS(&g_dcompDevice));
+  g_dcompDevice->CreateTargetForHwnd(hWnd, TRUE, &g_dcompTarget);
+  g_dcompDevice->CreateVisual(&g_dcompVisual);
+  g_dcompVisual->SetContent(g_pSwapChain);
+  g_dcompTarget->SetRoot(g_dcompVisual);
+  g_dcompDevice->Commit();
+
+  dxgiFactory->Release();
+  dxgiAdapter->Release();
+  dxgiDevice->Release();
 
   CreateRenderTarget();
   return true;
