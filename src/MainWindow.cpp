@@ -21,6 +21,7 @@ void SetDragMode(HWND hWnd, bool enabled) {
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
+// fix obs mode
 void SetObsMode(HWND hWnd, bool enabled) {
   int windowWidth{
       (int)(Layouts::activeLayout.windowWidth * MainWindow::getG_MainScale())};

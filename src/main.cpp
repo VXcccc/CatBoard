@@ -72,6 +72,8 @@ void renderKeyboard(const Layouts::Layout &layout,
 bool detectAnyKeyChanged(const Layouts::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown);
+bool detectAnyMouseKeyChanged(const std::array<bool, 256> &prevKeyState,
+                              std::array<bool, 256> &outCurrentDown);
 void commitKeyState(const Layouts::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
                     std::array<bool, 256> &outPrevKeyState);
@@ -144,9 +146,6 @@ void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
 
 } // namespace MainWindow
 
-static int my_image_width = 0;
-static int my_image_height = 0;
-static ID3D11ShaderResourceView *my_texture = NULL;
 
 // Main code
 int main(int, char **) {
@@ -341,13 +340,6 @@ int main(int, char **) {
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&lastDeltaTime);
 
-  bool ret = Images::LoadTextureFromFile(
-      (Paths::getImagePackPath("DefaultImagePack") / "keyb.png")
-          .string()
-          .c_str(),
-      &my_texture, &my_image_width, &my_image_height);
-  IM_ASSERT(ret);
-
   while (!done) {
     const auto frameStart{std::chrono::steady_clock::now()};
     // Poll and handle messages (inputs, window resize, etc.)
@@ -395,6 +387,8 @@ int main(int, char **) {
 
     bool anyKeyChanged{detectAnyKeyChanged(Layouts::activeLayout, prevKeyState,
                                            currentKeysDown)};
+    bool anyMouseKeyChanged{
+        detectAnyMouseKeyChanged(prevFullKeyState, currentFullKeysDown)};
 
     pollFullKeyboard(currentFullKeysDown);
 
@@ -427,7 +421,8 @@ int main(int, char **) {
                               std::abs(Mouse::g_mouseState.getOffsetY()) >
                                   Mouse::g_mouseState.getSensivity()};
 
-    bool needsRender{anyKeyChanged || firstFrame || mouseIndicatorActive ||
+    bool needsRender{anyKeyChanged || anyMouseKeyChanged || firstFrame ||
+                     mouseIndicatorActive ||
                      (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
                      SettingsWindow::IsVisible()};
 
@@ -452,13 +447,11 @@ int main(int, char **) {
       ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
                          Layouts::activeLayout.mouse.mouseCenterY);
       Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                              currentKeysDown);
+                              currentFullKeysDown, false, false);
       Mouse::renderMouseIndicator(
           mouseCenter, Config::activeConfig.theme.mouseTheme.style.type);
     }
 
-    // ImGui::Text("pointer = %p", my_texture);
-    // ImGui::Text("size = %d x %d", my_image_width, my_image_height);
 
     // debug
     //  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
@@ -549,8 +542,6 @@ void renderKeyboard(
     ImVec2 topLeft{key.x, key.y};
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
 
-    // draw->ImDrawList::AddImage((ImTextureID)(intptr_t)my_texture, topLeft,
-    // bottomRight);
 
     ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
                     : Config::ToImU32(Config::activeConfig.theme.idleFill)};
@@ -596,6 +587,23 @@ bool detectAnyKeyChanged(const Layouts::Layout &layout,
     }
   }
 
+  return anyKeyChanged;
+}
+
+bool detectAnyMouseKeyChanged(const std::array<bool, 256> &prevKeyState,
+                              std::array<bool, 256> &outCurrentKeysDown) {
+  constexpr std::array<int, 5> mouseKeys = {VK_LBUTTON, VK_RBUTTON, VK_MBUTTON,
+                                            VK_XBUTTON1, VK_XBUTTON2};
+  bool anyKeyChanged = false;
+  for (int keyCode : mouseKeys) {
+    bool down = (GetAsyncKeyState(keyCode) & 0x8000) != 0;
+
+    outCurrentKeysDown[keyCode] = down;
+
+    if (down != prevKeyState[keyCode]) {
+      anyKeyChanged = true;
+    }
+  }
   return anyKeyChanged;
 }
 

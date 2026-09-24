@@ -14,6 +14,7 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
+#include <execution>
 #include <fstream>
 #include <hidclass.h>
 #include <hidusage.h>
@@ -32,7 +33,7 @@
 
 #define _CRT_SECURE_NO_WARNINGS
 #define STB_IMAGE_IMPLEMENTATION
-#include "third_party/stb_image.h"
+#include "ThirdParty/stb_image.h"
 
 namespace Images {
 // extern
@@ -195,43 +196,41 @@ void drawKeyboardImages(ImDrawList *draw,
       continue;
 
     ImVec2 topLeft{key.x, key.y};
-    //todo fix the problem with different size of key in layout and in image size 
+    // todo fix the problem with different size of key in layout and in image
+    // size
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
     draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight);
   }
 }
+void drawMousePart(ImDrawList *draw, const ImVec2 &center,
+                   const MouseButton &part, bool active) {
+  const std::string &fileName{active ? part.buttonActive : part.buttonIdle};
+  Texture texture{getOrLoadTexture(fileName)};
+  if (!texture.srv)
+    return;
 
-void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
-                     const std::array<bool, 256> &currentKeysDown) {
-  bool lDown{currentKeysDown[VK_LBUTTON]};
-  bool rDown{currentKeysDown[VK_RBUTTON]};
-  const Images::Mouse mouse{activeImagePack.mouse};
+  //to do make offset changebale in settings
+  constexpr float offsetY{-50.0f};
+  ImVec2 partCenter{center.x + part.x, center.y + part.y + offsetY};
 
-  const std::string &lFileName{lDown ? mouse.left.buttonActive
-                                     : mouse.left.buttonIdle};
-  const std::string &rFileName{rDown ? mouse.right.buttonActive
-                                     : mouse.right.buttonIdle};
+  ImVec2 topLeft{partCenter.x - part.w * 0.5f, partCenter.y - part.h * 0.5f};
+  ImVec2 bottomRight{topLeft.x + part.w, topLeft.y + part.h};
 
-  Texture lTexture{getOrLoadTexture(lFileName)};
-  Texture rTexture{getOrLoadTexture(rFileName)};
-
-  const float totalWidth{static_cast<float>(lTexture.w + rTexture.w)};
-
-  const float leftX{center.x - totalWidth * 0.5f};
-
-  ImVec2 lTopLeft{leftX, center.y - lTexture.h * 0.75f};
-  ImVec2 lBottomRight{lTopLeft.x + lTexture.w,
-                      lTopLeft.y + lTexture.h};
-
-  ImVec2 rTopLeft{lBottomRight.x, center.y - rTexture.h * 0.75f};
-  ImVec2 rBottomRight{rTopLeft.x + rTexture.w,
-                      rTopLeft.y + rTexture.h};
-  if (lTexture.srv) {
-    draw->AddImage((ImTextureID)(intptr_t)lTexture.srv, lTopLeft, lBottomRight);
-  }
-  if (rTexture.srv) {
-    draw->AddImage((ImTextureID)(intptr_t)rTexture.srv, rTopLeft, rBottomRight);
-  }
+  draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight);
 }
 
+void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
+                     const std::array<bool, 256> &currentKeysDown,
+                     bool scrollUpActive, bool scrollDownActive) {
+  const Mouse &mouse{activeImagePack.mouse};
+
+  drawMousePart(draw, center, mouse.left, currentKeysDown[VK_LBUTTON]);
+  drawMousePart(draw, center, mouse.right, currentKeysDown[VK_RBUTTON]);
+  drawMousePart(draw, center, mouse.mouse4, currentKeysDown[VK_XBUTTON1]);
+  drawMousePart(draw, center, mouse.mouse5, currentKeysDown[VK_XBUTTON2]);
+  drawMousePart(draw, center, mouse.scrollUp, scrollUpActive);
+  drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);
+  drawMousePart(draw, center, mouse.scrollUp, currentKeysDown[VK_MBUTTON]);
+  drawMousePart(draw, center, mouse.scrollDown, currentKeysDown[VK_MBUTTON]);
+}
 } // namespace Images
