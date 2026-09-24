@@ -10,8 +10,8 @@
 #include <string>
 #include <string_view>
 #include <unordered_map>
-#include <utility>
 #include <vector>
+#include <exception>
 #include <windows.h>
 #include <winuser.h>
 
@@ -52,7 +52,6 @@ void drawErrorInSettings(std::string &error) {
   ImGui::PopStyleColor();
 }
 
-
 int toColorRGB(float value) {
   value = std::clamp(value, 0.0f, 1.0f);
   return static_cast<int>(std::round(value * 255.0f));
@@ -90,6 +89,20 @@ void refresh(std::vector<std::string> &category,
 
     category.push_back(entry.path().stem().string());
   }
+}
+
+bool installDefault(const std::filesystem::path &source,
+                    const std::filesystem::path &destination) {
+  if (std::filesystem::exists(destination)) {
+    return true;
+  }
+
+  std::error_code ec;
+
+  std::filesystem::copy(source, destination,
+                        std::filesystem::copy_options::recursive, ec);
+
+  return !ec;
 }
 
 std::string getFileCreateError(Helper::FileCreateResult result) {

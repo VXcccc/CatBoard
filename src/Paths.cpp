@@ -51,11 +51,11 @@ std::filesystem::path getActiveConfigPath() {
   return getAppDataDir() / "ActiveConfig.json";
 }
 
-
 std::filesystem::path configDirectory() { return categoryDirectory("Configs"); }
 std::filesystem::path layoutDirectory() { return categoryDirectory("Layouts"); }
 std::filesystem::path soundsDirectory() { return categoryDirectory("Sounds"); }
 std::filesystem::path fontsDirectory() { return categoryDirectory("Fonts"); }
+std::filesystem::path imagesDirectory() { return categoryDirectory("Images"); }
 
 std::filesystem::path getConfigPath(std::string_view name) {
   return categoryItemPath("Configs", name);
@@ -65,26 +65,36 @@ std::filesystem::path getLayoutPath(std::string_view name) {
   return categoryItemPath("Layouts", name);
 }
 
-std::filesystem::path getSoundPackDir(std::string_view name) {
-    return soundsDirectory() / std::string{name};
+std::filesystem::path getSoundPackPath(std::string_view name) {
+  return soundsDirectory() / std::string{name};
 }
 
 std::filesystem::path getSoundPackJsonPath(std::string_view name) {
-    return getSoundPackDir(name) / "config.json";
+  return getSoundPackPath(name) / "config.json";
 }
 
 std::filesystem::path getFontPath(std::string_view name) {
-    return fontsDirectory() / (std::string{name} + ".ttf");
+  return fontsDirectory() / (std::string{name} + ".ttf");
+}
+
+std::filesystem::path getImagePackPath(std::string_view name) {
+  return imagesDirectory() / std::string{name};
+}
+
+std::filesystem::path getImagePackJson(std::string_view name){
+  return getImagePackPath(name) / "config.json";
 }
 
 bool ensureConfigDirectory() { return ensureCategoryDirectory("Configs"); }
 bool ensureLayoutDirectory() { return ensureCategoryDirectory("Layouts"); }
 bool ensureSoundsDirectory() { return ensureCategoryDirectory("Sounds"); }
 bool ensureFontsDirectory() { return ensureCategoryDirectory("Fonts"); }
+bool ensureImagesDirectory() { return ensureCategoryDirectory("Images"); }
 
 void openConfigDirectory() { openCategoryDirectory("Configs"); }
 void openLayoutDirectory() { openCategoryDirectory("Layouts"); }
 void openSoundsDirectory() { openCategoryDirectory("Sounds"); }
 void openFontsDirectory() { openCategoryDirectory("Fonts"); }
+void openImagesDirectory() { openCategoryDirectory("Images"); }
 
 } // namespace Paths

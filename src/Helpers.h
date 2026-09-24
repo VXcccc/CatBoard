@@ -3,6 +3,7 @@
 
 #include "Config.h"
 #include "imgui.h"
+#include <exception>
 #include <filesystem>
 #include <string>
 #include <vector>
@@ -16,6 +17,16 @@ enum class FileCreateResult {
   DirectoryError,
   FileError,
   max_FileCreateResult
+};
+
+class CustomException : public std::exception {
+public:
+  CustomException(const char *msg) : m_message(msg) {}
+
+  const char *what() const noexcept { return m_message.c_str(); }
+
+private:
+  std::string m_message;
 };
 
 [[noreturn]] void fatalError(const wchar_t *message);
@@ -36,6 +47,9 @@ Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color);
 ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color);
 
 std::string getFileCreateError(Helper::FileCreateResult result);
+
+bool installDefault(const std::filesystem::path &source,
+                    const std::filesystem::path &destination);
 
 template <typename... Args>
 void drawDebugText(const std::string &Format, Args &&...args) {

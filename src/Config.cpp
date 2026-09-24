@@ -119,8 +119,8 @@ bool loadConfig(std::string_view name) {
     const auto j = json::parse(file);
     activeConfig = j.get<Settings>();
   } catch (const std::exception &e) {
-    // TODO: send message to imgui
-    // notifyError{e.what()};
+    std::string err{e.what()};
+    Helper::drawErrorInSettings(err);
     return false;
   }
   return true;

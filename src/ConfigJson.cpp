@@ -266,7 +266,7 @@ void to_json(nlohmann::json &j, const Key &key) {
       {"x", key.x},
       {"y", key.y},
       {"w", key.w},
-      {"h", key.h},
+      {"h", key.h}
   };
 }
 
@@ -291,6 +291,7 @@ void from_json(const nlohmann::json &j, Key &key) {
 
   if (j.contains("h"))
     j.at("h").get_to(key.h);
+
 }
 
 void to_json(nlohmann::json &j, const Mouse &mouse) {

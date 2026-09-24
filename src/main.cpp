@@ -12,9 +12,11 @@
 #include "Constants.h"
 #include "FontHandle.h"
 #include "Helpers.h"
+#include "ImageHandle.h"
 #include "Layouts.h"
 #include "MainWindow.h"
 #include "MouseState.h"
+#include "Paths.h"
 #include "SettingsWindow.h"
 #include "Sound.h"
 #include "SystemTray.h"
@@ -101,6 +103,8 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
 namespace MainWindow {
 static ImVec4 s_clearColor{Consts::defaultClearColor};
 
+ID3D11Device *get_g_pd3dDevice() { return g_pd3dDevice; }
+
 void Show() {
   s_visible = true;
   ::ShowWindow(s_hwnd, SW_SHOW);
@@ -140,6 +144,10 @@ void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
 
 } // namespace MainWindow
 
+static int my_image_width = 0;
+static int my_image_height = 0;
+static ID3D11ShaderResourceView *my_texture = NULL;
+
 // Main code
 int main(int, char **) {
   timeBeginPeriod(1);
@@ -168,6 +176,18 @@ int main(int, char **) {
 
   if (!(Sound::loadSoundPack(Config::activeConfig.soundPack.name))) {
     Helper::fatalError(L"Failed to load sound pack");
+  }
+
+  if (!(Images::installDefaultImagePacks())) {
+    Helper::fatalError(L"Failed to install default image packs");
+  }
+
+  if (!(Images::installDefaultImagePacks())) {
+    Helper::fatalError(L"Failed to install default image packs");
+  }
+
+  if (!(Images::handleConfigJson("DefaultImagePack"))) {
+    Helper::fatalError(L"Failed to load default image pack");
   }
 
   // Make process DPI aware and obtain main monitor scale
@@ -321,6 +341,13 @@ int main(int, char **) {
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&lastDeltaTime);
 
+  bool ret = Images::LoadTextureFromFile(
+      (Paths::getImagePackPath("DefaultImagePack") / "keyb.png")
+          .string()
+          .c_str(),
+      &my_texture, &my_image_width, &my_image_height);
+  IM_ASSERT(ret);
+
   while (!done) {
     const auto frameStart{std::chrono::steady_clock::now()};
     // Poll and handle messages (inputs, window resize, etc.)
@@ -422,11 +449,16 @@ int main(int, char **) {
     renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown);
 
     if (Config::activeConfig.theme.mouseTheme.enabled) {
+      ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
+                         Layouts::activeLayout.mouse.mouseCenterY);
+      Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
+                              currentKeysDown);
       Mouse::renderMouseIndicator(
-          ImVec2(Layouts::activeLayout.mouse.mouseCenterX,
-                 Layouts::activeLayout.mouse.mouseCenterY),
-          Config::activeConfig.theme.mouseTheme.style.type);
+          mouseCenter, Config::activeConfig.theme.mouseTheme.style.type);
     }
+
+    // ImGui::Text("pointer = %p", my_texture);
+    // ImGui::Text("size = %d x %d", my_image_width, my_image_height);
 
     // debug
     //  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
@@ -500,6 +532,7 @@ void renderKeyboard(
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   ImGui::PushFont(Fonts::activeFont);
 
+  Images::drawKeyboardImages(draw, currentKeysDown);
   for (const auto &key : Layouts::activeLayout.keys) {
     bool down{currentKeysDown[key.keyCode]};
     // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
@@ -515,6 +548,9 @@ void renderKeyboard(
 
     ImVec2 topLeft{key.x, key.y};
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
+
+    // draw->ImDrawList::AddImage((ImTextureID)(intptr_t)my_texture, topLeft,
+    // bottomRight);
 
     ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
                     : Config::ToImU32(Config::activeConfig.theme.idleFill)};

@@ -455,7 +455,7 @@ void drawKeyboardSection(SettingsEditState &state) {
   drawKeyboardColors(state);
 
   ImGui::SliderFloat("Rounding", &state.theme.keyRounding, 0.0f, 20.0f, "%.2f");
-  state.theme.keyRounding = std::clamp(state.theme.keyRounding, 0.0f, 20.0f);
+  state.theme.keyRounding = std::clamp(state.theme.keyRounding, 0.0f, 1000.0f);
 
   ImGui::Checkbox("Enable Outline", &state.theme.keyOutline.enable);
   if (state.theme.keyOutline.enable) {

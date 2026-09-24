@@ -1,6 +1,7 @@
 #pragma once
 #include <windows.h>
 #include "imgui.h"
+#include <d3d11.h>
 
 namespace MainWindow {
 extern bool g_dragMode;
@@ -13,6 +14,7 @@ void ApplyOverlaySize();
 
 HWND getHWND();
 float getG_MainScale();
+ID3D11Device *get_g_pd3dDevice();
 
 void setClearColor(const ImVec4& clearColor);
 

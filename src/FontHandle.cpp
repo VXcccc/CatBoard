@@ -44,21 +44,8 @@ bool loadFont(const Font &font) {
 }
 
 bool installDefaultFonts() {
-  const auto source{Paths::getExecutableDir() /
-                    "Fonts"}; // TODO fix this function(cuz idk how its gonna
-                              // work without fonts dir in executable dir)
-  const auto destination{Paths::fontsDirectory()};
-
-  if (std::filesystem::exists(destination)) {
-    return true;
-  }
-
-  std::error_code ec;
-
-  std::filesystem::copy(source, destination,
-                        std::filesystem::copy_options::recursive, ec);
-
-  return !ec;
+  return Helper::installDefault(Paths::getExecutableDir() / "Fonts",
+                                Paths::fontsDirectory());
 }
 
 // bool isLetterKey(const Layouts::Key &key) {

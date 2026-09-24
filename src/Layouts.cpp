@@ -35,17 +35,8 @@ void refreshLayouts() {
 }
 
 bool installDefaultLayouts() {
-  const auto source{Paths::getExecutableDir() / "Layouts"};
-  const auto destination{Paths::layoutDirectory()};
-
-  if (std::filesystem::exists(destination)) {
-    return true;
-  }
-
-  std::error_code ec;
-  std::filesystem::copy(source, destination,
-                        std::filesystem::copy_options::recursive, ec);
-  return !ec;
+  return Helper::installDefault(Paths::getExecutableDir() / "Layouts",
+                                Paths::layoutDirectory());
 }
 
 bool loadLayoutFile(std::string_view name) {

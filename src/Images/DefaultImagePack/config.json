@@ -1,0 +1,56 @@
+{
+    "defaultKey" : {
+            "activeFileName": "keyw",
+            "backGroundFileName": "keyb",
+            "vkCode": 0
+    },
+    "explicitImages": [
+        {
+            "activeFileName": "tabw",
+            "backGroundFileName": "tabb",
+            "vkCode": 9
+        },
+        {
+            "activeFileName": "tabw",
+            "backGroundFileName": "tabb",
+            "vkCode": 162
+        },
+        {
+            "activeFileName": "tabw",
+            "backGroundFileName": "tabb",
+            "vkCode": 164
+        },
+        {
+            "activeFileName": "tabw",
+            "backGroundFileName": "tabb",
+            "vkCode": 165
+        },
+        {
+            "activeFileName": "spacew",
+            "backGroundFileName": "spaceb",
+            "vkCode": 32
+        },
+        {
+            "activeFileName": "capw",
+            "backGroundFileName": "capsb",
+            "vkCode": 20
+        },
+        {
+            "activeFileName": "shiftw",
+            "backGroundFileName": "shiftb",
+            "vkCode": 160
+        }
+    ],
+    "mouse": {
+        "left": {
+            "buttonIdle": "leftb",
+            "buttonActive": "leftbp"
+        },
+        "right": {
+            "buttonIdle": "rightb",
+            "buttonActive": "rightbp"
+        }
+    },
+    "name": "DefaultImagePack",
+    "enable" : true
+}

@@ -32,6 +32,8 @@ constexpr double ERROR_DELETE_TIME{5.0};
 
 constexpr std::string BLANK_LABEL{"BLANK_LABEL"};
 
+constexpr int DEFAULT_IMAGE_VK_CODE{};
+
 } // namespace Consts
 
 #endif // !CONSTANTS_H

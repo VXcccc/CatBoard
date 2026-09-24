@@ -1,8 +1,9 @@
+#include "Helpers.h"
 #include "Paths.h"
 
+#include "Config.h"
 #include "Constants.h"
 #include "Sound.h"
-#include "Config.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
 #include <fstream>
 #include <miniaudio.h>
@@ -66,7 +67,7 @@ void ShutdownAudio() {
 void refreshSounds() {
   sounds.clear();
 
-  const auto folder {Paths::soundsDirectory()};
+  const auto folder{Paths::soundsDirectory()};
 
   if (!std::filesystem::exists(folder))
     return;
@@ -137,7 +138,7 @@ ma_sound *findFreeVoice() {
 }
 
 bool loadSoundPack(std::string_view name) {
-  auto packDir = Paths::getSoundPackDir(name);
+  auto packDir = Paths::getSoundPackPath(name);
   auto result = Load(packDir);
 
   if (!result) {
@@ -147,7 +148,7 @@ bool loadSoundPack(std::string_view name) {
   uninitVoicePool();
   activePack = std::move(*result);
 
-  const auto audioPath{Paths::getSoundPackDir(name) / activePack.audio_file};
+  const auto audioPath{Paths::getSoundPackPath(name) / activePack.audio_file};
 
   return initVoicePool(audioPath);
 }
@@ -175,10 +176,9 @@ void playKey(int keyCode, bool is_down) {
   }
 
   ma_sound *voice{findFreeVoice()};
-  if(!voice){
+  if (!voice) {
     return;
   }
-
 
   const ma_uint64 lengthFrames{msToFrames(endms) - msToFrames(startms)};
   const ma_uint64 now = ma_engine_get_time_in_pcm_frames(&g_engine);
@@ -190,26 +190,11 @@ void playKey(int keyCode, bool is_down) {
   ma_sound_start(voice);
 }
 
-void setMasterVolume(float volume) {
-    ma_engine_set_volume(&g_engine, volume);
-}
+void setMasterVolume(float volume) { ma_engine_set_volume(&g_engine, volume); }
 
 bool installDefaultSoundPacks() {
-  const auto source{Paths::getExecutableDir() /
-                    "Sounds"}; // TODO fix this function(cuz idk how its gonna
-                               // work without sounds dir in executable dir)
-  const auto destination{Paths::soundsDirectory()};
-
-  if (std::filesystem::exists(destination)) {
-    return true;
-  }
-
-  std::error_code ec;
-
-  std::filesystem::copy(source, destination,
-                        std::filesystem::copy_options::recursive, ec);
-
-  return !ec;
+  return Helper::installDefault(Paths::getExecutableDir() / "Sounds",
+                                Paths::soundsDirectory());
 }
 
 const std::unordered_map<std::string, int> &CodeToVK() {

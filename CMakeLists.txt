@@ -45,6 +45,7 @@ add_executable(${PROJECT_NAME} WIN32
     src/FontHandle.cpp
     src/MainWindow.cpp
     src/Layouts.cpp
+    src/ImageHandle.cpp
     src/Resource/app.rc
 
     ${imgui_SOURCE_DIR}/imgui.cpp
@@ -90,6 +91,9 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
       "${CMAKE_SOURCE_DIR}/src/Fonts"
       "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Fonts"
+    COMMAND ${CMAKE_COMMAND} -E copy_directory
+      "${CMAKE_SOURCE_DIR}/src/Images"
+      "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Images"
 )
 
 if(MINGW)
