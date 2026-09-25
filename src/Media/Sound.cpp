@@ -1,9 +1,9 @@
-#include "Helpers.h"
-#include "Paths.h"
+#include "System/Helpers.h"
+#include "System/Paths.h"
 
-#include "Config.h"
-#include "Constants.h"
-#include "Sound.h"
+#include "Config/Config.h"
+#include "Config/Constants.h"
+#include "Media/Sound.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
 #include <fstream>
 #include <miniaudio.h>

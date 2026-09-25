@@ -3,12 +3,12 @@
 
 // maybe goona change location of this variable later
 
-#include "Constants.h"
-#include "FontHandle.h"
-#include "InputHandle.h"
-#include "Layouts.h"
-#include "MouseState.h"
-#include "Sound.h"
+#include "Config/Constants.h"
+#include "Media/Fonts.h"
+#include "Input/Hotkeys.h"
+#include "UI/Layouts.h"
+#include "Input/Mouse.h"
+#include "Media/Sound.h"
 #include "imgui.h"
 #include <array>
 #include <nlohmann/json.hpp>
@@ -88,7 +88,7 @@ struct Settings {
   Theme theme{};
   std::string selectedLayout{Layouts::defaultLayoutName};
   SoundPackSelection soundPack{};
-  Input::BindsArray binds{Input::defaultBinds};
+  Binds::BindsArray binds{Binds::defaultBinds};
   OverlayPosition overlayPos{};
   Fonts::Font font{};
   Misc misc{};

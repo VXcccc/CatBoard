@@ -1,7 +1,7 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-#include "Config.h"
+#include "Config/Config.h"
 #include "imgui.h"
 #include <exception>
 #include <filesystem>

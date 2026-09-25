@@ -1,11 +1,10 @@
-#include "ImageHandle.h"
-#include "Constants.h"
-#include "Helpers.h"
-#include "Layouts.h"
-#include "MainWindow.h"
-#include "Paths.h"
+#include "Media/Images.h"
+#include "Input/Hotkeys.h"
+#include "System/Helpers.h"
+#include "System/Paths.h"
+#include "UI/Layouts.h"
+#include "UI/MainWindow.h"
 #include "imgui.h"
-#include <InputHandle.h>
 #include <algorithm>
 #include <array>
 #include <conio.h>
@@ -14,7 +13,6 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
-#include <execution>
 #include <fstream>
 #include <hidclass.h>
 #include <hidusage.h>
@@ -149,7 +147,6 @@ void clearTextureCache() {
   g_textureCache.clear();
 }
 
-// debug func
 bool handleConfigJson(std::string_view name) {
   if (!Paths::ensureImagesDirectory()) {
     return false;
@@ -209,7 +206,7 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   if (!texture.srv)
     return;
 
-  //to do make offset changebale in settings
+  // to do make offset changebale in settings
   constexpr float offsetY{-50.0f};
   ImVec2 partCenter{center.x + part.x, center.y + part.y + offsetY};
 
@@ -221,16 +218,18 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
 
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
                      const std::array<bool, 256> &currentKeysDown,
-                     bool scrollUpActive, bool scrollDownActive) {
+                     bool scrollDownActive, bool scrollUpActive) {
   const Mouse &mouse{activeImagePack.mouse};
 
   drawMousePart(draw, center, mouse.left, currentKeysDown[VK_LBUTTON]);
   drawMousePart(draw, center, mouse.right, currentKeysDown[VK_RBUTTON]);
   drawMousePart(draw, center, mouse.mouse4, currentKeysDown[VK_XBUTTON1]);
   drawMousePart(draw, center, mouse.mouse5, currentKeysDown[VK_XBUTTON2]);
-  drawMousePart(draw, center, mouse.scrollUp, scrollUpActive);
-  drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);
+  // fix middle
   drawMousePart(draw, center, mouse.scrollUp, currentKeysDown[VK_MBUTTON]);
   drawMousePart(draw, center, mouse.scrollDown, currentKeysDown[VK_MBUTTON]);
+
+  drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);
+  drawMousePart(draw, center, mouse.scrollUp, scrollUpActive);
 }
 } // namespace Images

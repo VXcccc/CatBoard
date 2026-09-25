@@ -33,20 +33,26 @@ find_package(Vorbis CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} WIN32
     src/main.cpp
-    src/SystemTray.cpp
-    src/SettingsWindow.cpp
-    src/Paths.cpp
-    src/Config.cpp
-    src/ConfigJson.cpp
-    src/Helpers.cpp
-    src/InputHandle.cpp
-    src/Sound.cpp
-    src/MouseState.cpp
-    src/FontHandle.cpp
-    src/MainWindow.cpp
-    src/Layouts.cpp
-    src/ImageHandle.cpp
-    src/Resource/app.rc
+
+    src/System/Tray.cpp
+    src/System/Paths.cpp
+    src/System/Helpers.cpp
+
+    src/Config/Config.cpp
+    src/Config/ConfigJson.cpp
+
+    src/Input/Hotkeys.cpp
+    src/Input/Mouse.cpp
+
+    src/Media/Sound.cpp
+    src/Media/Fonts.cpp
+    src/Media/Images.cpp
+
+    src/UI/SettingsWindow.cpp
+    src/UI/MainWindow.cpp
+    src/UI/Layouts.cpp
+
+    src/Assets/Resource/app.rc
 
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -67,7 +73,7 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
 
 target_include_directories(${PROJECT_NAME} PRIVATE
     src
-    src/Resource
+    src/Assets/Resource
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${miniaudio_SOURCE_DIR}
@@ -83,16 +89,16 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/src/Layouts"
+    "${CMAKE_SOURCE_DIR}/src/Assets/Layouts"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Layouts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/src/Sounds"
+        "${CMAKE_SOURCE_DIR}/src/Assets/Sounds"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Sounds"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_SOURCE_DIR}/src/Fonts"
+      "${CMAKE_SOURCE_DIR}/src/Assets/Fonts"
       "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Fonts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_SOURCE_DIR}/src/Images"
+      "${CMAKE_SOURCE_DIR}/src/Assets/Images"
       "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Images"
 )
 

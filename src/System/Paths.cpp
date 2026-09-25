@@ -1,5 +1,5 @@
-#include "Paths.h"
-#include "Constants.h"
+#include "System/Paths.h"
+#include "Config/Constants.h"
 #include <filesystem>
 #include <shlobj.h>
 #include <string_view>

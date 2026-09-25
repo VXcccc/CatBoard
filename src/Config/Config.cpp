@@ -1,7 +1,7 @@
-#include "Config.h"
-#include "ConfigJson.h"
-#include "Helpers.h"
-#include "Paths.h"
+#include "Config/Config.h"
+#include "Config/ConfigJson.h"
+#include "System/Helpers.h"
+#include "System/Paths.h"
 #include "imgui.h"
 #include <combaseapi.h>
 #include <exception>

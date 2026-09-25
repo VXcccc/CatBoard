@@ -1,7 +1,7 @@
-#include "Helpers.h"
-#include "Config.h"
-#include "Constants.h"
-#include "SettingsWindow.h"
+#include "System/Helpers.h"
+#include "Config/Config.h"
+#include "Config/Constants.h"
+#include "UI/SettingsWindow.h"
 #include "imgui.h"
 #include <algorithm>
 #include <cmath>

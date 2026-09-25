@@ -7,7 +7,7 @@
 #include <winuser.h>
 using json = nlohmann::json;
 
-namespace Input {
+namespace Binds {
 //binds
 enum class BindType { dragMode, hideOverlay, openSettings, max_bindTypes };
 
@@ -23,7 +23,6 @@ using BindsArray =
     std::array<Bind, static_cast<std::size_t>(BindType::max_bindTypes)>;
 
 extern BindsArray defaultBinds;
-
 
 extern bool g_bindJustRecorded;
 

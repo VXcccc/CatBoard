@@ -6,7 +6,6 @@
 #include <string>
 #include <windows.h>
 
-#define IDI_ICON1 101
 #ifndef WS_EX_NOREDIRECTIONBITMAP
 #define WS_EX_NOREDIRECTIONBITMAP 0x00200000L
 #endif

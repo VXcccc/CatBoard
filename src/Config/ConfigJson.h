@@ -1,7 +1,7 @@
 #ifndef CONFIG_JSON_H
 #define CONFIG_JSON_H
 
-#include "Config.h"
+#include "Config/Config.h"
 #include <nlohmann/json.hpp>
 
 namespace Config {

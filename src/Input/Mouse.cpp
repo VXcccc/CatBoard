@@ -1,8 +1,8 @@
 
 #include <cassert>
 #define _USE_MATH_DEFINES
-#include "Config.h"
-#include "MouseState.h"
+#include "Config/Config.h"
+#include "Input/Mouse.h"
 #include "cassert"
 #include "imgui.h"
 #include <algorithm>
@@ -59,6 +59,15 @@ void MouseState::updateTrail(float deltaTime, float maxAge) {
     m_trail.pop_front();
   }
   m_trail.push_back({m_offsetX, m_offsetY, 0.0f});
+}
+
+void MouseState::registerScroll(bool up) {
+  (up ? m_scrollUpTimer : m_scrollDownTimer) = 0.15f; // seconds
+}
+
+void MouseState::updateScrollTimers(float dt) {
+  m_scrollUpTimer = (std::max)(0.0f, m_scrollUpTimer - dt);
+  m_scrollDownTimer = (std::max)(0.0f, m_scrollDownTimer - dt);
 }
 
 static ImU32 lerpColor(ImU32 colorA, ImU32 colorB, float t) {

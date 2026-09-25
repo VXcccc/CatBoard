@@ -1,4 +1,4 @@
-#include "ConfigJson.h"
+#include "Config/ConfigJson.h"
 #include <nlohmann/json.hpp>
 
 namespace Config {

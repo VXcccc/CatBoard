@@ -1,15 +1,16 @@
-#include "SettingsWindow.h"
-#include "Config.h"
-#include "Constants.h"
-#include "FontHandle.h"
-#include "Helpers.h"
-#include "InputHandle.h"
-#include "Layouts.h"
-#include "MainWindow.h"
-#include "MouseState.h"
-#include "Paths.h"
-#include "Sound.h"
-#include "SystemTray.h"
+#include "UI/SettingsWindow.h"
+#include "Assets/Resource/ResourceConstants.h"
+#include "Config/Config.h"
+#include "Config/Constants.h"
+#include "Input/Hotkeys.h"
+#include "Input/Mouse.h"
+#include "Media/Fonts.h"
+#include "Media/Sound.h"
+#include "System/Helpers.h"
+#include "System/Paths.h"
+#include "System/Tray.h"
+#include "UI/Layouts.h"
+#include "UI/MainWindow.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -17,6 +18,7 @@
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <dwmapi.h>
 #include <dxgi.h>
 #include <winuser.h>
 
@@ -113,6 +115,10 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
                              WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
                              900, 600, nullptr, nullptr, hInstance, nullptr);
 
+  BOOL useDarkMode{true};
+  DwmSetWindowAttribute(s_hwnd,
+                        DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE,
+                        &useDarkMode, sizeof(useDarkMode));
   RECT rc;
 
   GetWindowRect(s_hwnd, &rc);
@@ -263,7 +269,7 @@ struct SettingsEditState {
   Config::SoundPackSelection selectedSoundPack;
   int volumePercent{};
 
-  Input::BindsArray binds{};
+  Binds::BindsArray binds{};
 
   Fonts::Font selectedFont{};
 
@@ -628,7 +634,7 @@ void drawBindsTab(SettingsEditState &state) {
     ImGui::Text("%s", bind.bindName.c_str());
     ImGui::SameLine();
     if (ImGui::Button(bind.keyName.c_str())) {
-      Input::recordBind(bind);
+      Binds::recordBind(bind);
     }
   }
 }

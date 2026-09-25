@@ -1,9 +1,9 @@
 // MainWindow namespace also used in Main.cpp (check main for more information)
 
-#include "MainWindow.h"
-#include "Config.h"
-#include "Helpers.h"
-#include "Layouts.h"
+#include "UI/MainWindow.h"
+#include "Config/Config.h"
+#include "System/Helpers.h"
+#include "UI/Layouts.h"
 #include <windows.h>
 
 namespace MainWindow {
@@ -47,7 +47,7 @@ void SetObsMode(HWND hWnd, bool enabled) {
     MainWindow::setClearColor(
         Helper::fromConfigColor(Config::activeConfig.theme.obsBackground));
   } else {
-    exStyle |= (WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
+    exStyle |= ( WS_EX_TRANSPARENT | WS_EX_TOPMOST |
                 WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
 
     style =
@@ -60,7 +60,6 @@ void SetObsMode(HWND hWnd, bool enabled) {
 
   if (!enabled) {
     MainWindow::setClearColor(Consts::defaultClearColor);
-    SetLayeredWindowAttributes(hWnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
   }
 
   SetWindowPos(hWnd, enabled ? HWND_NOTOPMOST : HWND_TOPMOST, 0, 0, windowWidth,

@@ -1,7 +1,7 @@
-#include "FontHandle.h"
-#include "Constants.h"
-#include "Helpers.h"
-#include "Paths.h"
+#include "Media/Fonts.h"
+#include "Config/Constants.h"
+#include "System/Helpers.h"
+#include "System/Paths.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include <cctype>

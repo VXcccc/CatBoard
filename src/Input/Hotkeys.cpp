@@ -1,15 +1,14 @@
-#include "InputHandle.h"
-#include "Config.h"
-#include "Helpers.h"
-#include "MainWindow.h"
-#include "SettingsWindow.h"
-#include "SystemTray.h"
+#include "Input/Hotkeys.h"
+#include "System/Helpers.h"
+#include "UI/MainWindow.h"
+#include "UI/SettingsWindow.h"
+#include "System/Tray.h"
 #include <array>
 #include <nlohmann/json.hpp>
 #include <windows.h>
 using json = nlohmann::json;
 
-namespace Input {
+namespace Binds {
 
 bool g_bindJustRecorded{false};
 

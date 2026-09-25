@@ -8,28 +8,27 @@
 // - Introduction, links and more at the top of imgui.cpp
 //
 
-#include "Config.h"
-#include "Constants.h"
-#include "FontHandle.h"
-#include "Helpers.h"
-#include "ImageHandle.h"
-#include "Layouts.h"
-#include "MainWindow.h"
-#include "MouseState.h"
-#include "Paths.h"
-#include "SettingsWindow.h"
-#include "Sound.h"
-#include "SystemTray.h"
+#include "Config/Config.h"
+#include "Config/Constants.h"
+#include "Media/Fonts.h"
+#include "System/Helpers.h"
+#include "Media/Images.h"
+#include "UI/Layouts.h"
+#include "UI/MainWindow.h"
+#include "Input/Mouse.h"
+#include "UI/SettingsWindow.h"
+#include "Media/Sound.h"
+#include "System/Tray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
-#include <InputHandle.h>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <conio.h>
 #include <cstdlib>
 #include <d3d11.h>
+#include <dwmapi.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
 #include <hidclass.h>
@@ -146,7 +145,6 @@ void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
 
 } // namespace MainWindow
 
-
 // Main code
 int main(int, char **) {
   timeBeginPeriod(1);
@@ -219,7 +217,6 @@ int main(int, char **) {
           WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
       wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, pos.x, pos.y,
       windowWidth, windowHeight, nullptr, nullptr, wc.hInstance, nullptr);
-
   // ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
   if (!RegisterRawMouseInput(s_hwnd)) {
@@ -397,13 +394,14 @@ int main(int, char **) {
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
     Mouse::g_mouseState.updateMouseState(
         deltaTime, Config::activeConfig.theme.mouseTheme.radius);
+    Mouse::g_mouseState.updateScrollTimers(deltaTime);
     // Mouse::g_mouseState.updateTrail(deltaTime, 0.5f);
 
-    if (Input::g_bindJustRecorded) {
+    if (Binds::g_bindJustRecorded) {
       prevFullKeyState = currentFullKeysDown;
-      Input::g_bindJustRecorded = false;
+      Binds::g_bindJustRecorded = false;
     } else {
-      Input::handleBinds(prevFullKeyState, currentFullKeysDown, s_hwnd);
+      Binds::handleBinds(prevFullKeyState, currentFullKeysDown, s_hwnd);
     }
 
     if (Config::activeConfig.soundPack.enable) {
@@ -447,11 +445,12 @@ int main(int, char **) {
       ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
                          Layouts::activeLayout.mouse.mouseCenterY);
       Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                              currentFullKeysDown, false, false);
+                              currentFullKeysDown,
+                              Mouse::g_mouseState.isScrollDownActive(),
+                              Mouse::g_mouseState.isScrollUpActive());
       Mouse::renderMouseIndicator(
           mouseCenter, Config::activeConfig.theme.mouseTheme.style.type);
     }
-
 
     // debug
     //  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
@@ -526,6 +525,7 @@ void renderKeyboard(
   ImGui::PushFont(Fonts::activeFont);
 
   Images::drawKeyboardImages(draw, currentKeysDown);
+
   for (const auto &key : Layouts::activeLayout.keys) {
     bool down{currentKeysDown[key.keyCode]};
     // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
@@ -541,7 +541,6 @@ void renderKeyboard(
 
     ImVec2 topLeft{key.x, key.y};
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
-
 
     ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
                     : Config::ToImU32(Config::activeConfig.theme.idleFill)};
@@ -801,6 +800,10 @@ void WM_RawMouseInputHandle(LPARAM lParam) {
         LONG rawDeltaY = raw->data.mouse.lLastY;
         Mouse::g_mouseState.addRawDelta(rawDeltaX, rawDeltaY);
       }
+      if (raw->data.mouse.usButtonFlags & RI_MOUSE_WHEEL) {
+        short wheelDelta{static_cast<short>(raw->data.mouse.usButtonData)};
+        Mouse::g_mouseState.registerScroll(wheelDelta > 0);
+      }
     }
   }
 }
@@ -827,6 +830,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   switch (msg) {
   case WM_INPUT: {
     WM_RawMouseInputHandle(lParam);
+
     break;
   }
   case WM_SIZE:

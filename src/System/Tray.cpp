@@ -1,7 +1,8 @@
-#include "SystemTray.h"
-#include "Constants.h"
-#include "MainWindow.h"
-#include "SettingsWindow.h"
+#include "System/Tray.h"
+#include "Assets/Resource/ResourceConstants.h"
+#include "Config/Constants.h"
+#include "UI/MainWindow.h"
+#include "UI/SettingsWindow.h"
 #include <basetsd.h>
 #include <minwindef.h>
 #include <shellapi.h>

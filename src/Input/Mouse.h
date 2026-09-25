@@ -56,6 +56,12 @@ public:
   void updateTrail(float deltaTime, float maxAge);
   const std::deque<TrailPoint> &getTrail() const { return m_trail; }
 
+
+  void registerScroll(bool up);
+  void updateScrollTimers(float dt);
+  bool isScrollUpActive() const { return m_scrollUpTimer > 0.0f; }
+  bool isScrollDownActive() const { return m_scrollDownTimer > 0.0f; }
+
 private:
   int m_pendingDeltaX{0};
   int m_pendingDeltaY{0};
@@ -70,6 +76,8 @@ private:
   float m_decayRate{8.0f};
 
   std::deque<TrailPoint> m_trail;
+  float m_scrollUpTimer{};
+  float m_scrollDownTimer{};
 };
 
 void renderMouseIndicator(const ImVec2 &center,
