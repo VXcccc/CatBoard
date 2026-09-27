@@ -1,6 +1,7 @@
 #include "UI/SettingsWindow.h"
 #include "Assets/Resource/ResourceConstants.h"
 #include "Config/Config.h"
+#include "Config/ConfigJson.h"
 #include "Config/Constants.h"
 #include "Input/Hotkeys.h"
 #include "Input/Mouse.h"
@@ -21,6 +22,9 @@
 #include <cmath>
 #include <dwmapi.h>
 #include <dxgi.h>
+#include <iostream>
+#include <nlohmann/json.hpp>
+#include <vector>
 #include <winuser.h>
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
@@ -297,6 +301,9 @@ struct SettingsEditState {
   std::string layoutDeleteError{};
 
   bool showLayoutEditor{};
+
+  std::vector<Config::Settings> undoSettings{};
+  std::vector<Config::Settings> redoSettings{};
 };
 
 void restoreFromConfig(SettingsEditState &state,
@@ -341,6 +348,62 @@ Config::Settings buildSettings(const SettingsEditState &state) {
           state.misc,
           state.configName,
           state.imagePack};
+}
+
+void pushUndo(SettingsEditState &state, const Config::Settings &snapshot) {
+  if (state.undoSettings.size() >= Consts::MAX_UNDO_STEPS) {
+    state.undoSettings.erase(state.undoSettings.begin());
+  }
+  state.undoSettings.push_back(snapshot);
+  state.redoSettings.clear();
+}
+
+void clearUndo(SettingsEditState &state) {
+  state.undoSettings.clear();
+  state.redoSettings.clear();
+}
+
+void undo(SettingsEditState &state) {
+  if (state.undoSettings.empty())
+    return;
+
+  state.redoSettings.push_back(buildSettings(state));
+
+  Config::Settings prevSettings{state.undoSettings.back()};
+  state.undoSettings.pop_back();
+
+  Config::activeConfig = prevSettings;
+  restoreFromConfig(state, prevSettings);
+
+  //added this cuz for some reason its loses focus after pressing ctrl z
+  ForceForeground(s_hwnd);
+}
+
+void redo(SettingsEditState &state) {
+  if (state.redoSettings.empty())
+    return;
+
+  state.undoSettings.push_back(buildSettings(state));
+
+  Config::Settings nextSettings{state.redoSettings.back()};
+  state.redoSettings.pop_back();
+
+  Config::activeConfig = nextSettings;
+  restoreFromConfig(state, nextSettings);
+  ForceForeground(s_hwnd);
+}
+
+void handleUndoRedoInput(SettingsEditState &state,
+                         Config::Settings &lastCommitted) {
+  if (!ImGui::GetIO().WantTextInput) {
+    if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z)) {
+      redo(state);
+      lastCommitted = buildSettings(state);
+    } else if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
+      undo(state);
+      lastCommitted = buildSettings(state);
+    }
+  }
 }
 
 void validateCurrentIndex(std::size_t &index, std::size_t size) {
@@ -821,6 +884,8 @@ void RenderFrame() {
   static Layouts::LayoutEditState layoutEditState{};
   static SettingsTab currentTab = SettingsTab::Visuals;
 
+  static Config::Settings lastCommitted{};
+
   if (visibleNow && !wasVisibleLastFrame) {
     Layouts::refreshLayouts();
     Config::refreshConfigs();
@@ -828,6 +893,7 @@ void RenderFrame() {
 
     editState.previous = Config::activeConfig;
     restoreFromConfig(editState, editState.previous);
+    lastCommitted = editState.previous;
 
     editState.currentConfig =
         findIndexByName(Config::configs, Config::activeConfig.configName);
@@ -845,6 +911,8 @@ void RenderFrame() {
   ImGui_ImplDX11_NewFrame();
   ImGui_ImplWin32_NewFrame();
   ImGui::NewFrame();
+
+  handleUndoRedoInput(editState, lastCommitted);
 
   // maybe destroy the win titlebar and use imgui but idk rn
   ImGui::SetNextWindowPos(ImVec2(0, 0));
@@ -889,9 +957,15 @@ void RenderFrame() {
   }
 
   Config::Settings newSettings = buildSettings(editState);
-
   // Passing new settings but dont saving them
   Config::activeConfig = newSettings;
+
+  bool settingsChanged{nlohmann::json(newSettings).dump() !=
+                       nlohmann::json(lastCommitted).dump()};
+  if (settingsChanged && !ImGui::IsAnyItemActive()) {
+    pushUndo(editState, lastCommitted);
+    lastCommitted = newSettings;
+  }
 
   if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds ||
       currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc ||
