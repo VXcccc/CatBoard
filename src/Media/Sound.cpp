@@ -65,18 +65,7 @@ void ShutdownAudio() {
 }
 
 void refreshSounds() {
-  sounds.clear();
-
-  const auto folder{Paths::soundsDirectory()};
-
-  if (!std::filesystem::exists(folder))
-    return;
-
-  for (const auto &entry : std::filesystem::directory_iterator(folder)) {
-    if (!entry.is_directory())
-      continue;
-    sounds.push_back(entry.path().filename().string());
-  }
+  Helper::refresh(sounds, Paths::soundsDirectory(), "dir");
 }
 
 std::optional<PackVK> Load(const std::filesystem::path &packDir) {

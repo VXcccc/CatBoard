@@ -10,15 +10,15 @@
 
 #include "Config/Config.h"
 #include "Config/Constants.h"
+#include "Input/Mouse.h"
 #include "Media/Fonts.h"
-#include "System/Helpers.h"
 #include "Media/Images.h"
+#include "Media/Sound.h"
+#include "System/Helpers.h"
+#include "System/Tray.h"
 #include "UI/Layouts.h"
 #include "UI/MainWindow.h"
-#include "Input/Mouse.h"
 #include "UI/SettingsWindow.h"
-#include "Media/Sound.h"
-#include "System/Tray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -179,13 +179,10 @@ int main(int, char **) {
     Helper::fatalError(L"Failed to install default image packs");
   }
 
-  if (!(Images::installDefaultImagePacks())) {
-    Helper::fatalError(L"Failed to install default image packs");
+  if (!(Images::Load(Config::activeConfig.imagePack.name))) {
+    Helper::fatalError(L"Failed to load image pack");
   }
-
-  if (!(Images::handleConfigJson("DefaultImagePack"))) {
-    Helper::fatalError(L"Failed to load default image pack");
-  }
+  Images::refreshImagePacks();
 
   // Make process DPI aware and obtain main monitor scale
   ImGui_ImplWin32_EnableDpiAwareness();
@@ -393,7 +390,7 @@ int main(int, char **) {
     Mouse::g_mouseState.consumePendingDelta();
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
     Mouse::g_mouseState.updateMouseState(
-        deltaTime, Config::activeConfig.theme.mouseTheme.radius);
+        deltaTime, Config::activeConfig.theme.mouse.radius);
     Mouse::g_mouseState.updateScrollTimers(deltaTime);
     // Mouse::g_mouseState.updateTrail(deltaTime, 0.5f);
 
@@ -441,15 +438,19 @@ int main(int, char **) {
 
     renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown);
 
-    if (Config::activeConfig.theme.mouseTheme.enabled) {
+    if (Config::activeConfig.theme.mouse.enabled) {
       ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
                          Layouts::activeLayout.mouse.mouseCenterY);
-      Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                              currentFullKeysDown,
-                              Mouse::g_mouseState.isScrollDownActive(),
-                              Mouse::g_mouseState.isScrollUpActive());
+
+      if (Config::activeConfig.theme.mouse.imagesDisplay) {
+        Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
+                                currentFullKeysDown,
+                                Mouse::g_mouseState.isScrollDownActive(),
+                                Mouse::g_mouseState.isScrollUpActive());
+      }
+
       Mouse::renderMouseIndicator(
-          mouseCenter, Config::activeConfig.theme.mouseTheme.style.type);
+          mouseCenter, Config::activeConfig.theme.mouse.style.type);
     }
 
     // debug
@@ -524,7 +525,9 @@ void renderKeyboard(
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   ImGui::PushFont(Fonts::activeFont);
 
-  Images::drawKeyboardImages(draw, currentKeysDown);
+  if (Config::activeConfig.theme.keysImagesDisplay) {
+    Images::drawKeyboardImages(draw, currentKeysDown);
+  }
 
   for (const auto &key : Layouts::activeLayout.keys) {
     bool down{currentKeysDown[key.keyCode]};

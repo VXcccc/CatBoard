@@ -4,11 +4,12 @@
 // maybe goona change location of this variable later
 
 #include "Config/Constants.h"
-#include "Media/Fonts.h"
 #include "Input/Hotkeys.h"
-#include "UI/Layouts.h"
 #include "Input/Mouse.h"
+#include "Media/Fonts.h"
+#include "Media/Images.h"
 #include "Media/Sound.h"
+#include "UI/Layouts.h"
 #include "imgui.h"
 #include <array>
 #include <nlohmann/json.hpp>
@@ -18,12 +19,11 @@
 #include <winuser.h>
 using json = nlohmann::json;
 
-namespace Helper{
+namespace Helper {
 enum class FileCreateResult;
 }
 
 namespace Config {
-
 
 struct Outline {
   using ColorRGBA = std::array<int, 4>;
@@ -47,22 +47,31 @@ struct MouseTheme {
   float outerThickness{3.0f};
   float sensitivity{0.5f};
   float decayRate{8.0f};
+
+  bool imagesDisplay{false};
+  int imageOpacity{255};
+
+  float imageOffsetX{0.0f};
+  float imageOffsetY{-50.0f};
 };
 
 struct Theme {
   using ColorRGBA = std::array<int, 4>;
-  ColorRGBA idleFill{1, 1, 1, 255};
+  ColorRGBA idleFill{0, 0, 0, 255};
   ColorRGBA activeFill{255, 255, 255, 255};
 
   ColorRGBA idleText{255, 255, 255, 255};
-  ColorRGBA activeText{1, 1, 1, 255};
+  ColorRGBA activeText{0, 0, 0, 255};
 
   float keyRounding{0.0f};
   Outline keyOutline{};
 
   ColorRGBA obsBackground{0, 255, 0, 255};
 
-  MouseTheme mouseTheme{};
+  MouseTheme mouse{};
+
+  bool keysImagesDisplay{false};
+  int keysImageOpacity{255};
 };
 
 struct SoundPackSelection {
@@ -93,6 +102,7 @@ struct Settings {
   Fonts::Font font{};
   Misc misc{};
   std::string configName{"Default"};
+  Images::Pack imagePack{};
 };
 
 // current config

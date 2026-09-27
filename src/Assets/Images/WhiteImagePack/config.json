@@ -1,0 +1,103 @@
+{
+    "defaultKey": {
+        "activeFileName": "keyb",
+        "backGroundFileName": "keyw",
+        "vkCode": 0
+    },
+    "explicitImages": [
+        {
+            "activeFileName": "tabb",
+            "backGroundFileName": "tabw",
+            "vkCode": 9
+        },
+        {
+            "activeFileName": "tabb",
+            "backGroundFileName": "tabw",
+            "vkCode": 162
+        },
+        {
+            "activeFileName": "tabb",
+            "backGroundFileName": "tabw",
+            "vkCode": 164
+        },
+        {
+            "activeFileName": "tabb",
+            "backGroundFileName": "tabw",
+            "vkCode": 165
+        },
+        {
+            "activeFileName": "spaceb",
+            "backGroundFileName": "spacew",
+            "vkCode": 32
+        },
+        {
+            "activeFileName": "capb",
+            "backGroundFileName": "capsw",
+            "vkCode": 20
+        },
+        {
+            "activeFileName": "shiftb",
+            "backGroundFileName": "shiftw",
+            "vkCode": 160
+        }
+    ],
+    "mouse": {
+        "left": {
+            "x": -31.0,
+            "y": 0.0,
+            "w": 63.0,
+            "h": 219.0,
+            "buttonIdle": "leftb",
+            "buttonActive": "leftbp"
+        },
+        "right": {
+            "x": 31.5,
+            "y": 0.0,
+            "w": 62.0,
+            "h": 219.0,
+            "buttonIdle": "rightb",
+            "buttonActive": "rightbp"
+        },
+        "middle": {
+            "x": 0.5,
+            "y": -67.5,
+            "w": 12.0,
+            "h": 38.0,
+            "buttonIdle": "midb",
+            "buttonActive": "midbp"
+        },
+        "scrollUp": {
+            "x": 0.5,
+            "y": -77.0,
+            "w": 12.0,
+            "h": 19.0,
+            "buttonIdle": "sub",
+            "buttonActive": "suw"
+        },
+        "scrollDown": {
+            "x": 0.5,
+            "y": -58.0,
+            "w": 12.0,
+            "h": 19.0,
+            "buttonIdle": "sdb",
+            "buttonActive": "sdw"
+        },
+        "mouse5": {
+            "x": -53.0,
+            "y": -31.0,
+            "w": 7.0,
+            "h": 35.0,
+            "buttonIdle": "m5b",
+            "buttonActive": "m5w"
+        },
+        "mouse4": {
+            "x": -51.0,
+            "y": 5.0,
+            "w": 5.0,
+            "h": 41.0,
+            "buttonIdle": "m4b",
+            "buttonActive": "m4w"
+        }
+    },
+    "name": "DefaultImagePack"
+}

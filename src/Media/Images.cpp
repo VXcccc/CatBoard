@@ -1,4 +1,5 @@
 #include "Media/Images.h"
+#include "Config/Config.h"
 #include "Input/Hotkeys.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
@@ -35,7 +36,8 @@
 
 namespace Images {
 // extern
-ImagePack activeImagePack{};
+Images::Pack activePack{};
+std::vector<std::string> packs{};
 
 // static
 static std::unordered_map<std::string, Texture> g_textureCache;
@@ -44,6 +46,10 @@ bool installDefaultImagePacks() {
   return Helper::installDefault(Paths::getExecutableDir() / "Images",
                                 Paths::imagesDirectory());
 }
+
+void refreshImagePacks() {
+  Helper::refresh(packs, Paths::imagesDirectory(), "dir");
+};
 
 // Simple helper function to load an image into a DX11 texture with common
 // settings
@@ -128,9 +134,8 @@ Texture getOrLoadTexture(const std::string &fileName) {
   ID3D11ShaderResourceView *srv{nullptr};
   int w{0};
   int h{0};
-  auto path{
-      (Paths::getImagePackPath(activeImagePack.name) / (fileName + ".png"))
-          .string()};
+  auto path{(Paths::getImagePackPath(activePack.name) / (fileName + ".png"))
+                .string()};
 
   if (LoadTextureFromFile(path.c_str(), &srv, &w, &h)) {
     g_textureCache[fileName] = Texture{srv, w, h};
@@ -147,10 +152,11 @@ void clearTextureCache() {
   g_textureCache.clear();
 }
 
-bool handleConfigJson(std::string_view name) {
+bool Load(std::string_view name) {
   if (!Paths::ensureImagesDirectory()) {
     return false;
   }
+  clearTextureCache();
 
   const auto path{Paths::getImagePackJson(name)};
 
@@ -160,7 +166,7 @@ bool handleConfigJson(std::string_view name) {
       return false;
     }
     const auto j = json::parse(file);
-    activeImagePack = j.get<ImagePack>();
+    activePack = j.get<Images::Pack>();
   } catch (const std::exception &e) {
     std::string err{e.what()};
     // Helper::drawErrorInSettings(err);
@@ -170,14 +176,13 @@ bool handleConfigJson(std::string_view name) {
 }
 
 const Image *findImageForKey(int vkCode) {
-  auto it =
-      std::find_if(activeImagePack.explicitImages.begin(),
-                   activeImagePack.explicitImages.end(),
-                   [&](const Image &image) { return image.vkCode == vkCode; });
-  if (it != activeImagePack.explicitImages.end()) {
+  auto it = std::find_if(
+      activePack.explicitImages.begin(), activePack.explicitImages.end(),
+      [&](const Image &image) { return image.vkCode == vkCode; });
+  if (it != activePack.explicitImages.end()) {
     return &*it;
   }
-  return &activeImagePack.defaultKey;
+  return &activePack.defaultKey;
 }
 
 void drawKeyboardImages(ImDrawList *draw,
@@ -196,9 +201,13 @@ void drawKeyboardImages(ImDrawList *draw,
     // todo fix the problem with different size of key in layout and in image
     // size
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
-    draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight);
+    draw->AddImage(
+        (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
+        ImVec2(1, 1),
+        IM_COL32(255, 255, 255, Config::activeConfig.theme.keysImageOpacity));
   }
 }
+
 void drawMousePart(ImDrawList *draw, const ImVec2 &center,
                    const MouseButton &part, bool active) {
   const std::string &fileName{active ? part.buttonActive : part.buttonIdle};
@@ -206,20 +215,23 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   if (!texture.srv)
     return;
 
-  // to do make offset changebale in settings
-  constexpr float offsetY{-50.0f};
-  ImVec2 partCenter{center.x + part.x, center.y + part.y + offsetY};
+  float offsetY{Config::activeConfig.theme.mouse.imageOffsetY};
+  float offsetX{Config::activeConfig.theme.mouse.imageOffsetX};
+  ImVec2 partCenter{center.x + part.x + offsetX, center.y + part.y + offsetY};
 
   ImVec2 topLeft{partCenter.x - part.w * 0.5f, partCenter.y - part.h * 0.5f};
   ImVec2 bottomRight{topLeft.x + part.w, topLeft.y + part.h};
 
-  draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight);
+  draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight,
+                 ImVec2(0, 0), ImVec2(1, 1),
+                 IM_COL32(255, 255, 255,
+                          Config::activeConfig.theme.mouse.imageOpacity));
 }
 
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
                      const std::array<bool, 256> &currentKeysDown,
                      bool scrollDownActive, bool scrollUpActive) {
-  const Mouse &mouse{activeImagePack.mouse};
+  const Mouse &mouse{activePack.mouse};
 
   drawMousePart(draw, center, mouse.left, currentKeysDown[VK_LBUTTON]);
   drawMousePart(draw, center, mouse.right, currentKeysDown[VK_RBUTTON]);

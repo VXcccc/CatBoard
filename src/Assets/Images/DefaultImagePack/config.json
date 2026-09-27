@@ -99,6 +99,5 @@
             "buttonActive": "m4w"
         }
     },
-    "name": "DefaultImagePack",
-    "enable": true
+    "name": "DefaultImagePack"
 }

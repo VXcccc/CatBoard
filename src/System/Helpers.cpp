@@ -6,12 +6,12 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <exception>
 #include <filesystem>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
-#include <exception>
 #include <windows.h>
 #include <winuser.h>
 
@@ -52,6 +52,7 @@ void drawErrorInSettings(std::string &error) {
   ImGui::PopStyleColor();
 }
 
+
 int toColorRGB(float value) {
   value = std::clamp(value, 0.0f, 1.0f);
   return static_cast<int>(std::round(value * 255.0f));
@@ -72,6 +73,15 @@ ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
   return ImVec4{Helper::fromColorRGB(color[0]), Helper::fromColorRGB(color[1]),
                 Helper::fromColorRGB(color[2]), Helper::fromColorRGB(color[3])};
 }
+void directoryRefresh(std::vector<std::string> &category,
+                      const std::filesystem::path &folder) {
+
+  for (const auto &entry : std::filesystem::directory_iterator(folder)) {
+    if (!entry.is_directory())
+      continue;
+    category.push_back(entry.path().filename().string());
+  }
+}
 
 void refresh(std::vector<std::string> &category,
              const std::filesystem::path &folder, std::string_view ext) {
@@ -79,6 +89,9 @@ void refresh(std::vector<std::string> &category,
 
   if (!std::filesystem::exists(folder))
     return;
+
+  if (ext == "dir")
+    directoryRefresh(category, folder);
 
   for (const auto &entry : std::filesystem::directory_iterator(folder)) {
     if (!entry.is_regular_file())

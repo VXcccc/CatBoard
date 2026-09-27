@@ -30,7 +30,9 @@ void to_json(json &j, const MouseTheme &mouseTheme) {
        {"smallRadius", mouseTheme.smallRadius},
        {"outerThickness", mouseTheme.outerThickness},
        {"sensitivity", mouseTheme.sensitivity},
-       {"decayRate", mouseTheme.decayRate}};
+       {"decayRate", mouseTheme.decayRate},
+       {"imagesDisplay", mouseTheme.imagesDisplay},
+  {"imageOpacity", mouseTheme.imageOpacity}};
 }
 
 void from_json(const json &j, MouseTheme &mouseTheme) {
@@ -64,14 +66,25 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
 
   if (j.contains("decayRate"))
     j.at("decayRate").get_to(mouseTheme.decayRate);
+
+  if (j.contains("imagesDisplay"))
+    j.at("imagesDisplay").get_to(mouseTheme.imagesDisplay);
+
+  if (j.contains("imageOpacity"))
+    j.at("imageOpacity").get_to(mouseTheme.imageOpacity);
 }
 
 void to_json(json &j, const Theme &theme) {
-  j = {
-      {"idleFill", theme.idleFill},           {"activeFill", theme.activeFill},
-      {"idleText", theme.idleText},           {"activeText", theme.activeText},
-      {"keyRounding", theme.keyRounding},     {"keyOutline", theme.keyOutline},
-      {"obsBackground", theme.obsBackground}, {"mouseTheme", theme.mouseTheme}};
+  j = {{"idleFill", theme.idleFill},
+       {"activeFill", theme.activeFill},
+       {"idleText", theme.idleText},
+       {"activeText", theme.activeText},
+       {"keyRounding", theme.keyRounding},
+       {"keyOutline", theme.keyOutline},
+       {"obsBackground", theme.obsBackground},
+       {"mouse", theme.mouse},
+       {"keysImagesDisplay", theme.keysImagesDisplay},
+       {"keysImageOpacity", theme.keysImageOpacity}};
 }
 
 void from_json(const json &j, Theme &theme) {
@@ -96,8 +109,14 @@ void from_json(const json &j, Theme &theme) {
   if (j.contains("obsBackground"))
     j.at("obsBackground").get_to(theme.obsBackground);
 
-  if (j.contains("mouseTheme"))
-    j.at("mouseTheme").get_to(theme.mouseTheme);
+  if (j.contains("mouse"))
+    j.at("mouse").get_to(theme.mouse);
+
+  if (j.contains("keysImagesDisplay"))
+    j.at("keysImagesDisplay").get_to(theme.keysImagesDisplay);
+
+  if (j.contains("keysImageOpacity"))
+    j.at("keysImageOpacity").get_to(theme.keysImageOpacity);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {
@@ -127,7 +146,8 @@ void to_json(json &j, const Settings &settings) {
        {"overlayPos", settings.overlayPos},
        {"font", settings.font},
        {"misc", settings.misc},
-       {"configName", settings.configName}};
+       {"configName", settings.configName},
+       {"imagePack", settings.imagePack}};
 }
 
 void from_json(const json &j, Settings &settings) {
@@ -157,6 +177,9 @@ void from_json(const json &j, Settings &settings) {
 
   if (j.contains("configName"))
     j.at("configName").get_to(settings.configName);
+
+  if (j.contains("imagePack"))
+    j.at("imagePack").get_to(settings.imagePack);
 }
 
 void to_json(json &j, const Misc &misc) {
@@ -259,15 +282,13 @@ void from_json(const json &j, MouseStyle &mouseStyle) {
 
 namespace Layouts {
 void to_json(nlohmann::json &j, const Key &key) {
-  j = {
-      {"keyCode", key.keyCode},
-      {"label", key.label},
-      {"shiftLabel", key.shiftLabel},
-      {"x", key.x},
-      {"y", key.y},
-      {"w", key.w},
-      {"h", key.h}
-  };
+  j = {{"keyCode", key.keyCode},
+       {"label", key.label},
+       {"shiftLabel", key.shiftLabel},
+       {"x", key.x},
+       {"y", key.y},
+       {"w", key.w},
+       {"h", key.h}};
 }
 
 void from_json(const nlohmann::json &j, Key &key) {
@@ -291,7 +312,6 @@ void from_json(const nlohmann::json &j, Key &key) {
 
   if (j.contains("h"))
     j.at("h").get_to(key.h);
-
 }
 
 void to_json(nlohmann::json &j, const Mouse &mouse) {

@@ -5,6 +5,7 @@
 #include "Input/Hotkeys.h"
 #include "Input/Mouse.h"
 #include "Media/Fonts.h"
+#include "Media/Images.h"
 #include "Media/Sound.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
@@ -266,12 +267,12 @@ struct SettingsEditState {
 
   std::string selectedLayout;
 
-  Config::SoundPackSelection selectedSoundPack;
+  Config::SoundPackSelection soundPack;
   int volumePercent{};
 
   Binds::BindsArray binds{};
 
-  Fonts::Font selectedFont{};
+  Fonts::Font font{};
 
   int letterCaseMode{}; // converting to enum in new settings
 
@@ -281,12 +282,15 @@ struct SettingsEditState {
 
   std::string configName{};
 
+  Images::Pack imagePack{};
+
   // not writing this to the config
   std::size_t currentLayout{};
   std::size_t currentConfig{};
   std::size_t currentSound{};
   std::size_t currentFont{};
   std::size_t currentMouseStyle{};
+  std::size_t currentImagePack{};
 
   std::string configNameInput{};
   std::string configNameError;
@@ -301,13 +305,13 @@ void restoreFromConfig(SettingsEditState &state,
 
   state.selectedLayout = prevSettings.selectedLayout;
 
-  state.selectedSoundPack = prevSettings.soundPack;
+  state.soundPack = prevSettings.soundPack;
   state.volumePercent =
       static_cast<int>(std::round(prevSettings.soundPack.volume * 100.0f));
 
   state.binds = prevSettings.binds;
 
-  state.selectedFont = prevSettings.font;
+  state.font = prevSettings.font;
 
   state.misc = prevSettings.misc;
 
@@ -315,6 +319,8 @@ void restoreFromConfig(SettingsEditState &state,
       Helper::fromConfigColor(prevSettings.theme.obsBackground);
 
   state.configName = prevSettings.configName;
+
+  state.imagePack = prevSettings.imagePack;
 
   Layouts::loadLayout(prevSettings.selectedLayout);
   Sound::loadSoundPack(prevSettings.soundPack.name);
@@ -326,14 +332,15 @@ Config::Settings buildSettings(const SettingsEditState &state) {
           state.theme,
           state.selectedLayout,
           Config::SoundPackSelection{
-              state.selectedSoundPack.name, state.selectedSoundPack.enable,
-              state.selectedSoundPack.layoutKeysOnlySound,
+              state.soundPack.name, state.soundPack.enable,
+              state.soundPack.layoutKeysOnlySound,
               static_cast<float>(state.volumePercent) / 100.0f},
           state.binds,
           Config::activeConfig.overlayPos,
-          state.selectedFont,
+          state.font,
           state.misc,
-          state.configName};
+          state.configName,
+          state.imagePack};
 }
 
 void validateCurrentIndex(std::size_t &index, std::size_t size) {
@@ -388,11 +395,22 @@ void drawLayoutCombo(SettingsEditState &state) {
                    });
 }
 
+void drawImagePackCombo(SettingsEditState &state) {
+  drawGenericCombo("Image Pack", Images::packs, "No image packs",
+                   state.currentImagePack,
+                   [&state](std::size_t i, const std::string &name) {
+                     if (Images::Load(name)) {
+                       state.currentImagePack = i;
+                       state.imagePack.name = name;
+                     }
+                   });
+}
+
 void drawFontCombo(SettingsEditState &state) {
   drawGenericCombo("Font", Fonts::fonts, "No fonts", state.currentFont,
                    [&state](std::size_t i, const std::string &name) {
                      state.currentFont = i;
-                     state.selectedFont.name = name;
+                     state.font.name = name;
                    });
 }
 
@@ -409,7 +427,7 @@ void drawSoundCombo(SettingsEditState &state) {
                    [&state](std::size_t i, const std::string &name) {
                      if (Sound::loadSoundPack(name)) {
                        state.currentSound = i;
-                       state.selectedSoundPack.name = name;
+                       state.soundPack.name = name;
                      }
                    });
 }
@@ -420,9 +438,8 @@ void drawMouseStyleCommbo(SettingsEditState &state,
                    state.currentMouseStyle,
                    [&state](std::size_t i, const std::string &name) {
                      state.currentMouseStyle = i;
-                     state.theme.mouseTheme.style.type =
-                         static_cast<Mouse::Type>(i);
-                     state.theme.mouseTheme.style.name = name;
+                     state.theme.mouse.style.type = static_cast<Mouse::Type>(i);
+                     state.theme.mouse.style.name = name;
                    });
 }
 
@@ -433,11 +450,6 @@ void drawKeyboardColors(SettingsEditState &state) {
   if (ImGui::ColorEdit4("Idle fill color", &idleFillCol.x)) {
     state.theme.idleFill = Helper::toConfigColor(idleFillCol);
   }
-  // idk im not sure about if statement above
-  //  if(!state.misc.obsMode){
-  //    state.idleFillCol.x = std::clamp(state.idleFillCol.x,
-  //    Helper::fromColorRGB(1), Helper::fromColorRGB(255));
-  //  }
 
   ImVec4 activeFillCol{Helper::fromConfigColor(state.theme.activeFill)};
   if (ImGui::ColorEdit4("Active fill color", &activeFillCol.x)) {
@@ -482,10 +494,9 @@ void drawKeyboardSection(SettingsEditState &state) {
 void drawMouseSection(SettingsEditState &state) {
   ImGui::SeparatorText("Mouse");
 
-  ImGui::Checkbox("Enable mouse input display",
-                  &state.theme.mouseTheme.enabled);
+  ImGui::Checkbox("Enable mouse input display", &state.theme.mouse.enabled);
 
-  if (state.theme.mouseTheme.enabled) {
+  if (state.theme.mouse.enabled) {
     std::vector<std::string> mouseStyleNames{};
     for (const auto mouseStyle : Mouse::mouseStyles) {
       mouseStyleNames.push_back(mouseStyle.name);
@@ -493,35 +504,79 @@ void drawMouseSection(SettingsEditState &state) {
     drawMouseStyleCommbo(state, mouseStyleNames);
 
     ImVec4 outerCircleCol{
-        Helper::fromConfigColor(state.theme.mouseTheme.outerCircle)};
+        Helper::fromConfigColor(state.theme.mouse.outerCircle)};
     if (ImGui::ColorEdit4("Outer circle color", &outerCircleCol.x)) {
-      state.theme.mouseTheme.outerCircle =
-          Helper::toConfigColor(outerCircleCol);
+      state.theme.mouse.outerCircle = Helper::toConfigColor(outerCircleCol);
     }
 
     ImVec4 innerCircleCol{
-        Helper::fromConfigColor(state.theme.mouseTheme.innerCircle)};
+        Helper::fromConfigColor(state.theme.mouse.innerCircle)};
     if (ImGui::ColorEdit4("Inner circle color", &innerCircleCol.x)) {
-      state.theme.mouseTheme.innerCircle =
-          Helper::toConfigColor(innerCircleCol);
+      state.theme.mouse.innerCircle = Helper::toConfigColor(innerCircleCol);
     }
 
-    ImGui::Checkbox("Lerp color", &state.theme.mouseTheme.lerpColor);
+    ImGui::Checkbox("Invert indicator color", &state.theme.mouse.lerpColor);
 
-    ImGui::SliderFloat("Radius", &state.theme.mouseTheme.radius, 0.0f, 100.0f,
+    ImGui::SliderFloat("Radius", &state.theme.mouse.radius, 0.0f, 100.0f,
                        "%.2f");
 
-    ImGui::SliderFloat("Small radius", &state.theme.mouseTheme.smallRadius,
+    ImGui::SliderFloat("Small radius", &state.theme.mouse.smallRadius, 0.0f,
+                       100.0f, "%.2f");
+
+    ImGui::SliderFloat("Outer thickness", &state.theme.mouse.outerThickness,
                        0.0f, 100.0f, "%.2f");
 
-    ImGui::SliderFloat("Outer thickness",
-                       &state.theme.mouseTheme.outerThickness, 0.0f, 100.0f,
-                       "%.2f");
-
-    ImGui::SliderFloat("Sensitivity", &state.theme.mouseTheme.sensitivity, 0.0f,
+    ImGui::SliderFloat("Sensitivity", &state.theme.mouse.sensitivity, 0.0f,
                        10.0f, "%.2f");
-    ImGui::SliderFloat("Decay rate", &state.theme.mouseTheme.decayRate, 0.0f,
-                       100.0f, "%.2f");
+    ImGui::SliderFloat("Decay rate", &state.theme.mouse.decayRate, 0.0f, 100.0f,
+                       "%.2f");
+  }
+}
+
+void drawImageSection(SettingsEditState &state) {
+  ImGui::SeparatorText("Image");
+
+  drawImagePackCombo(state);
+
+  if (ImGui::Button("Open images folder")) {
+    Paths::openImagesDirectory();
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Refresh image packs")) {
+    Images::refreshImagePacks();
+  }
+
+  ImGui::Checkbox("Mouse display", &state.theme.mouse.imagesDisplay);
+  if (state.theme.mouse.imagesDisplay) {
+    ImGui::SliderInt("Mouse opacity", &state.theme.mouse.imageOpacity, 0, 255);
+    state.theme.mouse.imageOpacity =
+        std::clamp(state.theme.mouse.imageOpacity, 0, 255);
+
+    ImGui::DragFloat("Offset X", &state.theme.mouse.imageOffsetX);
+    ImGui::DragFloat("Offset Y", &state.theme.mouse.imageOffsetY);
+  }
+
+  static int prevIdleAlpha{};
+  static int prevActiveAlpha{};
+  if (ImGui::Checkbox("Keys display", &state.theme.keysImagesDisplay)) {
+    if (state.theme.keysImagesDisplay) {
+      prevIdleAlpha = state.theme.idleFill[3];
+      prevActiveAlpha = state.theme.activeFill[3];
+
+      state.theme.idleFill[3] = 0;
+      state.theme.activeFill[3] = 0;
+    } else {
+      state.theme.idleFill[3] = prevIdleAlpha;
+      state.theme.activeFill[3] = prevActiveAlpha;
+    }
+  }
+
+  if (state.theme.keysImagesDisplay) {
+    ImGui::SliderInt("Keys opacity", &state.theme.keysImageOpacity, 0, 255);
+    state.theme.keysImageOpacity =
+        std::clamp(state.theme.keysImageOpacity, 0, 255);
   }
 }
 
@@ -530,10 +585,8 @@ void drawFontSection(SettingsEditState &state) {
 
   drawFontCombo(state);
 
-  ImGui::SliderFloat("Font size", &state.selectedFont.sizePixels, 0.0f, 100.0f,
-                     "%.2f");
-  state.selectedFont.sizePixels =
-      std::clamp(state.selectedFont.sizePixels, 1.0f, 300.0f);
+  ImGui::SliderFloat("Font size", &state.font.sizePixels, 0.0f, 100.0f, "%.2f");
+  state.font.sizePixels = std::clamp(state.font.sizePixels, 1.0f, 300.0f);
 
   if (ImGui::Button("Open fonts folder")) {
     Paths::openFontsDirectory();
@@ -554,16 +607,16 @@ void drawFontSection(SettingsEditState &state) {
                      static_cast<int>(Fonts::LetterCaseMode::allCapital));
   ImGui::RadioButton("Show all buttons lower-case", &state.letterCaseMode,
                      static_cast<int>(Fonts::LetterCaseMode::allLower));
-  state.selectedFont.letterCase.mode =
+  state.font.letterCase.mode =
       static_cast<Fonts::LetterCaseMode>(state.letterCaseMode);
 
   ImGui::Text("Options: ");
   ImGui::Checkbox("Caps Lock applying for keys",
-                  &state.selectedFont.letterCase.options.capsLockDisplay);
+                  &state.font.letterCase.options.capsLockDisplay);
   ImGui::Checkbox("Follow shift for caps Lock insensitive keys",
-                  &state.selectedFont.letterCase.options.capsInsensitiveKeys);
+                  &state.font.letterCase.options.capsInsensitiveKeys);
   ImGui::Checkbox("Follow shift for caps Lock sensitive keys",
-                  &state.selectedFont.letterCase.options.capsSensitiveKeys);
+                  &state.font.letterCase.options.capsSensitiveKeys);
 }
 
 // Draw. functions
@@ -571,6 +624,8 @@ void drawFontSection(SettingsEditState &state) {
 void drawVisualsTab(SettingsEditState &state) {
   drawKeyboardSection(state);
   drawMouseSection(state);
+
+  drawImageSection(state);
 
   drawFontSection(state);
 }
@@ -640,10 +695,10 @@ void drawBindsTab(SettingsEditState &state) {
 }
 
 void drawSoundsTab(SettingsEditState &state) {
-  ImGui::Checkbox("Enable asmr sounds", &state.selectedSoundPack.enable);
-  if (state.selectedSoundPack.enable) {
+  ImGui::Checkbox("Enable asmr sounds", &state.soundPack.enable);
+  if (state.soundPack.enable) {
     ImGui::Checkbox("Sounds only for keys in layout",
-                    &state.selectedSoundPack.layoutKeysOnlySound);
+                    &state.soundPack.layoutKeysOnlySound);
 
     if (ImGui::SliderInt("Volume", &state.volumePercent, 0, 100)) {
       Sound::setMasterVolume(static_cast<float>(state.volumePercent / 100.0f));
@@ -782,6 +837,8 @@ void RenderFrame() {
         findIndexByName(Sound::sounds, Config::activeConfig.soundPack.name);
     editState.currentFont =
         (findIndexByName(Fonts::fonts, Config::activeConfig.font.name));
+    editState.currentImagePack =
+        findIndexByName(Images::packs, Config::activeConfig.imagePack.name);
   }
   wasVisibleLastFrame = visibleNow;
 
