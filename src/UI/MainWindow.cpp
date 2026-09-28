@@ -5,6 +5,7 @@
 #include "System/Helpers.h"
 #include "UI/Layouts.h"
 #include <windows.h>
+#include <winuser.h>
 
 namespace MainWindow {
 bool g_dragMode{false};
@@ -30,9 +31,9 @@ void SetObsMode(HWND hWnd, bool enabled) {
       (int)(Layouts::activeLayout.windowHeight * MainWindow::getG_MainScale())};
 
   // adding 30 pixles cuz of sysmenu
-  int obsWindowHeight{
-      ((int)(Layouts::activeLayout.windowHeight * MainWindow::getG_MainScale())) +
-      (30)};
+  int obsWindowHeight{((int)(Layouts::activeLayout.windowHeight *
+                             MainWindow::getG_MainScale())) +
+                      (30)};
 
   LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
   LONG_PTR style{GetWindowLongPtr(hWnd, GWL_STYLE)};
@@ -47,7 +48,7 @@ void SetObsMode(HWND hWnd, bool enabled) {
     MainWindow::setClearColor(
         Helper::fromConfigColor(Config::activeConfig.theme.obsBackground));
   } else {
-    exStyle |= ( WS_EX_TRANSPARENT | WS_EX_TOPMOST |
+    exStyle |= (WS_EX_TRANSPARENT | WS_EX_TOPMOST | WS_EX_LAYERED |
                 WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE);
 
     style =

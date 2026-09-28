@@ -63,13 +63,13 @@ float fromColorRGB(int value) {
   return static_cast<float>(value) / 255.0f;
 }
 
-Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color) {
-  return Config::Theme::ColorRGBA{
+Config::ColorRGBA toConfigColor(const ImVec4 &color) {
+  return Config::ColorRGBA{
       Helper::toColorRGB(color.x), Helper::toColorRGB(color.y),
       Helper::toColorRGB(color.z), Helper::toColorRGB(color.w)};
 }
 
-ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color) {
+ImVec4 fromConfigColor(const Config::ColorRGBA &color) {
   return ImVec4{Helper::fromColorRGB(color[0]), Helper::fromColorRGB(color[1]),
                 Helper::fromColorRGB(color[2]), Helper::fromColorRGB(color[3])};
 }

@@ -20,19 +20,48 @@ void from_json(const json &j, Outline &outline) {
     j.at("thickness").get_to(outline.thickness);
 }
 
+void to_json(json &j, const Trail &trail) {
+  j = {{"enable", trail.enable},
+       {"duration", trail.duration},
+       {"color", trail.color},
+       {"maxLength", trail.maxLength}};
+}
+
+void from_json(const json &j, Trail &trail) {
+  if (j.contains("enable"))
+    j.at("enable").get_to(trail.enable);
+
+  if (j.contains("duration"))
+    j.at("duration").get_to(trail.duration);
+
+  if (j.contains("color"))
+    j.at("color").get_to(trail.color);
+
+  if (j.contains("maxLength"))
+    j.at("maxLength").get_to(trail.maxLength);
+}
+
 void to_json(json &j, const MouseTheme &mouseTheme) {
-  j = {{"enabled", mouseTheme.enabled},
-       {"style", mouseTheme.style},
-       {"innerCircle", mouseTheme.innerCircle},
-       {"outerCircle", mouseTheme.outerCircle},
-       {"lerpColor", mouseTheme.lerpColor},
-       {"radius", mouseTheme.radius},
-       {"smallRadius", mouseTheme.smallRadius},
-       {"outerThickness", mouseTheme.outerThickness},
-       {"sensitivity", mouseTheme.sensitivity},
-       {"decayRate", mouseTheme.decayRate},
-       {"imagesDisplay", mouseTheme.imagesDisplay},
-  {"imageOpacity", mouseTheme.imageOpacity}};
+  j = {
+      {"enabled", mouseTheme.enabled},
+      {"style", mouseTheme.style},
+      {"inner", mouseTheme.inner},
+      {"outer", mouseTheme.outer},
+      {"fill", mouseTheme.fill},
+      {"lerpColor", mouseTheme.lerpColor},
+      {"radius", mouseTheme.radius},
+      {"smallRadius", mouseTheme.smallRadius},
+      {"outerThickness", mouseTheme.outerThickness},
+      {"sensitivity", mouseTheme.sensitivity},
+      {"decayRate", mouseTheme.decayRate},
+      {"imagesDisplay", mouseTheme.imagesDisplay},
+      {"imageOpacity", mouseTheme.imageOpacity},
+      {"width", mouseTheme.width},
+      {"height", mouseTheme.height},
+      {"fadeTime", mouseTheme.fadeTime},
+      {"rounding", mouseTheme.rounding},
+      {"trail", mouseTheme.trail},
+  };
 }
 
 void from_json(const json &j, MouseTheme &mouseTheme) {
@@ -43,11 +72,14 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
   if (j.contains("style"))
     j.at("style").get_to(mouseTheme.style);
 
-  if (j.contains("innerCircle"))
-    j.at("innerCircle").get_to(mouseTheme.innerCircle);
+  if (j.contains("inner"))
+    j.at("inner").get_to(mouseTheme.inner);
 
-  if (j.contains("outerCircle"))
-    j.at("outerCircle").get_to(mouseTheme.outerCircle);
+  if (j.contains("outer"))
+    j.at("outer").get_to(mouseTheme.outer);
+
+  if (j.contains("fill"))
+    j.at("fill").get_to(mouseTheme.fill);
 
   if (j.contains("lerpColor"))
     j.at("lerpColor").get_to(mouseTheme.lerpColor);
@@ -72,6 +104,18 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
 
   if (j.contains("imageOpacity"))
     j.at("imageOpacity").get_to(mouseTheme.imageOpacity);
+
+  if (j.contains("width"))
+    j.at("width").get_to(mouseTheme.width);
+
+  if (j.contains("height"))
+    j.at("height").get_to(mouseTheme.height);
+
+  if (j.contains("fadeTime"))
+    j.at("fadeTime").get_to(mouseTheme.fadeTime);
+
+  if (j.contains("rounding"))
+    j.at("rounding").get_to(mouseTheme.rounding);
 }
 
 void to_json(json &j, const Theme &theme) {
@@ -277,6 +321,24 @@ void from_json(const json &j, MouseStyle &mouseStyle) {
 
   if (j.contains("type"))
     j.at("type").get_to(mouseStyle.type);
+}
+
+void to_json(json &j, const TrailType &type) { j = static_cast<int>(type); }
+
+void from_json(const json &j, TrailType &type) {
+  type = static_cast<TrailType>(j.get<int>());
+}
+
+void to_json(json &j, const TrailStyle &trailStyle) {
+  j = {{"name", trailStyle.name}, {"type", trailStyle.type}};
+}
+
+void from_json(const json &j, TrailStyle &trailStyle) {
+  if (j.contains("name"))
+    j.at("name").get_to(trailStyle.name);
+
+  if (j.contains("type"))
+    j.at("type").get_to(trailStyle.type);
 }
 } // namespace Mouse
 

@@ -24,6 +24,7 @@
 #include <dxgi.h>
 #include <iostream>
 #include <nlohmann/json.hpp>
+#include <string>
 #include <vector>
 #include <winuser.h>
 
@@ -295,6 +296,7 @@ struct SettingsEditState {
   std::size_t currentFont{};
   std::size_t currentMouseStyle{};
   std::size_t currentImagePack{};
+  std::size_t currentTrailStyle{};
 
   std::string configNameInput{};
   std::string configNameError;
@@ -375,7 +377,7 @@ void undo(SettingsEditState &state) {
   Config::activeConfig = prevSettings;
   restoreFromConfig(state, prevSettings);
 
-  //added this cuz for some reason its loses focus after pressing ctrl z
+  // added this cuz for some reason its loses focus after pressing ctrl z
   ForceForeground(s_hwnd);
 }
 
@@ -505,6 +507,17 @@ void drawMouseStyleCommbo(SettingsEditState &state,
                      state.theme.mouse.style.name = name;
                    });
 }
+void drawTrailStyleCombo(SettingsEditState &state,
+                         const std::vector<std::string> &trailStyleNames) {
+  drawGenericCombo("Trail style", trailStyleNames, "No trail styles",
+                   state.currentTrailStyle,
+                   [&state](std::size_t i, const std::string &name) {
+                     state.currentTrailStyle = i;
+                     state.theme.mouse.trail.style.type =
+                         static_cast<Mouse::TrailType>(i);
+                     state.theme.mouse.trail.style.name = name;
+                   });
+}
 
 // Draw sections functions
 void drawKeyboardColors(SettingsEditState &state) {
@@ -561,21 +574,24 @@ void drawMouseSection(SettingsEditState &state) {
 
   if (state.theme.mouse.enabled) {
     std::vector<std::string> mouseStyleNames{};
-    for (const auto mouseStyle : Mouse::mouseStyles) {
+    for (const auto &mouseStyle : Mouse::mouseStyles) {
       mouseStyleNames.push_back(mouseStyle.name);
     }
     drawMouseStyleCommbo(state, mouseStyleNames);
 
-    ImVec4 outerCircleCol{
-        Helper::fromConfigColor(state.theme.mouse.outerCircle)};
-    if (ImGui::ColorEdit4("Outer circle color", &outerCircleCol.x)) {
-      state.theme.mouse.outerCircle = Helper::toConfigColor(outerCircleCol);
+    ImVec4 outerCol{Helper::fromConfigColor(state.theme.mouse.outer)};
+    if (ImGui::ColorEdit4("Outer color", &outerCol.x)) {
+      state.theme.mouse.outer = Helper::toConfigColor(outerCol);
     }
 
-    ImVec4 innerCircleCol{
-        Helper::fromConfigColor(state.theme.mouse.innerCircle)};
-    if (ImGui::ColorEdit4("Inner circle color", &innerCircleCol.x)) {
-      state.theme.mouse.innerCircle = Helper::toConfigColor(innerCircleCol);
+    ImVec4 innerCol{Helper::fromConfigColor(state.theme.mouse.inner)};
+    if (ImGui::ColorEdit4("Inner color", &innerCol.x)) {
+      state.theme.mouse.inner = Helper::toConfigColor(innerCol);
+    }
+
+    ImVec4 fillCol{Helper::fromConfigColor(state.theme.mouse.fill)};
+    if (ImGui::ColorEdit4("Fill color", &fillCol.x)) {
+      state.theme.mouse.fill = Helper::toConfigColor(fillCol);
     }
 
     ImGui::Checkbox("Invert indicator color", &state.theme.mouse.lerpColor);
@@ -593,6 +609,34 @@ void drawMouseSection(SettingsEditState &state) {
                        10.0f, "%.2f");
     ImGui::SliderFloat("Decay rate", &state.theme.mouse.decayRate, 0.0f, 100.0f,
                        "%.2f");
+
+    // wip
+    ImGui::SeparatorText("Rect mouse");
+
+    ImGui::SliderFloat("Width", &state.theme.mouse.width, 0.0f, 1920.0f);
+    ImGui::SliderFloat("Height", &state.theme.mouse.height, 0.0f, 1920.0f);
+
+    ImGui::SliderFloat("Fade time", &state.theme.mouse.fadeTime, 0.0f, 3.0f);
+
+    ImGui::SliderFloat("Outline rounding", &state.theme.mouse.rounding, 0.0f,
+                       20.0f, "%.2f");
+    state.theme.mouse.rounding =
+        std::clamp(state.theme.mouse.rounding, 0.0f, 1000.0f);
+
+    ImGui::Checkbox("Trail", &state.theme.mouse.trail.enable);
+    ImGui::SliderFloat("Trail duration", &state.theme.mouse.trail.duration,
+                       0.0f, 3.0f);
+
+    ImVec4 trailCol{Helper::fromConfigColor(state.theme.mouse.trail.color)};
+    if (ImGui::ColorEdit4("Trail color", &trailCol.x)) {
+      state.theme.mouse.trail.color = Helper::toConfigColor(trailCol);
+    }
+
+    std::vector<std::string> trailStyleNames{};
+    for (const auto &trailStyle : Mouse::trailStyles) {
+      trailStyleNames.push_back(trailStyle.name);
+    }
+    drawTrailStyleCombo(state, trailStyleNames);
   }
 }
 

@@ -25,21 +25,32 @@ enum class FileCreateResult;
 
 namespace Config {
 
-struct Outline {
-  using ColorRGBA = std::array<int, 4>;
+using ColorRGBA = std::array<int, 4>;
 
+struct Outline {
   bool enable{false};
   ColorRGBA color{255, 255, 255, 255};
   float thickness{3.0f};
 };
 
+struct Trail {
+  bool enable{true};
+  float duration{0.6f};
+  float maxLength{150.0f};
+
+  ColorRGBA color{255, 255, 255, 255};
+  Mouse::TrailStyle style{};
+};
+
 struct MouseTheme {
-  using ColorRGBA = std::array<int, 4>;
   bool enabled{true};
 
   Mouse::MouseStyle style{};
-  ColorRGBA outerCircle{255, 255, 255, 255};
-  ColorRGBA innerCircle{255, 255, 255, 255};
+  ColorRGBA outer{255, 255, 255, 255};
+  ColorRGBA inner{255, 255, 255, 255};
+
+  ColorRGBA fill{26, 26, 26, 200};
+
   bool lerpColor{false};
 
   float radius{37.0f};
@@ -53,10 +64,17 @@ struct MouseTheme {
 
   float imageOffsetX{0.0f};
   float imageOffsetY{-50.0f};
+
+  float width{100.0f};
+  float height{75.0f};
+
+  float fadeTime{0.6f};
+  float rounding{6.0f};
+
+  Trail trail{};
 };
 
 struct Theme {
-  using ColorRGBA = std::array<int, 4>;
   ColorRGBA idleFill{0, 0, 0, 255};
   ColorRGBA activeFill{255, 255, 255, 255};
 
@@ -117,7 +135,7 @@ void refreshConfigs();
 
 void Load();
 bool Apply(const Settings &settings);
-ImU32 ToImU32(const Config::Theme::ColorRGBA &c);
+ImU32 ToImU32(const Config::ColorRGBA &c);
 } // namespace Config
 
 #endif // !CONFIG_H

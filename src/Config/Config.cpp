@@ -58,7 +58,7 @@ bool Apply(const Settings &settings) {
   return file.good();
 }
 
-ImU32 ToImU32(const Config::Theme::ColorRGBA &c) {
+ImU32 ToImU32(const Config::ColorRGBA &c) {
   return IM_COL32(c[0], c[1], c[2], c[3]);
 }
 

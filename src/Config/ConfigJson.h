@@ -11,6 +11,10 @@ using json = nlohmann::json;
 void to_json(json &j, const Outline &outline);
 void from_json(const json &j, Outline &outline);
 
+
+void to_json(json &j, const Trail &trail);
+void from_json(const json &j, Trail &trail);
+
 void to_json(json &j, const MouseTheme &mouseTheme);
 void from_json(const json &j, MouseTheme &mouseTheme);
 
@@ -49,11 +53,18 @@ void from_json(const json &j, Font &font);
 namespace Mouse {
 using json = nlohmann::json;
 
+
 void to_json(json &j, const Type &type);
 void from_json(const json &j, Type &type);
 
 void to_json(json &j, const MouseStyle &mouseStyle);
 void from_json(const json &j, MouseStyle &mouseStyle);
+
+void to_json(json &j, const TrailType &type);
+void from_json(const json &j, TrailType &type);
+
+void to_json(json &j, const TrailStyle &trailStyle);
+void from_json(const json &j, TrailStyle &trailStyle);
 
 } // namespace Mouse
 

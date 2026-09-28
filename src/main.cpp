@@ -211,7 +211,7 @@ int main(int, char **) {
 
   s_hwnd = ::CreateWindowExW(
       WS_EX_NOREDIRECTIONBITMAP | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
-          WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
+          WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
       wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, pos.x, pos.y,
       windowWidth, windowHeight, nullptr, nullptr, wc.hInstance, nullptr);
   // ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
@@ -389,10 +389,21 @@ int main(int, char **) {
     // mouse poll
     Mouse::g_mouseState.consumePendingDelta();
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
-    Mouse::g_mouseState.updateMouseState(
-        deltaTime, Config::activeConfig.theme.mouse.radius);
+
+    Mouse::Type curType{Config::activeConfig.theme.mouse.style.type};
+
+    if (curType == Mouse::Type::NohBoard || curType == Mouse::Type::CatBoard) {
+      Mouse::g_mouseState.updateMouseState(
+          deltaTime, Config::activeConfig.theme.mouse.radius);
+    } else if (curType == Mouse::Type::GirlGlock) {
+      Mouse::g_mouseState.updateMouseState(
+          deltaTime, (Config::activeConfig.theme.mouse.width / 2),
+          (Config::activeConfig.theme.mouse.height / 2));
+    }
+
     Mouse::g_mouseState.updateScrollTimers(deltaTime);
-    // Mouse::g_mouseState.updateTrail(deltaTime, 0.5f);
+    Mouse::g_mouseState.updateTrail(
+        deltaTime, Config::activeConfig.theme.mouse.trail.style.type);
 
     if (Binds::g_bindJustRecorded) {
       prevFullKeyState = currentFullKeysDown;
@@ -438,6 +449,10 @@ int main(int, char **) {
 
     renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown);
 
+    Helper::drawDebugText("DeltaX: %.2f, DeltaY: %.2f",
+                          Mouse::g_mouseState.getOffsetX(),
+                          Mouse::g_mouseState.getOffsetY());
+
     if (Config::activeConfig.theme.mouse.enabled) {
       ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
                          Layouts::activeLayout.mouse.mouseCenterY);
@@ -450,7 +465,8 @@ int main(int, char **) {
       }
 
       Mouse::renderMouseIndicator(
-          mouseCenter, Config::activeConfig.theme.mouse.style.type);
+          mouseCenter, Config::activeConfig.theme.mouse.style.type,
+          Config::activeConfig.theme.mouse.trail.enable);
     }
 
     // debug
@@ -833,7 +849,6 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   switch (msg) {
   case WM_INPUT: {
     WM_RawMouseInputHandle(lParam);
-
     break;
   }
   case WM_SIZE:

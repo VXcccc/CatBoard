@@ -42,9 +42,9 @@ std::string VkToName(int vk);
 int toColorRGB(float value);
 float fromColorRGB(int value);
 
-Config::Theme::ColorRGBA toConfigColor(const ImVec4 &color);
+Config::ColorRGBA toConfigColor(const ImVec4 &color);
 
-ImVec4 fromConfigColor(const Config::Theme::ColorRGBA &color);
+ImVec4 fromConfigColor(const Config::ColorRGBA &color);
 
 std::string getFileCreateError(Helper::FileCreateResult result);
 

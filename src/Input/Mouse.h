@@ -1,38 +1,59 @@
 #pragma once
 
 #include "imgui.h"
+#include <array>
 #include <deque>
 #include <string>
 #include <windows.h>
 
+namespace Config {
+
+using ColorRGBA = std::array<int, 4>;
+}
+
 namespace Mouse {
 
-enum class Type { CatBoard, NohBoard, maxMouseStyles };
+enum class Type { CatBoard, NohBoard, GirlGlock, maxMouseStyles };
 
 struct MouseStyle {
   std::string name{"Cat Board"};
   Type type{Type::CatBoard};
 };
+
 extern std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
     mouseStyles;
 
+enum class TrailType { Circle, Catmull, maxTrailStyles };
+
+struct TrailStyle {
+  std::string name{"Circle trail"};
+  TrailType type{TrailType::Circle};
+};
+
+extern std::array<TrailStyle,
+                  static_cast<std::size_t>(TrailType::maxTrailStyles)>
+    trailStyles;
+
 struct TrailPoint {
-  float x, y;
+  ImVec2 pos{};
   float age{0.0f};
+  float distance{0.0f};
+  bool breakLine{false};
 };
 
 class MouseState {
 public:
-  MouseState(float sensitivity, float decayRate)
-      : m_sensitivity(sensitivity), m_decayRate(decayRate) {}
+  MouseState(float sensitivity, float decayRate, float fadeTime)
+      : m_sensitivity(sensitivity), m_decayRate(decayRate),
+        m_fadeTime(fadeTime) {}
 
-  void setDeltaX(const POINT &currentMousePos, const POINT &prevMousePos) {
-    m_deltaX = currentMousePos.x - prevMousePos.x;
-  }
-
-  void setDeltaY(const POINT &currentMousePos, const POINT &prevMousePos) {
-    m_deltaY = currentMousePos.y - prevMousePos.y;
-  }
+  // void setDeltaX(const POINT &currentMousePos, const POINT &prevMousePos) {
+  //   m_deltaX = currentMousePos.x - prevMousePos.x;
+  // }
+  //
+  // void setDeltaY(const POINT &currentMousePos, const POINT &prevMousePos) {
+  //   m_deltaY = currentMousePos.y - prevMousePos.y;
+  // }
 
   // void setOffsetX(float deltaX) { m_offsetX += deltaX * m_sensitivity; }
   float getOffsetX() const { return m_offsetX; }
@@ -47,22 +68,30 @@ public:
   float getDecayRate() const { return m_decayRate; }
 
   void updateMouseState(float deltaTime, float radius);
+  void updateMouseState(float deltaTime, float halfWidth, float halfHeight);
 
   float getDistance() const;
+
+  float getIdleTime() const { return m_idleTime; }
+  float getFadeDur() const { return m_fadeTime; }
 
   void addRawDelta(int dx, int dy);
   void consumePendingDelta();
 
-  void updateTrail(float deltaTime, float maxAge);
+  void updateTrail(float deltaTime, TrailType type);
   const std::deque<TrailPoint> &getTrail() const { return m_trail; }
-
 
   void registerScroll(bool up);
   void updateScrollTimers(float dt);
   bool isScrollUpActive() const { return m_scrollUpTimer > 0.0f; }
   bool isScrollDownActive() const { return m_scrollDownTimer > 0.0f; }
 
+  // void addTotalTrailDist(float dist) { m_trailTotalDist += dist; }
+
 private:
+  void updateCatmullTrail(float deltaTime);
+  void updateCircleTrail(float deltaTime);
+
   int m_pendingDeltaX{0};
   int m_pendingDeltaY{0};
 
@@ -75,15 +104,23 @@ private:
   float m_sensitivity{0.5f};
   float m_decayRate{8.0f};
 
+  float m_idleTime{0.0f};
+  float m_fadeTime{0.6f};
+
   std::deque<TrailPoint> m_trail;
+  float m_trailTotalDist{0.0f};
+
   float m_scrollUpTimer{};
   float m_scrollDownTimer{};
+
+  bool m_justWrapped{false};
 };
 
 void renderMouseIndicator(const ImVec2 &center,
-                          const Mouse::Type mouseStyleType);
+                          const Mouse::Type mouseStyleType, const bool trail);
 
-void renderMouseTrail(const ImVec2 &center, ImU32 baseColor, float maxAge);
+void renderMouseTrail(const ImVec2 &center,
+                            const Config::ColorRGBA &initColor, float maxAge, TrailType type);
 
 extern MouseState g_mouseState;
 } // namespace Mouse
