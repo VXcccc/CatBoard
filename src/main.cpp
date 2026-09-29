@@ -390,16 +390,19 @@ int main(int, char **) {
     Mouse::g_mouseState.consumePendingDelta();
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
 
-    Mouse::Type curType{Config::activeConfig.theme.mouse.style.type};
+    const Mouse::Type &curType{Config::activeConfig.theme.mouse.style.type};
 
     if (curType == Mouse::Type::NohBoard || curType == Mouse::Type::CatBoard) {
       Mouse::g_mouseState.updateMouseState(
           deltaTime, Config::activeConfig.theme.mouse.radius);
-    } else if (curType == Mouse::Type::GirlGlock) {
+    } else if (curType == Mouse::Type::Wrap || curType == Mouse::Type::Pan) {
       Mouse::g_mouseState.updateMouseState(
           deltaTime, (Config::activeConfig.theme.mouse.width / 2),
           (Config::activeConfig.theme.mouse.height / 2));
     }
+
+    if (Config::activeConfig.theme.mouse.highlightM1)
+      Mouse::updateM1Highlight(currentFullKeysDown);
 
     Mouse::g_mouseState.updateScrollTimers(deltaTime);
     Mouse::g_mouseState.updateTrail(
@@ -449,10 +452,6 @@ int main(int, char **) {
 
     renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown);
 
-    Helper::drawDebugText("DeltaX: %.2f, DeltaY: %.2f",
-                          Mouse::g_mouseState.getOffsetX(),
-                          Mouse::g_mouseState.getOffsetY());
-
     if (Config::activeConfig.theme.mouse.enabled) {
       ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
                          Layouts::activeLayout.mouse.mouseCenterY);
@@ -464,9 +463,8 @@ int main(int, char **) {
                                 Mouse::g_mouseState.isScrollUpActive());
       }
 
-      Mouse::renderMouseIndicator(
-          mouseCenter, Config::activeConfig.theme.mouse.style.type,
-          Config::activeConfig.theme.mouse.trail.enable);
+      Mouse::renderMouseIndicator(mouseCenter,
+                                  Config::activeConfig.theme.mouse.style.type);
     }
 
     // debug
@@ -539,9 +537,10 @@ void renderKeyboard(
     const std::array<bool, 256>
         &currentFullKeysDown) { // todo maybe remove currentFullKeysDown
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
+  const auto &theme{Config::activeConfig.theme};
   ImGui::PushFont(Fonts::activeFont);
 
-  if (Config::activeConfig.theme.keysImagesDisplay) {
+  if (theme.keysImagesDisplay) {
     Images::drawKeyboardImages(draw, currentKeysDown);
   }
 
@@ -561,21 +560,20 @@ void renderKeyboard(
     ImVec2 topLeft{key.x, key.y};
     ImVec2 bottomRight{key.x + key.w, key.y + key.h};
 
-    ImU32 fill{down ? Config::ToImU32(Config::activeConfig.theme.activeFill)
-                    : Config::ToImU32(Config::activeConfig.theme.idleFill)};
+    ImU32 fill{down ? Config::ToImU32(theme.activeFill)
+                    : Config::ToImU32(theme.idleFill)};
 
     ImU32 textColor{
-        down ? Config::ToImU32(Config::activeConfig.theme.activeText)
-             : Config::ToImU32(Config::activeConfig.theme
-                                   .idleText)}; // oposite the fill color
+        down ? Config::ToImU32(theme.activeText)
+             : Config::ToImU32(theme.idleText)}; // oposite the fill color
 
-    float rounding{Config::activeConfig.theme.keyRounding};
+    float rounding{theme.keyRounding};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-    if (Config::activeConfig.theme.keyOutline.enable) {
-      ImU32 outlineColor{
-          Config::ToImU32(Config::activeConfig.theme.keyOutline.color)};
-      float thickness{Config::activeConfig.theme.keyOutline.thickness};
+    if (theme.keyOutline.enable) {
+      ImU32 outlineColor{Config::ToImU32(down ? theme.keyOutline.activeColor
+                                              : theme.keyOutline.idleColor)};
+      float thickness{theme.keyOutline.thickness};
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
     // outline

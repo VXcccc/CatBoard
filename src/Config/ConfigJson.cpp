@@ -5,7 +5,8 @@ namespace Config {
 
 void to_json(json &j, const Outline &outline) {
   j = {{"enable", outline.enable},
-       {"color", outline.color},
+       {"idleColor", outline.idleColor},
+       {"activeColor", outline.activeColor},
        {"thickness", outline.thickness}};
 }
 
@@ -13,18 +14,23 @@ void from_json(const json &j, Outline &outline) {
   if (j.contains("enable"))
     j.at("enable").get_to(outline.enable);
 
-  if (j.contains("color"))
-    j.at("color").get_to(outline.color);
+  if (j.contains("idleColor"))
+    j.at("idleColor").get_to(outline.idleColor);
+
+  if (j.contains("activeColor"))
+    j.at("activeColor").get_to(outline.activeColor);
 
   if (j.contains("thickness"))
     j.at("thickness").get_to(outline.thickness);
 }
 
 void to_json(json &j, const Trail &trail) {
-  j = {{"enable", trail.enable},
-       {"duration", trail.duration},
-       {"color", trail.color},
-       {"maxLength", trail.maxLength}};
+  j = {
+      {"enable", trail.enable},     {"duration", trail.duration},
+      {"color", trail.color},       {"maxLength", trail.maxLength},
+      {"style", trail.style},       {"maxWidth", trail.maxWidth},
+      {"minWidth", trail.minWidth}, {"subdivisions", trail.subdivisions},
+  };
 }
 
 void from_json(const json &j, Trail &trail) {
@@ -39,6 +45,18 @@ void from_json(const json &j, Trail &trail) {
 
   if (j.contains("maxLength"))
     j.at("maxLength").get_to(trail.maxLength);
+
+  if (j.contains("style"))
+    j.at("style").get_to(trail.style);
+
+  if (j.contains("maxWidth"))
+    j.at("maxWidth").get_to(trail.maxWidth);
+
+  if (j.contains("minWidth"))
+    j.at("minWidth").get_to(trail.minWidth);
+
+  if (j.contains("subdivisions"))
+    j.at("subdivisions").get_to(trail.subdivisions);
 }
 
 void to_json(json &j, const MouseTheme &mouseTheme) {
@@ -61,6 +79,9 @@ void to_json(json &j, const MouseTheme &mouseTheme) {
       {"fadeTime", mouseTheme.fadeTime},
       {"rounding", mouseTheme.rounding},
       {"trail", mouseTheme.trail},
+      {"highlightM1", mouseTheme.highlightM1},
+      {"highlightColor", mouseTheme.highlightColor},
+      {"highlightScale", mouseTheme.higlightScale},
   };
 }
 
@@ -116,6 +137,18 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
 
   if (j.contains("rounding"))
     j.at("rounding").get_to(mouseTheme.rounding);
+
+  if (j.contains("trail"))
+    j.at("trail").get_to(mouseTheme.trail);
+
+  if (j.contains("highlightM1"))
+    j.at("highlightM1").get_to(mouseTheme.highlightM1);
+
+  if (j.contains("highlightColor"))
+    j.at("highlightColor").get_to(mouseTheme.highlightColor);
+
+  if (j.contains("higlightScale"))
+    j.at("higlightScale").get_to(mouseTheme.higlightScale);
 }
 
 void to_json(json &j, const Theme &theme) {

@@ -3,10 +3,13 @@
 
 #include "Config/Config.h"
 #include "imgui.h"
+#include <array>
 #include <exception>
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <concepts>
+
 
 namespace Helper {
 enum class FileCreateResult {
@@ -51,6 +54,8 @@ std::string getFileCreateError(Helper::FileCreateResult result);
 bool installDefault(const std::filesystem::path &source,
                     const std::filesystem::path &destination);
 
+bool ColorEdit(const std::string& label, Config::ColorRGBA& outCol, ImGuiColorEditFlags flags = 0);
+
 template <typename... Args>
 void drawDebugText(const std::string &Format, Args &&...args) {
   char buffer[96];
@@ -60,6 +65,21 @@ void drawDebugText(const std::string &Format, Args &&...args) {
   ImGui::PushStyleColor(ImGuiCol_Text, yellowColor); // yellow
   ImGui::TextUnformatted(buffer);
   ImGui::PopStyleColor();
+}
+
+template <typename T>
+concept HasName = requires(const T &t) {
+  { t.name } -> std::convertible_to<std::string>;
+};
+
+template <HasName T, std::size_t size>
+std::vector<std::string> extractNames(const std::array<T, size> &arr) {
+  std::vector<std::string> result{};
+  result.reserve(size);
+  for (const auto &style : arr) {
+    result.emplace_back(style.name);
+  }
+  return result;
 }
 }; // namespace Helper
 

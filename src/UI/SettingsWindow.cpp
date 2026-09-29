@@ -22,7 +22,6 @@
 #include <cmath>
 #include <dwmapi.h>
 #include <dxgi.h>
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
@@ -283,8 +282,6 @@ struct SettingsEditState {
 
   Config::Misc misc{};
 
-  ImVec4 obsBackground;
-
   std::string configName{};
 
   Images::Pack imagePack{};
@@ -323,9 +320,6 @@ void restoreFromConfig(SettingsEditState &state,
   state.font = prevSettings.font;
 
   state.misc = prevSettings.misc;
-
-  state.obsBackground =
-      Helper::fromConfigColor(prevSettings.theme.obsBackground);
 
   state.configName = prevSettings.configName;
 
@@ -521,26 +515,10 @@ void drawTrailStyleCombo(SettingsEditState &state,
 
 // Draw sections functions
 void drawKeyboardColors(SettingsEditState &state) {
-
-  ImVec4 idleFillCol{Helper::fromConfigColor(state.theme.idleFill)};
-  if (ImGui::ColorEdit4("Idle fill color", &idleFillCol.x)) {
-    state.theme.idleFill = Helper::toConfigColor(idleFillCol);
-  }
-
-  ImVec4 activeFillCol{Helper::fromConfigColor(state.theme.activeFill)};
-  if (ImGui::ColorEdit4("Active fill color", &activeFillCol.x)) {
-    state.theme.activeFill = Helper::toConfigColor(activeFillCol);
-  }
-
-  ImVec4 idleTextCol{Helper::fromConfigColor(state.theme.idleText)};
-  if (ImGui::ColorEdit4("Idle text color", &idleTextCol.x)) {
-    state.theme.idleText = Helper::toConfigColor(idleTextCol);
-  }
-
-  ImVec4 activeTextCol{Helper::fromConfigColor(state.theme.activeText)};
-  if (ImGui::ColorEdit4("Active text color", &activeTextCol.x)) {
-    state.theme.activeText = Helper::toConfigColor(activeTextCol);
-  }
+  Helper::ColorEdit("Idle fill color", state.theme.idleFill);
+  Helper::ColorEdit("Active fill color", state.theme.activeFill);
+  Helper::ColorEdit("Idle text color", state.theme.idleText);
+  Helper::ColorEdit("Active text color", state.theme.activeText);
 }
 
 void drawKeyboardSection(SettingsEditState &state) {
@@ -553,11 +531,9 @@ void drawKeyboardSection(SettingsEditState &state) {
 
   ImGui::Checkbox("Enable Outline", &state.theme.keyOutline.enable);
   if (state.theme.keyOutline.enable) {
-    ImVec4 keyOutlineColor{
-        Helper::fromConfigColor(state.theme.keyOutline.color)};
-    if (ImGui::ColorEdit4("Outline color", &keyOutlineColor.x)) {
-      state.theme.keyOutline.color = Helper::toConfigColor(keyOutlineColor);
-    };
+    Helper::ColorEdit("Idle outline color", state.theme.keyOutline.idleColor);
+    Helper::ColorEdit("Active outline color",
+                      state.theme.keyOutline.activeColor);
 
     ImGui::SliderFloat("Thickness", &state.theme.keyOutline.thickness, 0.0f,
                        20.0f, "%.2f");
@@ -568,38 +544,44 @@ void drawKeyboardSection(SettingsEditState &state) {
 }
 
 void drawMouseSection(SettingsEditState &state) {
+  auto &mouse{state.theme.mouse};
+  auto &trail{mouse.trail};
+  bool circleType{mouse.style.type == Mouse::Type::CatBoard ||
+                  mouse.style.type == Mouse::Type::NohBoard};
+  bool rectType{mouse.style.type == Mouse::Type::Wrap ||
+                mouse.style.type == Mouse::Type::Pan};
+
   ImGui::SeparatorText("Mouse");
 
   ImGui::Checkbox("Enable mouse input display", &state.theme.mouse.enabled);
 
   if (state.theme.mouse.enabled) {
-    std::vector<std::string> mouseStyleNames{};
-    for (const auto &mouseStyle : Mouse::mouseStyles) {
-      mouseStyleNames.push_back(mouseStyle.name);
-    }
-    drawMouseStyleCommbo(state, mouseStyleNames);
+    drawMouseStyleCommbo(state, Helper::extractNames(Mouse::mouseStyles));
 
-    ImVec4 outerCol{Helper::fromConfigColor(state.theme.mouse.outer)};
-    if (ImGui::ColorEdit4("Outer color", &outerCol.x)) {
-      state.theme.mouse.outer = Helper::toConfigColor(outerCol);
-    }
-
-    ImVec4 innerCol{Helper::fromConfigColor(state.theme.mouse.inner)};
-    if (ImGui::ColorEdit4("Inner color", &innerCol.x)) {
-      state.theme.mouse.inner = Helper::toConfigColor(innerCol);
-    }
-
-    ImVec4 fillCol{Helper::fromConfigColor(state.theme.mouse.fill)};
-    if (ImGui::ColorEdit4("Fill color", &fillCol.x)) {
-      state.theme.mouse.fill = Helper::toConfigColor(fillCol);
-    }
+    Helper::ColorEdit("Outer color", mouse.outer);
+    Helper::ColorEdit("Inner color", mouse.inner);
+    Helper::ColorEdit("Fill color", mouse.fill);
 
     ImGui::Checkbox("Invert indicator color", &state.theme.mouse.lerpColor);
 
-    ImGui::SliderFloat("Radius", &state.theme.mouse.radius, 0.0f, 100.0f,
-                       "%.2f");
+    ImGui::Checkbox("Highlight m1", &mouse.highlightM1);
+    if (mouse.highlightM1) {
+      Helper::ColorEdit("Highlight color", mouse.highlightColor);
 
-    ImGui::SliderFloat("Small radius", &state.theme.mouse.smallRadius, 0.0f,
+      ImGui::SliderFloat("Highlight scale", &mouse.higlightScale, 0.0f, 3.0f);
+      mouse.higlightScale = std::clamp(mouse.higlightScale, 0.0f, 10.0f);
+    }
+
+    if (circleType)
+      ImGui::SliderFloat("Radius", &state.theme.mouse.radius, 0.0f, 100.0f,
+                         "%.2f");
+
+    if (rectType) {
+      ImGui::SliderFloat("Width", &state.theme.mouse.width, 0.0f, 1920.0f);
+      ImGui::SliderFloat("Height", &state.theme.mouse.height, 0.0f, 1920.0f);
+    }
+
+    ImGui::SliderFloat("Indicator radius", &state.theme.mouse.smallRadius, 0.0f,
                        100.0f, "%.2f");
 
     ImGui::SliderFloat("Outer thickness", &state.theme.mouse.outerThickness,
@@ -607,36 +589,41 @@ void drawMouseSection(SettingsEditState &state) {
 
     ImGui::SliderFloat("Sensitivity", &state.theme.mouse.sensitivity, 0.0f,
                        10.0f, "%.2f");
-    ImGui::SliderFloat("Decay rate", &state.theme.mouse.decayRate, 0.0f, 100.0f,
-                       "%.2f");
-
-    // wip
-    ImGui::SeparatorText("Rect mouse");
-
-    ImGui::SliderFloat("Width", &state.theme.mouse.width, 0.0f, 1920.0f);
-    ImGui::SliderFloat("Height", &state.theme.mouse.height, 0.0f, 1920.0f);
+    if (circleType)
+      ImGui::SliderFloat("Decay rate", &state.theme.mouse.decayRate, 0.0f,
+                         100.0f, "%.2f");
 
     ImGui::SliderFloat("Fade time", &state.theme.mouse.fadeTime, 0.0f, 3.0f);
 
-    ImGui::SliderFloat("Outline rounding", &state.theme.mouse.rounding, 0.0f,
-                       20.0f, "%.2f");
+    if (rectType)
+      ImGui::SliderFloat("Outline rounding", &state.theme.mouse.rounding, 0.0f,
+                         20.0f, "%.2f");
     state.theme.mouse.rounding =
         std::clamp(state.theme.mouse.rounding, 0.0f, 1000.0f);
 
+    // wip
     ImGui::Checkbox("Trail", &state.theme.mouse.trail.enable);
-    ImGui::SliderFloat("Trail duration", &state.theme.mouse.trail.duration,
-                       0.0f, 3.0f);
+    if (state.theme.mouse.trail.enable) {
+      drawTrailStyleCombo(state, Helper::extractNames(Mouse::trailStyles));
 
-    ImVec4 trailCol{Helper::fromConfigColor(state.theme.mouse.trail.color)};
-    if (ImGui::ColorEdit4("Trail color", &trailCol.x)) {
-      state.theme.mouse.trail.color = Helper::toConfigColor(trailCol);
-    }
+      ImGui::SliderFloat("Trail duration", &state.theme.mouse.trail.duration,
+                         0.0f, 3.0f);
 
-    std::vector<std::string> trailStyleNames{};
-    for (const auto &trailStyle : Mouse::trailStyles) {
-      trailStyleNames.push_back(trailStyle.name);
+      ImGui::SliderFloat("Min width", &mouse.trail.minWidth, 0.0f, 10.0f,
+                         "%.2f");
+      ImGui::SliderFloat("Max width", &mouse.trail.maxWidth, 0.0f, 30.0f,
+                         "%.2f");
+
+      if (mouse.trail.style.type == Mouse::TrailType::Catmull) {
+        ImGui::SliderFloat("Max length", &mouse.trail.maxLength, 0.0f, 1000.0f,
+                           "%.2f");
+        ImGui::SliderInt("Subdivisions", &mouse.trail.subdivisions, 1.0f,
+                         30.0f);
+        mouse.trail.subdivisions = std::clamp(mouse.trail.subdivisions, 1, 100);
+      }
+
+      Helper::ColorEdit("Trail color", trail.color);
     }
-    drawTrailStyleCombo(state, trailStyleNames);
   }
 }
 
@@ -784,7 +771,7 @@ void drawMiscTab(SettingsEditState &state) {
   ImGui::Checkbox("Enable ObsMode", &state.misc.obsMode);
 
   if (state.misc.obsMode) {
-    ImGui::ColorEdit4("Background Color", &state.obsBackground.x);
+    Helper::ColorEdit("Background Color", state.theme.obsBackground);
   }
 
   ImGui::SliderInt("FPS", &state.misc.fps, 5, 360);
@@ -946,9 +933,15 @@ void RenderFrame() {
     editState.currentSound =
         findIndexByName(Sound::sounds, Config::activeConfig.soundPack.name);
     editState.currentFont =
-        (findIndexByName(Fonts::fonts, Config::activeConfig.font.name));
+        findIndexByName(Fonts::fonts, Config::activeConfig.font.name);
     editState.currentImagePack =
         findIndexByName(Images::packs, Config::activeConfig.imagePack.name);
+    editState.currentMouseStyle =
+        findIndexByName(Helper::extractNames(Mouse::mouseStyles),
+                        Config::activeConfig.theme.mouse.style.name);
+    editState.currentTrailStyle =
+        findIndexByName(Helper::extractNames(Mouse::trailStyles),
+                        Config::activeConfig.theme.mouse.trail.style.name);
   }
   wasVisibleLastFrame = visibleNow;
 

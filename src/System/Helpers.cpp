@@ -52,7 +52,6 @@ void drawErrorInSettings(std::string &error) {
   ImGui::PopStyleColor();
 }
 
-
 int toColorRGB(float value) {
   value = std::clamp(value, 0.0f, 1.0f);
   return static_cast<int>(std::round(value * 255.0f));
@@ -116,6 +115,16 @@ bool installDefault(const std::filesystem::path &source,
                         std::filesystem::copy_options::recursive, ec);
 
   return !ec;
+}
+
+bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
+               ImGuiColorEditFlags flags) {
+  ImVec4 ImVecCol{fromConfigColor(outCol)};
+  if (ImGui::ColorEdit4(label.c_str(), &ImVecCol.x, flags)) {
+    outCol = Helper::toConfigColor(ImVecCol);
+    return true;
+  }
+  return false;
 }
 
 std::string getFileCreateError(Helper::FileCreateResult result) {

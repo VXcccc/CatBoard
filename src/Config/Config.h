@@ -29,7 +29,8 @@ using ColorRGBA = std::array<int, 4>;
 
 struct Outline {
   bool enable{false};
-  ColorRGBA color{255, 255, 255, 255};
+  ColorRGBA idleColor{255, 255, 255, 255};
+  ColorRGBA activeColor{0, 0, 0, 255};
   float thickness{3.0f};
 };
 
@@ -40,6 +41,10 @@ struct Trail {
 
   ColorRGBA color{255, 255, 255, 255};
   Mouse::TrailStyle style{};
+
+  float minWidth{1.0f};
+  float maxWidth{3.0f};
+  int subdivisions{5};
 };
 
 struct MouseTheme {
@@ -72,6 +77,10 @@ struct MouseTheme {
   float rounding{6.0f};
 
   Trail trail{};
+
+  bool highlightM1{true};
+  ColorRGBA highlightColor{255, 255, 255, 255};
+  float higlightScale{1.25f};
 };
 
 struct Theme {

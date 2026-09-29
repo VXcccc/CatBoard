@@ -13,7 +13,7 @@ using ColorRGBA = std::array<int, 4>;
 
 namespace Mouse {
 
-enum class Type { CatBoard, NohBoard, GirlGlock, maxMouseStyles };
+enum class Type { CatBoard, NohBoard, Wrap, Pan, maxMouseStyles };
 
 struct MouseStyle {
   std::string name{"Cat Board"};
@@ -26,8 +26,8 @@ extern std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
 enum class TrailType { Circle, Catmull, maxTrailStyles };
 
 struct TrailStyle {
-  std::string name{"Circle trail"};
-  TrailType type{TrailType::Circle};
+  std::string name{"Catmull trail"};
+  TrailType type{TrailType::Catmull};
 };
 
 extern std::array<TrailStyle,
@@ -39,6 +39,7 @@ struct TrailPoint {
   float age{0.0f};
   float distance{0.0f};
   bool breakLine{false};
+  bool highlighted{false};
 };
 
 class MouseState {
@@ -79,12 +80,13 @@ public:
   void consumePendingDelta();
 
   void updateTrail(float deltaTime, TrailType type);
-  const std::deque<TrailPoint> &getTrail() const { return m_trail; }
+  const std::deque<TrailPoint> &getTrailPoints() const { return m_trail; }
 
   void registerScroll(bool up);
   void updateScrollTimers(float dt);
   bool isScrollUpActive() const { return m_scrollUpTimer > 0.0f; }
   bool isScrollDownActive() const { return m_scrollDownTimer > 0.0f; }
+
 
   // void addTotalTrailDist(float dist) { m_trailTotalDist += dist; }
 
@@ -114,13 +116,17 @@ private:
   float m_scrollDownTimer{};
 
   bool m_justWrapped{false};
+
+  bool m_panActive{false};
+  ImVec2 trailPos() const { return ImVec2{m_offsetX, m_offsetY}; }
 };
 
 void renderMouseIndicator(const ImVec2 &center,
-                          const Mouse::Type mouseStyleType, const bool trail);
+                          const Mouse::Type mouseStyleType);
 
-void renderMouseTrail(const ImVec2 &center,
-                            const Config::ColorRGBA &initColor, float maxAge, TrailType type);
+void renderMouseTrail(const ImVec2 &center, TrailType type);
+
+void updateM1Highlight(const std::array<bool, 256> &currentFullKeysDown);
 
 extern MouseState g_mouseState;
 } // namespace Mouse
