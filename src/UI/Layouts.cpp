@@ -685,8 +685,7 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
     if (std::filesystem::exists(path)) {
       ImGui::OpenPopup("Save Layout");
     } else {
-      clearUndo(state);
-
+      // clearUndo(state);
       state.layoutNameError = Helper::getFileCreateError(
           saveLayout(state.layoutNameInput, state.layout));
 

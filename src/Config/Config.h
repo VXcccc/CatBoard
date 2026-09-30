@@ -81,6 +81,7 @@ struct MouseTheme {
   bool highlightM1{true};
   ColorRGBA highlightColor{255, 255, 255, 255};
   float higlightScale{1.25f};
+
 };
 
 struct Theme {
@@ -99,6 +100,10 @@ struct Theme {
 
   bool keysImagesDisplay{false};
   int keysImageOpacity{255};
+
+  bool animation{false};
+  float pressScale{1.2f};
+  int animationSpeed{100};
 };
 
 struct SoundPackSelection {

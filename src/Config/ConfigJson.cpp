@@ -152,16 +152,21 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
 }
 
 void to_json(json &j, const Theme &theme) {
-  j = {{"idleFill", theme.idleFill},
-       {"activeFill", theme.activeFill},
-       {"idleText", theme.idleText},
-       {"activeText", theme.activeText},
-       {"keyRounding", theme.keyRounding},
-       {"keyOutline", theme.keyOutline},
-       {"obsBackground", theme.obsBackground},
-       {"mouse", theme.mouse},
-       {"keysImagesDisplay", theme.keysImagesDisplay},
-       {"keysImageOpacity", theme.keysImageOpacity}};
+  j = {
+      {"idleFill", theme.idleFill},
+      {"activeFill", theme.activeFill},
+      {"idleText", theme.idleText},
+      {"activeText", theme.activeText},
+      {"keyRounding", theme.keyRounding},
+      {"keyOutline", theme.keyOutline},
+      {"obsBackground", theme.obsBackground},
+      {"mouse", theme.mouse},
+      {"keysImagesDisplay", theme.keysImagesDisplay},
+      {"keysImageOpacity", theme.keysImageOpacity},
+      {"animation", theme.animation},
+      {"pressScale", theme.pressScale},
+      {"animationSpeed", theme.animationSpeed},
+  };
 }
 
 void from_json(const json &j, Theme &theme) {
@@ -194,6 +199,15 @@ void from_json(const json &j, Theme &theme) {
 
   if (j.contains("keysImageOpacity"))
     j.at("keysImageOpacity").get_to(theme.keysImageOpacity);
+
+  if (j.contains("animation"))
+    j.at("animation").get_to(theme.animation);
+
+  if (j.contains("pressScale"))
+    j.at("pressScale").get_to(theme.pressScale);
+
+  if (j.contains("animationSpeed"))
+    j.at("animationSpeed").get_to(theme.animationSpeed);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {

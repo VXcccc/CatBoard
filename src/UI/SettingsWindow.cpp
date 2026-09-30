@@ -390,8 +390,9 @@ void redo(SettingsEditState &state) {
 }
 
 void handleUndoRedoInput(SettingsEditState &state,
-                         Config::Settings &lastCommitted) {
-  if (!ImGui::GetIO().WantTextInput) {
+                         Config::Settings &lastCommitted,
+                         SettingsTab currentTab) {
+  if (!ImGui::GetIO().WantTextInput && currentTab != SettingsTab::Layouts) {
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z)) {
       redo(state);
       lastCommitted = buildSettings(state);
@@ -529,6 +530,12 @@ void drawKeyboardSection(SettingsEditState &state) {
   ImGui::SliderFloat("Rounding", &state.theme.keyRounding, 0.0f, 20.0f, "%.2f");
   state.theme.keyRounding = std::clamp(state.theme.keyRounding, 0.0f, 1000.0f);
 
+  ImGui::Checkbox("Animations", &state.theme.animation);
+  if (state.theme.animation) {
+    ImGui::SliderFloat("Press scale", &state.theme.pressScale, 0.0f, 3.0f,
+                       "%.2f");
+    ImGui::SliderInt("Animation speed", &state.theme.animationSpeed, 0, 1000);
+  }
   ImGui::Checkbox("Enable Outline", &state.theme.keyOutline.enable);
   if (state.theme.keyOutline.enable) {
     Helper::ColorEdit("Idle outline color", state.theme.keyOutline.idleColor);
@@ -949,8 +956,6 @@ void RenderFrame() {
   ImGui_ImplWin32_NewFrame();
   ImGui::NewFrame();
 
-  handleUndoRedoInput(editState, lastCommitted);
-
   // maybe destroy the win titlebar and use imgui but idk rn
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
@@ -969,6 +974,8 @@ void RenderFrame() {
     if (i + 1 < std::size(tabs))
       ImGui::SameLine();
   }
+
+  handleUndoRedoInput(editState, lastCommitted, currentTab);
 
   switch (currentTab) {
   case SettingsTab::Visuals:
@@ -999,7 +1006,8 @@ void RenderFrame() {
 
   bool settingsChanged{nlohmann::json(newSettings).dump() !=
                        nlohmann::json(lastCommitted).dump()};
-  if (settingsChanged && !ImGui::IsAnyItemActive()) {
+  if (settingsChanged && !ImGui::IsAnyItemActive() &&
+      currentTab != SettingsTab::Layouts) {
     pushUndo(editState, lastCommitted);
     lastCommitted = newSettings;
   }

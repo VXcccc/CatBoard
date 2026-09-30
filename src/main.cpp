@@ -24,6 +24,7 @@
 #include "imgui_impl_win32.h"
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <conio.h>
 #include <cstdlib>
@@ -36,6 +37,7 @@
 #include <shellapi.h>
 #include <tchar.h>
 #include <thread>
+#include <vector>
 #include <windef.h>
 #include <windows.h>
 #include <winnt.h>
@@ -48,6 +50,10 @@
 
 #include <dcomp.h>
 #pragma comment(lib, "dcomp.lib")
+
+#ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
+#define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
+#endif
 
 // Data
 static ID3D11Device *g_pd3dDevice = nullptr;
@@ -64,10 +70,13 @@ static IDCompositionVisual *g_dcompVisual = nullptr;
 
 static float g_main_scale{};
 
+static HANDLE g_fpsTimer = nullptr;
+
 // Forward declarations of main functions
 void renderKeyboard(const Layouts::Layout &layout,
                     const std::array<bool, 256> &currentKeysDown,
-                    const std::array<bool, 256> &currentFullKeysDown);
+                    const std::array<bool, 256> &currentFullKeysDown,
+                    const std::array<float, 256> &keysScale);
 bool detectAnyKeyChanged(const Layouts::Layout &layout,
                          const std::array<bool, 256> &prevKeyState,
                          std::array<bool, 256> &outCurrentDown);
@@ -88,6 +97,11 @@ void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown);
 
 void handleObsMode();
 
+// Forward declarations of animations functions
+bool updateAnimations(const Layouts::Layout &layout,
+                      const std::array<bool, 256> &currentKeysDown,
+                      std::array<float, 256> &outKeysScale, float deltaTime);
+
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
@@ -100,6 +114,9 @@ POINT getOverlayPosition(int windowWidth, int windowHeight);
 bool RegisterRawMouseInput(HWND hwnd);
 
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
+
+void fpsLimitter(
+    const std::chrono::time_point<std::chrono::steady_clock> &frameStart);
 
 namespace MainWindow {
 static ImVec4 s_clearColor{Consts::defaultClearColor};
@@ -147,7 +164,7 @@ void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
 
 // Main code
 int main(int, char **) {
-  timeBeginPeriod(1);
+  // timeBeginPeriod(1);
   Config::Load();
 
   if (!(Layouts::installDefaultLayouts())) {
@@ -287,9 +304,9 @@ int main(int, char **) {
   // - You can load multiple fonts and use ImGui::PushFont()/PopFont() to select
   // them.
   // - If a file cannot be loaded, AddFont functions will return a nullptr.
-  // Please handle those errors in your code (e.g. use an assertion, display an
-  // error and quit).
-  // - Read 'docs/FONTS.md' for more instructions and details.
+  // Please handle those errors in your code (e.g. use an assertion, display
+  // an error and quit).
+  // - Read 'docs/FONTS.md' for more instructions on fonts.
   // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use FreeType
   // for higher quality font rendering.
   // - Remember that in C/C++ if you want to include a backslash \ in a string
@@ -305,6 +322,14 @@ int main(int, char **) {
   // io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
   // IM_ASSERT(font != nullptr);
 
+  g_fpsTimer = CreateWaitableTimerExW(nullptr, nullptr,
+                                      CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
+                                      TIMER_MODIFY_STATE | SYNCHRONIZE);
+
+  if (!g_fpsTimer) {
+    Helper::fatalError(L"Failed to create FPS timer");
+  }
+
   // creating tray icon
   Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
 
@@ -314,7 +339,7 @@ int main(int, char **) {
   bool show_demo_window = true;
   bool show_another_window = false;
 
-  // Main loop
+  // Main loop variables
   bool done = false;
 
   // prevKeyState holding previous frame state
@@ -322,6 +347,11 @@ int main(int, char **) {
   // arrays only for layouts keys
   static std::array<bool, 256> prevKeyState{};
   static std::array<bool, 256> currentKeysDown{};
+  static std::array<float, 256> keysScale = [] {
+    std::array<float, 256> scales{};
+    scales.fill(1.0f);
+    return scales;
+  }();
 
   // arrays for full keyboard
   static std::array<bool, 256> prevFullKeyState{};
@@ -379,16 +409,20 @@ int main(int, char **) {
       CreateRenderTarget();
     }
 
+    float deltaTime{getDeltaTime(freq, lastDeltaTime)};
+
     bool anyKeyChanged{detectAnyKeyChanged(Layouts::activeLayout, prevKeyState,
                                            currentKeysDown)};
     bool anyMouseKeyChanged{
         detectAnyMouseKeyChanged(prevFullKeyState, currentFullKeysDown)};
 
+    bool animationActive{updateAnimations(
+        Layouts::activeLayout, currentKeysDown, keysScale, deltaTime)};
+
     pollFullKeyboard(currentFullKeysDown);
 
     // mouse poll
     Mouse::g_mouseState.consumePendingDelta();
-    float deltaTime{getDeltaTime(freq, lastDeltaTime)};
 
     const Mouse::Type &curType{Config::activeConfig.theme.mouse.style.type};
 
@@ -431,13 +465,13 @@ int main(int, char **) {
                                   Mouse::g_mouseState.getSensivity()};
 
     bool needsRender{anyKeyChanged || anyMouseKeyChanged || firstFrame ||
-                     mouseIndicatorActive ||
+                     mouseIndicatorActive || animationActive ||
                      (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
                      SettingsWindow::IsVisible()};
 
     if (!needsRender) {
       SettingsWindow::RenderFrame();
-      ::Sleep(1);
+      fpsLimitter(frameStart);
       continue;
     }
     firstFrame = false;
@@ -450,7 +484,8 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown);
+    renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown,
+                   keysScale);
 
     if (Config::activeConfig.theme.mouse.enabled) {
       ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
@@ -468,8 +503,10 @@ int main(int, char **) {
     }
 
     // debug
-    //  ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-    //              1000.0f / io.Framerate, io.Framerate);
+    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+                1000.0f / io.Framerate, io.Framerate);
+
+    const auto frameEnd{std::chrono::steady_clock::now()};
 
     // Rendering
     ImGui::Render();
@@ -496,18 +533,7 @@ int main(int, char **) {
 
     // todo move it to seperate function
     //  fps limiter
-    const auto frameEnd{std::chrono::steady_clock::now()};
-
-    const double frameTime{
-        std::chrono::duration<double>(frameEnd - frameStart).count()};
-
-    double targetFrameTime{1.0 /
-                           static_cast<double>(Config::activeConfig.misc.fps)};
-
-    if (frameTime < targetFrameTime) {
-      std::this_thread::sleep_for(
-          std::chrono::duration<double>(targetFrameTime - frameTime));
-    }
+    fpsLimitter(frameStart);
   }
 
   // Cleanup
@@ -526,16 +552,21 @@ int main(int, char **) {
   // applying config before quit
   Config::Apply(Config::activeConfig);
 
-  timeEndPeriod(1);
+  if (g_fpsTimer) {
+    CloseHandle(g_fpsTimer);
+    g_fpsTimer = nullptr;
+  }
+
   return 0;
 }
 
 // Main functions
 
-void renderKeyboard(
-    const Layouts::Layout &layout, const std::array<bool, 256> &currentKeysDown,
-    const std::array<bool, 256>
-        &currentFullKeysDown) { // todo maybe remove currentFullKeysDown
+void renderKeyboard(const Layouts::Layout &layout,
+                    const std::array<bool, 256> &currentKeysDown,
+                    const std::array<bool, 256> &currentFullKeysDown,
+                    const std::array<float, 256>
+                        &keysScale) { // todo maybe remove currentFullKeysDown
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   const auto &theme{Config::activeConfig.theme};
   ImGui::PushFont(Fonts::activeFont);
@@ -557,8 +588,12 @@ void renderKeyboard(
       }
     }
 
-    ImVec2 topLeft{key.x, key.y};
-    ImVec2 bottomRight{key.x + key.w, key.y + key.h};
+    const float scale{keysScale[key.keyCode]};
+    const ImVec2 center{key.x + key.w * 0.5f, key.y + key.h * 0.5f};
+    const ImVec2 halfSize{key.w * scale * 0.5f, key.h * scale * 0.5f};
+
+    ImVec2 topLeft(center.x - halfSize.x, center.y - halfSize.y);
+    ImVec2 bottomRight(center.x + halfSize.x, center.y + halfSize.y);
 
     ImU32 fill{down ? Config::ToImU32(theme.activeFill)
                     : Config::ToImU32(theme.idleFill)};
@@ -566,17 +601,16 @@ void renderKeyboard(
     ImU32 textColor{
         down ? Config::ToImU32(theme.activeText)
              : Config::ToImU32(theme.idleText)}; // oposite the fill color
-
     float rounding{theme.keyRounding};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
+
     if (theme.keyOutline.enable) {
       ImU32 outlineColor{Config::ToImU32(down ? theme.keyOutline.activeColor
                                               : theme.keyOutline.idleColor)};
       float thickness{theme.keyOutline.thickness};
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
-    // outline
 
     std::string displayLabel{Fonts::handleLetterCase(
         currentFullKeysDown, Config::activeConfig.font, key)};
@@ -674,6 +708,31 @@ void handleObsMode() {
   }
 }
 
+// animations
+bool updateAnimations(const Layouts::Layout &layout,
+                      const std::array<bool, 256> &currentKeysDown,
+                      std::array<float, 256> &outKeysScale, float deltaTime) {
+  const auto &theme{Config::activeConfig.theme};
+  bool animationActive{false};
+  if (!theme.animation) {
+    return animationActive;
+  }
+
+  for (const auto &key : layout.keys) {
+    bool down{currentKeysDown[key.keyCode]};
+    float targetScale{(down) ? theme.pressScale : 1.0f};
+
+    float speed{static_cast<float>(theme.animationSpeed) / 10.0f};
+    float t{1.0f - std::exp(-speed * deltaTime)};
+
+    outKeysScale[key.keyCode] += (targetScale - outKeysScale[key.keyCode]) * t;
+    if (std::abs(outKeysScale[key.keyCode] - 1.0f) > 0.001f) {
+      animationActive = true;
+    }
+  }
+  return animationActive;
+}
+
 // Helper functions
 bool RegisterRawMouseInput(HWND hwnd) {
   RAWINPUTDEVICE rid{};
@@ -693,6 +752,48 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
   outLastDeltaTime = now;
 
   return dt;
+}
+
+// used clancker for this maybe not the best practice idk 
+void fpsLimitter(
+    const std::chrono::time_point<std::chrono::steady_clock> &frameStart) {
+  using Clock = std::chrono::steady_clock;
+  using HundredNanoseconds =
+      std::chrono::duration<long long, std::ratio<1, 10000000>>;
+
+  const double fps{static_cast<double>(Config::activeConfig.misc.fps)};
+
+  if (fps <= 0.0 || g_fpsTimer == nullptr) {
+    return;
+  }
+
+  const auto targetFrame{std::chrono::duration_cast<Clock::duration>(
+      std::chrono::duration<double>(1.0 / fps))};
+
+  const auto targetTime{frameStart + targetFrame};
+  const auto now{Clock::now()};
+
+  if (now >= targetTime) {
+    return;
+  }
+
+  const auto remaining{targetTime - now};
+
+  const auto remaining100ns{
+      std::chrono::duration_cast<HundredNanoseconds>(remaining).count()};
+
+  if (remaining100ns <= 0) {
+    return;
+  }
+
+  LARGE_INTEGER dueTime{};
+  dueTime.QuadPart = -remaining100ns;
+
+  if (!SetWaitableTimer(g_fpsTimer, &dueTime, 0, nullptr, nullptr, FALSE)) {
+    return;
+  }
+
+  WaitForSingleObject(g_fpsTimer, INFINITE);
 }
 
 POINT getOverlayPosition(int windowWidth, int windowHeight) {
@@ -832,13 +933,13 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              LPARAM lParam);
 
 // Win32 message handler
-// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell
+// You can read the io.WantCaptureMouse and io.WantCaptureKeyboard flags to tell
 // if dear imgui wants to use your inputs.
 // - When io.WantCaptureMouse is true, do not dispatch mouse input data to
 // your main application, or clear/overwrite your copy of the mouse data.
 // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data
-// to your main application, or clear/overwrite your copy of the keyboard
-// data. Generally you may always pass all inputs to dear imgui, and hide them
+// to your main application, or clear/overwrite your copy of the keyboard data.
+// Generally you may always pass all inputs to dear imgui, and hide them
 // from your application based on those two flags.
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
