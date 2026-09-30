@@ -43,6 +43,7 @@ add_executable(${PROJECT_NAME} WIN32
 
     src/Input/Hotkeys.cpp
     src/Input/Mouse.cpp
+    src/Input/Keyboard.cpp
 
     src/Media/Sound.cpp
     src/Media/Fonts.cpp
@@ -51,6 +52,7 @@ add_executable(${PROJECT_NAME} WIN32
     src/UI/SettingsWindow.cpp
     src/UI/MainWindow.cpp
     src/UI/Layouts.cpp
+    src/UI/Render.cpp
 
     src/Assets/Resource/app.rc
 

@@ -235,7 +235,7 @@ ImU32 applyFade(const Config::ColorRGBA &initColor, const float fade) {
   ImVec4 initColorImVec{Helper::fromConfigColor(initColor)};
   initColorImVec.w = fade;
 
-  return Config::ToImU32(Helper::toConfigColor(initColorImVec));
+  return Helper::ToImU32(Helper::toConfigColor(initColorImVec));
 }
 
 void updateM1Highlight(const std::array<bool, 256> &currentFullKeysDown) {
@@ -391,12 +391,12 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   const auto &mouse{Config::activeConfig.theme.mouse};
 
-  const ImU32 innerColor{Config::ToImU32(inner())};
-  const ImU32 outerColor{Config::ToImU32(mouse.outer)};
+  const ImU32 innerColor{Helper::ToImU32(inner())};
+  const ImU32 outerColor{Helper::ToImU32(mouse.outer)};
   float radius{mouse.radius};
 
   // outer circle
-  draw->AddCircleFilled(center, radius, Config::ToImU32(mouse.fill));
+  draw->AddCircleFilled(center, radius, Helper::ToImU32(mouse.fill));
   draw->AddCircle(center, radius, outerColor, 64, mouse.outerThickness);
 
   const float offsetX{g_mouseState.getOffsetX()};
@@ -456,8 +456,8 @@ void renderDefaultMouseIndicator(const ImVec2 &center) {
   float radius{mouse.radius};
   ImDrawList *draw = ImGui::GetBackgroundDrawList();
 
-  const ImU32 innerColor{Config::ToImU32(inner())};
-  const ImU32 outerColor{Config::ToImU32(mouse.outer)};
+  const ImU32 innerColor{Helper::ToImU32(inner())};
+  const ImU32 outerColor{Helper::ToImU32(mouse.outer)};
   const float indicatorLength{(std::min)(g_mouseState.getDistance(), radius)};
   const float colorMultiplier{std::clamp(indicatorLength / radius, 0.0f, 1.0f)};
 
@@ -465,7 +465,7 @@ void renderDefaultMouseIndicator(const ImVec2 &center) {
       mouse.lerpColor ? lerpColor(innerColor, outerColor, colorMultiplier)
                       : innerColor};
 
-  draw->AddCircleFilled(center, radius, Config::ToImU32(mouse.fill));
+  draw->AddCircleFilled(center, radius, Helper::ToImU32(mouse.fill));
   draw->AddCircle(center, radius, outerColor, 64, mouse.outerThickness);
 
   renderMouseTrail(center, mouse.trail.style.type);
@@ -487,8 +487,8 @@ void renderWrapIndicator(const ImVec2 &center) {
 
   const ImU32 innerColor{applyFade(inner(), fade)};
   const ImU32 outerColor{applyFade(mouse.outer, fade)};
-  const ImU32 outlineColor{Config::ToImU32(mouse.outer)};
-  const ImU32 fillColor{Config::ToImU32(mouse.fill)};
+  const ImU32 outlineColor{Helper::ToImU32(mouse.outer)};
+  const ImU32 fillColor{Helper::ToImU32(mouse.fill)};
 
   const float colorMultiplier{
       std::clamp((std::max)(std::abs(g_mouseState.getOffsetX()) / halfWidth,
@@ -529,8 +529,8 @@ void renderPanIndicator(const ImVec2 &center) {
   float fade{getFade()};
 
   const ImU32 innerColor{applyFade(inner(), fade)};
-  const ImU32 outlineColor{Config::ToImU32(mouse.outer)};
-  const ImU32 fillColor{Config::ToImU32(mouse.fill)};
+  const ImU32 outlineColor{Helper::ToImU32(mouse.outer)};
+  const ImU32 fillColor{Helper::ToImU32(mouse.fill)};
 
   ImVec2 topLeft(center.x - halfWidth, center.y - halfHeight);
   ImVec2 bottomRight(center.x + halfWidth, center.y + halfHeight);

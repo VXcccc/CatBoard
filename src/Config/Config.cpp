@@ -58,9 +58,6 @@ bool Apply(const Settings &settings) {
   return file.good();
 }
 
-ImU32 ToImU32(const Config::ColorRGBA &c) {
-  return IM_COL32(c[0], c[1], c[2], c[3]);
-}
 
 Helper::FileCreateResult createConfig(std::string_view name) {
   if (!Paths::ensureConfigDirectory()) {

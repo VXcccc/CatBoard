@@ -1,4 +1,5 @@
 #include "Config/ConfigJson.h"
+#include "Config/Config.h"
 #include <nlohmann/json.hpp>
 
 namespace Config {
@@ -151,6 +152,14 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
     j.at("higlightScale").get_to(mouseTheme.higlightScale);
 }
 
+void to_json(json &j, const AnimType &animType) {
+  j = static_cast<int>(animType);
+}
+
+void from_json(const json &j, AnimType &animType) {
+  animType = static_cast<AnimType>(j.get<int>());
+}
+
 void to_json(json &j, const Theme &theme) {
   j = {
       {"idleFill", theme.idleFill},
@@ -166,6 +175,8 @@ void to_json(json &j, const Theme &theme) {
       {"animation", theme.animation},
       {"pressScale", theme.pressScale},
       {"animationSpeed", theme.animationSpeed},
+      {"animateColors", theme.animateColors},
+      {"animType", theme.animType},
   };
 }
 
@@ -208,6 +219,12 @@ void from_json(const json &j, Theme &theme) {
 
   if (j.contains("animationSpeed"))
     j.at("animationSpeed").get_to(theme.animationSpeed);
+
+  if (j.contains("animateColors"))
+    j.at("animateColors").get_to(theme.animateColors);
+
+  if (j.contains("animType"))
+    j.at("animType").get_to(theme.animType);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {

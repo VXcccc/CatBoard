@@ -52,6 +52,19 @@ void drawErrorInSettings(std::string &error) {
   ImGui::PopStyleColor();
 }
 
+
+void HelpMarker(const char* desc)
+{
+    ImGui::TextDisabled("(?)");
+    if (ImGui::BeginItemTooltip())
+    {
+        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+        ImGui::TextUnformatted(desc);
+        ImGui::PopTextWrapPos();
+        ImGui::EndTooltip();
+    }
+}
+
 int toColorRGB(float value) {
   value = std::clamp(value, 0.0f, 1.0f);
   return static_cast<int>(std::round(value * 255.0f));
@@ -72,6 +85,11 @@ ImVec4 fromConfigColor(const Config::ColorRGBA &color) {
   return ImVec4{Helper::fromColorRGB(color[0]), Helper::fromColorRGB(color[1]),
                 Helper::fromColorRGB(color[2]), Helper::fromColorRGB(color[3])};
 }
+
+ImU32 ToImU32(const Config::ColorRGBA &c) {
+  return IM_COL32(c[0], c[1], c[2], c[3]);
+}
+
 void directoryRefresh(std::vector<std::string> &category,
                       const std::filesystem::path &folder) {
 

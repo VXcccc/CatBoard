@@ -10,6 +10,7 @@
 
 #include "Config/Config.h"
 #include "Config/Constants.h"
+#include "Input/Keyboard.h"
 #include "Input/Mouse.h"
 #include "Media/Fonts.h"
 #include "Media/Images.h"
@@ -18,6 +19,7 @@
 #include "System/Tray.h"
 #include "UI/Layouts.h"
 #include "UI/MainWindow.h"
+#include "UI/Render.h"
 #include "UI/SettingsWindow.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
@@ -36,7 +38,7 @@
 #include <hidusage.h>
 #include <shellapi.h>
 #include <tchar.h>
-#include <thread>
+// #include <thread>
 #include <vector>
 #include <windef.h>
 #include <windows.h>
@@ -72,36 +74,6 @@ static float g_main_scale{};
 
 static HANDLE g_fpsTimer = nullptr;
 
-// Forward declarations of main functions
-void renderKeyboard(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown,
-                    const std::array<bool, 256> &currentFullKeysDown,
-                    const std::array<float, 256> &keysScale);
-bool detectAnyKeyChanged(const Layouts::Layout &layout,
-                         const std::array<bool, 256> &prevKeyState,
-                         std::array<bool, 256> &outCurrentDown);
-bool detectAnyMouseKeyChanged(const std::array<bool, 256> &prevKeyState,
-                              std::array<bool, 256> &outCurrentDown);
-void commitKeyState(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown,
-                    std::array<bool, 256> &outPrevKeyState);
-
-void handleKeySound(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &prevKeyState,
-                    const std::array<bool, 256> &currentDown);
-
-void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
-                        const std::array<bool, 256> &currentKeysDown);
-
-void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown);
-
-void handleObsMode();
-
-// Forward declarations of animations functions
-bool updateAnimations(const Layouts::Layout &layout,
-                      const std::array<bool, 256> &currentKeysDown,
-                      std::array<float, 256> &outKeysScale, float deltaTime);
-
 // Forward declarations of helper functions
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
@@ -109,14 +81,13 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
+// user helper functions
 POINT getOverlayPosition(int windowWidth, int windowHeight);
-
 bool RegisterRawMouseInput(HWND hwnd);
-
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
-
 void fpsLimitter(
     const std::chrono::time_point<std::chrono::steady_clock> &frameStart);
+void handleObsMode();
 
 namespace MainWindow {
 static ImVec4 s_clearColor{Consts::defaultClearColor};
@@ -352,6 +323,7 @@ int main(int, char **) {
     scales.fill(1.0f);
     return scales;
   }();
+  std::array<Render::KeyColors, 256> keysColors{};
 
   // arrays for full keyboard
   static std::array<bool, 256> prevFullKeyState{};
@@ -411,15 +383,19 @@ int main(int, char **) {
 
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
 
-    bool anyKeyChanged{detectAnyKeyChanged(Layouts::activeLayout, prevKeyState,
-                                           currentKeysDown)};
-    bool anyMouseKeyChanged{
-        detectAnyMouseKeyChanged(prevFullKeyState, currentFullKeysDown)};
+    bool anyKeyChanged{Keyboard::detectAnyKeyChanged(
+        Layouts::activeLayout, prevKeyState, currentKeysDown)};
+    bool anyMouseKeyChanged{Keyboard::detectAnyMouseKeyChanged(
+        prevFullKeyState, currentFullKeysDown)};
 
-    bool animationActive{updateAnimations(
+    bool scaleAnimating{Keyboard::updateAnimations(
         Layouts::activeLayout, currentKeysDown, keysScale, deltaTime)};
+    bool colorAnimating{Keyboard::updateKeyColors(
+        Layouts::activeLayout, currentKeysDown, keysColors, deltaTime)};
 
-    pollFullKeyboard(currentFullKeysDown);
+    bool animationActive{scaleAnimating || colorAnimating};
+
+    Keyboard::pollFullKeyboard(currentFullKeysDown);
 
     // mouse poll
     Mouse::g_mouseState.consumePendingDelta();
@@ -451,9 +427,10 @@ int main(int, char **) {
 
     if (Config::activeConfig.soundPack.enable) {
       if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
-        handleKeySound(Layouts::activeLayout, prevKeyState, currentKeysDown);
+        Keyboard::handleKeySound(Layouts::activeLayout, prevKeyState,
+                                 currentKeysDown);
       } else {
-        handleKeySoundFull(prevFullKeyState, currentFullKeysDown);
+        Keyboard::handleKeySoundFull(prevFullKeyState, currentFullKeysDown);
       }
     }
 
@@ -476,7 +453,8 @@ int main(int, char **) {
     }
     firstFrame = false;
 
-    commitKeyState(Layouts::activeLayout, currentKeysDown, prevKeyState);
+    Keyboard::commitKeyState(Layouts::activeLayout, currentKeysDown,
+                             prevKeyState);
 
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
@@ -484,8 +462,8 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    renderKeyboard(Layouts::activeLayout, currentKeysDown, currentFullKeysDown,
-                   keysScale);
+    Keyboard::renderKeyboard(Layouts::activeLayout, currentKeysDown,
+                             currentFullKeysDown, keysScale, keysColors);
 
     if (Config::activeConfig.theme.mouse.enabled) {
       ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
@@ -503,8 +481,9 @@ int main(int, char **) {
     }
 
     // debug
-    ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
-                1000.0f / io.Framerate, io.Framerate);
+    // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
+    //             1000.0f / io.Framerate, io.Framerate);
+    // ImGui::ShowDemoWindow();
 
     const auto frameEnd{std::chrono::steady_clock::now()};
 
@@ -562,136 +541,7 @@ int main(int, char **) {
 
 // Main functions
 
-void renderKeyboard(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown,
-                    const std::array<bool, 256> &currentFullKeysDown,
-                    const std::array<float, 256>
-                        &keysScale) { // todo maybe remove currentFullKeysDown
-  ImDrawList *draw{ImGui::GetBackgroundDrawList()};
-  const auto &theme{Config::activeConfig.theme};
-  ImGui::PushFont(Fonts::activeFont);
-
-  if (theme.keysImagesDisplay) {
-    Images::drawKeyboardImages(draw, currentKeysDown);
-  }
-
-  for (const auto &key : Layouts::activeLayout.keys) {
-    bool down{currentKeysDown[key.keyCode]};
-    // bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
-
-    // i did first if statement for peoples who have caps binded to smth, you
-    // can remove it if you want to show caps lock toogle state without
-    // changing buttons labels
-    if (Config::activeConfig.font.letterCase.options.capsLockDisplay) {
-      if (key.keyCode == VK_CAPITAL) {
-        down = (GetKeyState(VK_CAPITAL) & 1) != 0;
-      }
-    }
-
-    const float scale{keysScale[key.keyCode]};
-    const ImVec2 center{key.x + key.w * 0.5f, key.y + key.h * 0.5f};
-    const ImVec2 halfSize{key.w * scale * 0.5f, key.h * scale * 0.5f};
-
-    ImVec2 topLeft(center.x - halfSize.x, center.y - halfSize.y);
-    ImVec2 bottomRight(center.x + halfSize.x, center.y + halfSize.y);
-
-    ImU32 fill{down ? Config::ToImU32(theme.activeFill)
-                    : Config::ToImU32(theme.idleFill)};
-
-    ImU32 textColor{
-        down ? Config::ToImU32(theme.activeText)
-             : Config::ToImU32(theme.idleText)}; // oposite the fill color
-    float rounding{theme.keyRounding};
-
-    draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-
-    if (theme.keyOutline.enable) {
-      ImU32 outlineColor{Config::ToImU32(down ? theme.keyOutline.activeColor
-                                              : theme.keyOutline.idleColor)};
-      float thickness{theme.keyOutline.thickness};
-      draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
-    }
-
-    std::string displayLabel{Fonts::handleLetterCase(
-        currentFullKeysDown, Config::activeConfig.font, key)};
-
-    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-    ImVec2 textPos{key.x + (key.w - textSize.x) * 0.5f,
-                   key.y + (key.h - textSize.y) * 0.5f};
-    draw->AddText(textPos, textColor, displayLabel.c_str());
-  }
-  ImGui::PopFont();
-}
-
 // to do make it by toogle
-
-bool detectAnyKeyChanged(const Layouts::Layout &layout,
-                         const std::array<bool, 256> &prevKeyState,
-                         std::array<bool, 256> &outCurrentKeysDown) {
-  bool anyKeyChanged = false;
-  for (const auto &key : layout.keys) {
-    bool down{(GetAsyncKeyState(key.keyCode) & 0x8000) != 0};
-    outCurrentKeysDown[key.keyCode] = down;
-    if (down != prevKeyState[key.keyCode]) {
-      anyKeyChanged = true;
-    }
-  }
-
-  return anyKeyChanged;
-}
-
-bool detectAnyMouseKeyChanged(const std::array<bool, 256> &prevKeyState,
-                              std::array<bool, 256> &outCurrentKeysDown) {
-  constexpr std::array<int, 5> mouseKeys = {VK_LBUTTON, VK_RBUTTON, VK_MBUTTON,
-                                            VK_XBUTTON1, VK_XBUTTON2};
-  bool anyKeyChanged = false;
-  for (int keyCode : mouseKeys) {
-    bool down = (GetAsyncKeyState(keyCode) & 0x8000) != 0;
-
-    outCurrentKeysDown[keyCode] = down;
-
-    if (down != prevKeyState[keyCode]) {
-      anyKeyChanged = true;
-    }
-  }
-  return anyKeyChanged;
-}
-
-void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown) {
-  for (int vk{0}; vk < 256; ++vk) {
-    outCurrentKeysDown[vk] = (GetAsyncKeyState(vk) & 0x8000) != 0;
-  }
-}
-
-void commitKeyState(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown,
-                    std::array<bool, 256> &outPrevKeyState) {
-  for (const auto &key : layout.keys) {
-    outPrevKeyState[key.keyCode] = currentKeysDown[key.keyCode];
-  }
-}
-
-// sound functions
-void handleKeySound(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &prevKeyState,
-                    const std::array<bool, 256> &currentKeysDown) {
-  for (const auto &key : layout.keys) {
-    bool down{currentKeysDown[key.keyCode]};
-    if (down != prevKeyState[key.keyCode]) {
-      Sound::playKey(key.keyCode, down);
-    }
-  }
-}
-
-void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
-                        const std::array<bool, 256> &currentKeysDown) {
-  for (const auto &[vk, def] : Sound::activePack.KeyDefByVK) {
-    bool down{currentKeysDown[vk]};
-    if (down != prevKeyState[vk]) {
-      Sound::playKey(vk, down);
-    }
-  }
-}
 
 void handleObsMode() {
   static bool lastObsModeCondition{Config::activeConfig.misc.obsMode};
@@ -706,31 +556,6 @@ void handleObsMode() {
   } else {
     MainWindow::setClearColor(Consts::defaultClearColor);
   }
-}
-
-// animations
-bool updateAnimations(const Layouts::Layout &layout,
-                      const std::array<bool, 256> &currentKeysDown,
-                      std::array<float, 256> &outKeysScale, float deltaTime) {
-  const auto &theme{Config::activeConfig.theme};
-  bool animationActive{false};
-  if (!theme.animation) {
-    return animationActive;
-  }
-
-  for (const auto &key : layout.keys) {
-    bool down{currentKeysDown[key.keyCode]};
-    float targetScale{(down) ? theme.pressScale : 1.0f};
-
-    float speed{static_cast<float>(theme.animationSpeed) / 10.0f};
-    float t{1.0f - std::exp(-speed * deltaTime)};
-
-    outKeysScale[key.keyCode] += (targetScale - outKeysScale[key.keyCode]) * t;
-    if (std::abs(outKeysScale[key.keyCode] - 1.0f) > 0.001f) {
-      animationActive = true;
-    }
-  }
-  return animationActive;
 }
 
 // Helper functions
@@ -754,7 +579,7 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
   return dt;
 }
 
-// used clancker for this maybe not the best practice idk 
+// used clancker for this maybe not the best practice idk
 void fpsLimitter(
     const std::chrono::time_point<std::chrono::steady_clock> &frameStart) {
   using Clock = std::chrono::steady_clock;

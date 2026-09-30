@@ -532,10 +532,37 @@ void drawKeyboardSection(SettingsEditState &state) {
 
   ImGui::Checkbox("Animations", &state.theme.animation);
   if (state.theme.animation) {
-    ImGui::SliderFloat("Press scale", &state.theme.pressScale, 0.0f, 3.0f,
-                       "%.2f");
-    ImGui::SliderInt("Animation speed", &state.theme.animationSpeed, 0, 1000);
+    ImGui::RadioButton("Scale", &state.theme.animType, Config::AnimType::Scale);
+    ImGui::SameLine();
+    ImGui::RadioButton("Lift", &state.theme.animType, Config::AnimType::Lift);
+    if (state.theme.animType == Config::AnimType::Lift) {
+      ImGui::SameLine();
+      Helper::HelpMarker(
+          "Lift mode scale < 1.0 = lift up, scale > 1.0 = lift down");
+    }
+
+    ImGui::Checkbox("Animate colors", &state.theme.animateColors);
+
+    switch (state.theme.animType) {
+    case Config::AnimType::Scale:
+      ImGui::SliderFloat("Press scale", &state.theme.pressScale, 0.0f, 3.0f,
+                         "%.2f");
+      break;
+
+    case Config::AnimType::Lift:
+      ImGui::SliderFloat("Press scale", &state.theme.pressScale, -2.0f, 4.0f,
+                         "%.2f");
+      break;
+    default:
+      break;
+    }
+
+    if (state.theme.animType == Config::AnimType::Lift) {
+    } else
+
+      ImGui::SliderInt("Animation speed", &state.theme.animationSpeed, 0, 1000);
   }
+
   ImGui::Checkbox("Enable Outline", &state.theme.keyOutline.enable);
   if (state.theme.keyOutline.enable) {
     Helper::ColorEdit("Idle outline color", state.theme.keyOutline.idleColor);

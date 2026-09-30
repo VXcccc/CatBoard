@@ -4,12 +4,11 @@
 #include "Config/Config.h"
 #include "imgui.h"
 #include <array>
+#include <concepts>
 #include <exception>
 #include <filesystem>
 #include <string>
 #include <vector>
-#include <concepts>
-
 
 namespace Helper {
 enum class FileCreateResult {
@@ -37,6 +36,8 @@ void errorMesBox(const wchar_t *message);
 
 void drawErrorInSettings(std::string &error);
 
+void HelpMarker(const char* desc);
+
 void refresh(std::vector<std::string> &category,
              const std::filesystem::path &folder, std::string_view ext);
 
@@ -49,12 +50,15 @@ Config::ColorRGBA toConfigColor(const ImVec4 &color);
 
 ImVec4 fromConfigColor(const Config::ColorRGBA &color);
 
+ImU32 ToImU32(const Config::ColorRGBA &c);
+
 std::string getFileCreateError(Helper::FileCreateResult result);
 
 bool installDefault(const std::filesystem::path &source,
                     const std::filesystem::path &destination);
 
-bool ColorEdit(const std::string& label, Config::ColorRGBA& outCol, ImGuiColorEditFlags flags = 0);
+bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
+               ImGuiColorEditFlags flags = 0);
 
 template <typename... Args>
 void drawDebugText(const std::string &Format, Args &&...args) {
@@ -81,6 +85,19 @@ std::vector<std::string> extractNames(const std::array<T, size> &arr) {
   }
   return result;
 }
+
 }; // namespace Helper
+
+namespace ImGui {
+
+// P.S. i overloaded this function for enums
+template <typename T> bool RadioButton(const char *label, T *v, T v_button) {
+  const bool pressed = RadioButton(label, *v == v_button);
+  if (pressed)
+    *v = v_button;
+  return pressed;
+}
+
+} // namespace ImGui
 
 #endif // !HELPERS_H

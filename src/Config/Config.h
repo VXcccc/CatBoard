@@ -81,8 +81,9 @@ struct MouseTheme {
   bool highlightM1{true};
   ColorRGBA highlightColor{255, 255, 255, 255};
   float higlightScale{1.25f};
-
 };
+
+enum class AnimType { Scale, Lift, MaxAnimTypes };
 
 struct Theme {
   ColorRGBA idleFill{0, 0, 0, 255};
@@ -104,6 +105,8 @@ struct Theme {
   bool animation{false};
   float pressScale{1.2f};
   int animationSpeed{100};
+  bool animateColors{false};
+  AnimType animType{AnimType::Scale};
 };
 
 struct SoundPackSelection {
@@ -149,7 +152,6 @@ void refreshConfigs();
 
 void Load();
 bool Apply(const Settings &settings);
-ImU32 ToImU32(const Config::ColorRGBA &c);
 } // namespace Config
 
 #endif // !CONFIG_H
