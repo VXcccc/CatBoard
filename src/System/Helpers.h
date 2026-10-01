@@ -33,6 +33,7 @@ private:
 
 [[noreturn]] void fatalError(const wchar_t *message);
 void errorMesBox(const wchar_t *message);
+void errorMesBox(const std::string &str);
 
 void drawErrorInSettings(std::string &error);
 

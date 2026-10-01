@@ -37,6 +37,7 @@
 #include <hidclass.h>
 #include <hidusage.h>
 #include <shellapi.h>
+#include <string>
 #include <tchar.h>
 // #include <thread>
 #include <vector>
@@ -414,7 +415,7 @@ int main(int, char **) {
     if (Config::activeConfig.theme.mouse.highlightM1)
       Mouse::updateM1Highlight(currentFullKeysDown);
 
-    Mouse::g_mouseState.updateScrollTimers(deltaTime);
+    Mouse::g_mouseState.updateScroll(deltaTime);
     Mouse::g_mouseState.updateTrail(
         deltaTime, Config::activeConfig.theme.mouse.trail.style.type);
 
@@ -436,10 +437,17 @@ int main(int, char **) {
 
     prevFullKeyState = currentFullKeysDown;
 
+    int prevScrollState;
+    int currentScrollState{Mouse::g_mouseState.getScrollDownTimes() +
+                           Mouse::g_mouseState.getScrollUpTimes()};
+    bool scrollActive{prevScrollState != currentScrollState};
+    prevScrollState = currentScrollState;
+
     bool mouseIndicatorActive{std::abs(Mouse::g_mouseState.getOffsetX()) >
                                   Mouse::g_mouseState.getSensivity() ||
                               std::abs(Mouse::g_mouseState.getOffsetY()) >
-                                  Mouse::g_mouseState.getSensivity()};
+                                  Mouse::g_mouseState.getSensivity() ||
+                              scrollActive};
 
     bool needsRender{anyKeyChanged || anyMouseKeyChanged || firstFrame ||
                      mouseIndicatorActive || animationActive ||
@@ -471,9 +479,7 @@ int main(int, char **) {
 
       if (Config::activeConfig.theme.mouse.imagesDisplay) {
         Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                                currentFullKeysDown,
-                                Mouse::g_mouseState.isScrollDownActive(),
-                                Mouse::g_mouseState.isScrollUpActive());
+                                currentFullKeysDown);
       }
 
       Mouse::renderMouseIndicator(mouseCenter,
@@ -745,7 +751,7 @@ void WM_RawMouseInputHandle(LPARAM lParam) {
       }
       if (raw->data.mouse.usButtonFlags & RI_MOUSE_WHEEL) {
         short wheelDelta{static_cast<short>(raw->data.mouse.usButtonData)};
-        Mouse::g_mouseState.registerScroll(wheelDelta > 0);
+        Mouse::g_mouseState.registerScroll(wheelDelta);
       }
     }
   }

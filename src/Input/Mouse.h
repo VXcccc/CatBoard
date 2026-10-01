@@ -82,11 +82,15 @@ public:
   void updateTrail(float deltaTime, TrailType type);
   const std::deque<TrailPoint> &getTrailPoints() const { return m_trail; }
 
-  void registerScroll(bool up);
-  void updateScrollTimers(float dt);
-  bool isScrollUpActive() const { return m_scrollUpTimer > 0.0f; }
-  bool isScrollDownActive() const { return m_scrollDownTimer > 0.0f; }
+  void registerScroll(int wheelDelta);
+  void updateScroll(float dt);
+  bool isScrollUpActive() const { return m_scrollUpTimer > 0; }
+  bool isScrollDownActive() const { return m_scrollDownTimer > 0; }
 
+  int getScrollUpTimes() const { return m_scrollUpValue / 120; }
+  int getScrollDownTimes() const { return m_scrollDownValue / -120; }
+
+  bool isUpTimerBigger() const { return (m_scrollUpTimer > m_scrollDownTimer); }
 
   // void addTotalTrailDist(float dist) { m_trailTotalDist += dist; }
 
@@ -112,8 +116,11 @@ private:
   std::deque<TrailPoint> m_trail;
   float m_trailTotalDist{0.0f};
 
-  float m_scrollUpTimer{};
-  float m_scrollDownTimer{};
+  int m_pendingScroll{0};
+  int m_scrollUpValue{0};
+  int m_scrollDownValue{0};
+  float m_scrollDownTimer{0.0f};
+  float m_scrollUpTimer{0.0f};
 
   bool m_justWrapped{false};
 

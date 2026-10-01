@@ -26,6 +26,11 @@ void errorMesBox(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Error", MB_OK | MB_ICONERROR);
 }
 
+void errorMesBox(const std::string &str) {
+  std::wstring widestr = std::wstring(str.begin(), str.end());
+  Helper::errorMesBox(widestr.c_str());
+}
+
 void drawErrorInSettings(std::string &error) {
   static double hideAt = 0.0;
   static std::string lastError;
@@ -52,17 +57,14 @@ void drawErrorInSettings(std::string &error) {
   ImGui::PopStyleColor();
 }
 
-
-void HelpMarker(const char* desc)
-{
-    ImGui::TextDisabled("(?)");
-    if (ImGui::BeginItemTooltip())
-    {
-        ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
-        ImGui::TextUnformatted(desc);
-        ImGui::PopTextWrapPos();
-        ImGui::EndTooltip();
-    }
+void HelpMarker(const char *desc) {
+  ImGui::TextDisabled("(?)");
+  if (ImGui::BeginItemTooltip()) {
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+    ImGui::TextUnformatted(desc);
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+  }
 }
 
 int toColorRGB(float value) {

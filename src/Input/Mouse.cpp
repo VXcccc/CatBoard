@@ -204,13 +204,32 @@ void MouseState::updateCircleTrail(float deltaTime) {
   }
 }
 
-void MouseState::registerScroll(bool up) {
-  (up ? m_scrollUpTimer : m_scrollDownTimer) = 0.15f; // seconds
+void MouseState::registerScroll(int wheelDelta) {
+  m_pendingScroll += wheelDelta;
 }
 
-void MouseState::updateScrollTimers(float dt) {
+void MouseState::updateScroll(float dt) {
+  constexpr float holdTime{0.15f};
+
+  const int delta{m_pendingScroll};
+  m_pendingScroll = 0;
+
+  if (delta > 0) {
+    m_scrollUpValue += delta;
+    m_scrollUpTimer = holdTime;
+  } else if (delta < 0) {
+    m_scrollDownValue += delta; 
+    m_scrollDownTimer = holdTime;
+  }
+
   m_scrollUpTimer = (std::max)(0.0f, m_scrollUpTimer - dt);
   m_scrollDownTimer = (std::max)(0.0f, m_scrollDownTimer - dt);
+
+  
+  if (m_scrollUpTimer <= 0.0f)
+    m_scrollUpValue = 0;
+  if (m_scrollDownTimer <= 0.0f)
+    m_scrollDownValue = 0;
 }
 
 static ImU32 lerpColor(ImU32 colorA, ImU32 colorB, float t) {

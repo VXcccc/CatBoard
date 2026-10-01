@@ -1,6 +1,7 @@
 #include "Media/Images.h"
 #include "Config/Config.h"
 #include "Input/Hotkeys.h"
+#include "Input/Mouse.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "UI/Layouts.h"
@@ -18,6 +19,7 @@
 #include <hidclass.h>
 #include <hidusage.h>
 #include <shellapi.h>
+#include <string>
 #include <tchar.h>
 #include <windef.h>
 #include <windows.h>
@@ -45,6 +47,15 @@ static std::unordered_map<std::string, Texture> g_textureCache;
 bool installDefaultImagePacks() {
   return Helper::installDefault(Paths::getExecutableDir() / "Images",
                                 Paths::imagesDirectory());
+}
+
+bool operator==(const MouseButton &mb1, const MouseButton &mb2) {
+  return (mb1.x == mb2.x && mb1.y == mb2.y && mb1.w == mb2.w &&
+          mb1.h == mb2.h && mb1.buttonIdle == mb2.buttonIdle &&
+          mb1.buttonActive == mb2.buttonActive);
+}
+bool operator!=(const MouseButton &mb1, const MouseButton &mb2) {
+  return !(mb1 == mb2);
 }
 
 void refreshImagePacks() {
@@ -208,6 +219,21 @@ void drawKeyboardImages(ImDrawList *draw,
   }
 }
 
+void handleScroll(ImDrawList *draw, const MouseButton &scroll,
+                  const ImVec2 &partCenter, bool up) {
+  int counter{up ? ::Mouse::g_mouseState.getScrollUpTimes()
+                 : ::Mouse::g_mouseState.getScrollDownTimes()};
+  if (counter > 0) {
+    std::string label{std::to_string(counter)};
+
+    ImVec2 textSize{ImGui::CalcTextSize(label.c_str())};
+    ImVec2 textPos{partCenter.x - (textSize.x * 0.5f),
+                   partCenter.y - (textSize.y * 0.5f)};
+    ImU32 textColor{Helper::ToImU32(Config::activeConfig.theme.activeText)};
+    draw->AddText(textPos, textColor, label.c_str());
+  }
+}
+
 void drawMousePart(ImDrawList *draw, const ImVec2 &center,
                    const MouseButton &part, bool active) {
   const std::string &fileName{active ? part.buttonActive : part.buttonIdle};
@@ -222,26 +248,39 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   ImVec2 topLeft{partCenter.x - part.w * 0.5f, partCenter.y - part.h * 0.5f};
   ImVec2 bottomRight{topLeft.x + part.w, topLeft.y + part.h};
 
-  draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight,
-                 ImVec2(0, 0), ImVec2(1, 1),
-                 IM_COL32(255, 255, 255,
-                          Config::activeConfig.theme.mouse.imageOpacity));
+  draw->AddImage(
+      (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
+      ImVec2(1, 1),
+      IM_COL32(255, 255, 255, Config::activeConfig.theme.mouse.imageOpacity));
+  if (part == activePack.mouse.scrollUp) {
+    handleScroll(draw, part, partCenter, true);
+  } else if (part == activePack.mouse.scrollDown) {
+    handleScroll(draw, part, partCenter, false);
+  }
 }
 
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
-                     const std::array<bool, 256> &currentKeysDown,
-                     bool scrollDownActive, bool scrollUpActive) {
+                     const std::array<bool, 256> &currentKeysDown) {
   const Mouse &mouse{activePack.mouse};
+  const auto &mouseState{::Mouse::g_mouseState};
+  bool scrollUpActive{mouseState.isScrollUpActive()};
+  bool scrollDownActive{mouseState.isScrollDownActive()};
+  if (mouseState.isUpTimerBigger() && scrollDownActive) {
+    scrollDownActive = false;
+  } else if (!mouseState.isUpTimerBigger() && scrollUpActive) {
+    scrollUpActive = false;
+  }
 
   drawMousePart(draw, center, mouse.left, currentKeysDown[VK_LBUTTON]);
   drawMousePart(draw, center, mouse.right, currentKeysDown[VK_RBUTTON]);
   drawMousePart(draw, center, mouse.mouse4, currentKeysDown[VK_XBUTTON1]);
   drawMousePart(draw, center, mouse.mouse5, currentKeysDown[VK_XBUTTON2]);
   // fix middle
-  drawMousePart(draw, center, mouse.scrollUp, currentKeysDown[VK_MBUTTON]);
-  drawMousePart(draw, center, mouse.scrollDown, currentKeysDown[VK_MBUTTON]);
 
-  drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);
+  drawMousePart(draw, center, mouse.middle, currentKeysDown[VK_MBUTTON]);
+  
   drawMousePart(draw, center, mouse.scrollUp, scrollUpActive);
+  drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);
 }
 } // namespace Images
+

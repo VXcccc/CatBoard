@@ -211,18 +211,29 @@ bool updateAnimations(const Layouts::Layout &layout,
                       const std::array<bool, 256> &currentKeysDown,
                       std::array<float, 256> &outKeysScale, float deltaTime) {
   const auto &theme{Config::activeConfig.theme};
-  bool animationActive{false};
+
+  static bool prevAnimation{true};
   if (!theme.animation) {
-    return animationActive;
+    if (prevAnimation) {
+      for (const auto &key : layout.keys)
+        outKeysScale[key.keyCode] = 1.0f;
+      prevAnimation = false;
+      return true; 
+    }
+    return false;
   }
 
+  prevAnimation = true;
+  bool animationActive{false};
+
   const float speed{static_cast<float>(theme.animationSpeed) / 10.0f};
+  const float t{1.0f - std::exp(-speed * deltaTime)};
 
   for (const auto &key : layout.keys) {
+
     bool down{currentKeysDown[key.keyCode]};
     float targetScale{(down) ? theme.pressScale : 1.0f};
 
-    float t{1.0f - std::exp(-speed * deltaTime)};
 
     outKeysScale[key.keyCode] += (targetScale - outKeysScale[key.keyCode]) * t;
     if (std::abs(outKeysScale[key.keyCode] - 1.0f) > 0.001f) {

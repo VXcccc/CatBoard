@@ -56,6 +56,13 @@ struct LayoutEditState {
 
   ImGuiSelectionBasicStorage selection;
   bool moveWhenMultiResize{true};
+
+  bool gridEnabled{true};
+  float gridSize{1.0f};
+  float zoom{1.0f};
+  //todo move this variables ig
+  float zoomMin{1.0f};
+  float zoomMax{100.0f};
 };
 
 extern std::vector<std::string> layouts;

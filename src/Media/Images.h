@@ -17,6 +17,7 @@ struct Image {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(Image, backGroundFileName, activeFileName,
                                    vkCode)
 
+// enum class MBType { button, scrollDown, scrollUp, max_MBTypes };
 struct MouseButton {
   float x{0.0f};
   float y{0.0f};
@@ -24,14 +25,17 @@ struct MouseButton {
   float h{0.0f};
   std::string buttonIdle{};
   std::string buttonActive{};
+  // MBType type{MBType::button};
 };
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE(MouseButton, buttonIdle, buttonActive, x, y,
                                    w, h)
+bool operator==(const MouseButton &mb1, const MouseButton &mb2);
+bool operator!=(const MouseButton &mb1, const MouseButton &mb2);
 
 struct Mouse {
   MouseButton left{-31.0f, 0.0f, 63.0f, 219.0f, "leftb", "leftbp"};
   MouseButton right{31.5f, 0.0f, 62.0f, 219.0f, "rightb", "rightbp"};
-  MouseButton middle{0.5f, -67.5f, 12.0f, 38.0f, "midb", "midbp"};
+  MouseButton middle{0.5f, -67.5f, 12.0f, 38.0f, "sb", "sw"};
   MouseButton scrollUp{0.5f, -77.0f, 12.0f, 19.0f, "sub", "suw"};
   MouseButton scrollDown{0.5f, -58.0f, 12.0f, 19.0f, "sdb", "sdw"};
   MouseButton mouse4{-51.0f, 5.0f, 5.0f, 41.0f, "m4b", "m4w"};
@@ -64,8 +68,7 @@ void drawKeyboardImages(ImDrawList *draw,
                         const std::array<bool, 256> &currentKeysDown);
 bool Load(std::string_view name);
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
-                     const std::array<bool, 256> &currentKeysDown,
-                     bool scrollUpActive, bool scrollDownActive);
+                     const std::array<bool, 256> &currentKeysDown);
 
 void refreshImagePacks();
 

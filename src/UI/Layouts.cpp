@@ -3,8 +3,8 @@
 #include "Config/ConfigJson.h"
 #include "Config/Constants.h"
 #include "System/Helpers.h"
-#include "UI/MainWindow.h"
 #include "System/Paths.h"
+#include "UI/MainWindow.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -435,6 +435,14 @@ void handleEditorShortcuts(LayoutEditState &state) {
     deleteSelectedKeys(state);
   }
 
+  const auto &io{ImGui::GetIO()};
+  if (ImGui::IsWindowHovered() && io.MouseWheel != 0.0f &&
+      ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsAnyItemActive() == false){
+
+      state.zoom = std::clamp(state.zoom * (1.0f + io.MouseWheel * 0.10f),
+                            state.zoomMin, state.zoomMax);
+  }
+
   ImVec2 delta{};
   bool startedNewMove{false};
 
@@ -461,25 +469,47 @@ void handleEditorShortcuts(LayoutEditState &state) {
     moveSelectedKeys(state, delta);
   }
 }
+static void drawGrid(LayoutEditState &state, ImDrawList *draw,
+                     const ImVec2 &origin) {
+  if (state.gridEnabled) {
+    const float step{static_cast<float>(state.gridSize) * state.zoom};
+    const ImU32 gridCol{IM_COL32(255, 255, 255, 30)};
+
+    const float w{static_cast<float>(state.layout.windowWidth * state.zoom)};
+    const float h{static_cast<float>(state.layout.windowHeight * state.zoom)};
+
+    if (step >= 6.0f) {
+      for (float x{step}; x < w; x += step) {
+        draw->AddLine({origin.x + x, origin.y}, {origin.x + x, origin.y + h},
+                      gridCol, 1.0f);
+      }
+      for (float y{step}; y < h; y += step) {
+        draw->AddLine({origin.x, origin.y + y}, {origin.x + w, origin.y + y},
+                      gridCol, 1.0f);
+      }
+    }
+  }
+}
 
 void drawLayoutEditorCanvas(LayoutEditState &state) {
   handleEditorShortcuts(state);
-  ImVec2 origin{ImGui::GetCursorScreenPos()};
+
+  const float zoom{state.zoom};
+  const ImVec2 origin{ImGui::GetCursorScreenPos()};
   ImDrawList *draw{ImGui::GetWindowDrawList()};
   const auto whiteCol32 = IM_COL32(255, 255, 255, 255);
 
   draw->AddRect(origin,
-                {origin.x + state.layout.windowWidth,
-                 origin.y + state.layout.windowHeight},
+                {origin.x + state.layout.windowWidth * zoom,
+                 origin.y + state.layout.windowHeight * zoom},
                 IM_COL32(255, 255, 255, 80));
 
-  auto &colors = ImGui::GetStyle().Colors;
+  drawGrid(state, draw, origin);
 
-  colors[ImGuiCol_NavHighlight] = ImVec4(0, 0, 0, 0);
-  // mouse
+  // mouse center
   {
-    ImVec2 mousePos{origin.x + state.layout.mouse.mouseCenterX,
-                    origin.y + state.layout.mouse.mouseCenterY};
+    const ImVec2 mousePos{origin.x + state.layout.mouse.mouseCenterX * zoom,
+                          origin.y + state.layout.mouse.mouseCenterY * zoom};
 
     ImGui::PushID("mouse_center");
     ImGui::SetCursorScreenPos({mousePos.x - 6.0f, mousePos.y - 6.0f});
@@ -493,16 +523,14 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     }
     if (ImGui::IsItemActive() &&
         ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-      ImVec2 delta{ImGui::GetIO().MouseDelta};
-      state.layout.mouse.mouseCenterX += delta.x;
-      state.layout.mouse.mouseCenterY += delta.y;
+      const ImVec2 delta{ImGui::GetIO().MouseDelta};
+      state.layout.mouse.mouseCenterX += delta.x / zoom;
+      state.layout.mouse.mouseCenterY += delta.y / zoom;
     }
-
     ImU32 fill{state.mouseCenterSelected ? IM_COL32(80, 140, 255, 220)
                                          : IM_COL32(200, 80, 80, 220)};
     draw->AddCircleFilled(mousePos, 6.0f, fill);
     draw->AddCircle(mousePos, 6.0f, whiteCol32, 16, 1.5f);
-
     ImGui::PopID();
   }
 
@@ -517,15 +545,16 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
 
   for (int i{0}; i < static_cast<int>(state.layout.keys.size()); ++i) {
     Key &key{state.layout.keys[i]};
-    ImVec2 keyPos{origin.x + key.x, origin.y + key.y};
-    ImVec2 keyPosMax{keyPos.x + key.w, keyPos.y + key.h};
-    bool isSelected{state.selection.Contains((ImGuiID)i)};
+
+    const ImVec2 keyPos{origin.x + key.x * zoom, origin.y + key.y * zoom};
+    const ImVec2 keySize{key.w * zoom, key.h * zoom};
+    const ImVec2 keyPosMax{keyPos.x + keySize.x, keyPos.y + keySize.y};
+    const bool isSelected{state.selection.Contains((ImGuiID)i)};
 
     ImGui::PushID(i);
     ImGui::SetCursorScreenPos(keyPos);
     ImGui::SetNextItemSelectionUserData(i);
-    ImGui::Selectable("##body", isSelected, ImGuiSelectableFlags_None,
-                      ImVec2(key.w, key.h));
+    ImGui::Selectable("##body", isSelected, ImGuiSelectableFlags_None, keySize);
 
     if (ImGui::IsItemActivated()) {
       state.mouseCenterSelected = false;
@@ -533,8 +562,8 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     }
     if (ImGui::IsItemActive() &&
         ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-
-      ImVec2 delta{ImGui::GetIO().MouseDelta};
+      const ImVec2 delta{ImGui::GetIO().MouseDelta.x / zoom,
+                         ImGui::GetIO().MouseDelta.y / zoom};
 
       moveSelectedKeys(state, delta);
 
@@ -544,17 +573,16 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
       }
     }
 
-    ImU32 fill{isSelected ? IM_COL32(80, 140, 255, 180)
-                          : IM_COL32(60, 60, 60, 180)};
+    const ImU32 fill{isSelected ? IM_COL32(80, 140, 255, 180)
+                                : IM_COL32(60, 60, 60, 180)};
+    const float rounding{Config::activeConfig.theme.keyRounding * zoom};
 
-    draw->AddRectFilled(keyPos, keyPosMax, fill,
-                        Config::activeConfig.theme.keyRounding);
-    draw->AddRect(keyPos, keyPosMax, whiteCol32,
-                  Config::activeConfig.theme.keyRounding);
+    draw->AddRectFilled(keyPos, keyPosMax, fill, rounding);
+    draw->AddRect(keyPos, keyPosMax, whiteCol32, rounding);
 
-    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-    ImVec2 textPos{keyPos.x + (key.w - textSize.x) * 0.5f,
-                   keyPos.y + (key.h - textSize.y) * 0.5f};
+    const ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
+    const ImVec2 textPos{keyPos.x + (keySize.x - textSize.x) * 0.5f,
+                         keyPos.y + (keySize.y - textSize.y) * 0.5f};
     draw->AddText(textPos, whiteCol32, key.label.c_str());
 
     ImGui::PopID();
@@ -562,10 +590,6 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
 
   msIo = ImGui::EndMultiSelect();
   state.selection.ApplyRequests(msIo);
-
-  // debug
-  // Helper::drawDebugText("mouseCenterSelected: %d, selectedKeyIndex: %d",
-  //                       state.mouseCenterSelected, state.selectedKeyIndex);
 }
 
 void drawLayoutEditorProperties(LayoutEditState &state) {
@@ -702,7 +726,7 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
                 "Do you want to overwrite it?");
 
     if (ImGui::Button("Yes", ImVec2(100, 0))) {
-      clearUndo(state);
+      // clearUndo(state);
 
       state.layoutNameError = Helper::getFileCreateError(
           saveLayout(state.layoutNameInput, state.layout));
@@ -776,10 +800,10 @@ void drawLayoutEditorTab(LayoutEditState &state) {
 
   ImGui::SeparatorText("");
 
-  ImGui::BeginChild(
-      "canvas",
-      ImVec2(state.layout.windowWidth + 20, state.layout.windowHeight + 20),
-      true);
+  ImGui::BeginChild("canvas",
+                    ImVec2(state.layout.windowWidth * state.zoom + 20,
+                           state.layout.windowHeight * state.zoom + 20),
+                    true, ImGuiWindowFlags_HorizontalScrollbar);
   drawLayoutEditorCanvas(state);
   ImGui::EndChild();
 
