@@ -92,6 +92,27 @@ ImU32 ToImU32(const Config::ColorRGBA &c) {
   return IM_COL32(c[0], c[1], c[2], c[3]);
 }
 
+bool SliderInt(const std::string &label, int &v, int v_min, int v_max,
+               int c_min, int c_max, const char *format, float sliderWidth,
+               ImGuiSliderFlags flags) {
+  if (sliderWidth != 0)
+    ImGui::SetNextItemWidth(sliderWidth);
+  bool result{ImGui::SliderInt(label.c_str(), &v, v_min, v_max, format, flags)};
+  v = std::clamp(v, c_min, c_max);
+  return result;
+}
+
+bool SliderFloat(const std::string &label, float &v, float v_min, float v_max,
+                 float c_min, float c_max, const char *format,
+                 float sliderWidth, ImGuiSliderFlags flags) {
+  if (sliderWidth != 0)
+    ImGui::SetNextItemWidth(sliderWidth);
+  bool result{
+      ImGui::SliderFloat(label.c_str(), &v, v_min, v_max, format, flags)};
+  v = std::clamp(v, c_min, c_max);
+  return result;
+}
+
 void directoryRefresh(std::vector<std::string> &category,
                       const std::filesystem::path &folder) {
 
@@ -221,3 +242,4 @@ std::string VkToName(int vk) {
 }
 
 } // namespace Helper
+

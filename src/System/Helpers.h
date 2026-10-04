@@ -37,7 +37,7 @@ void errorMesBox(const std::string &str);
 
 void drawErrorInSettings(std::string &error);
 
-void HelpMarker(const char* desc);
+void HelpMarker(const char *desc);
 
 void refresh(std::vector<std::string> &category,
              const std::filesystem::path &folder, std::string_view ext);
@@ -60,6 +60,32 @@ bool installDefault(const std::filesystem::path &source,
 
 bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
                ImGuiColorEditFlags flags = 0);
+
+// c_min, c_max = clamp min, clamp max
+bool SliderInt(const std::string &label, int &v, int v_min, int v_max,
+               int c_min, int c_max, const char *format = "%d",
+               float sliderWidth = 0, ImGuiSliderFlags flags = 0);
+
+// clamp default initialized with v_min, v_max
+inline bool SliderInt(const std::string &label, int &v, int v_min, int v_max,
+                      const char *format = "%d", float sliderWidth = 0,
+                      ImGuiSliderFlags flags = 0) {
+  return SliderInt(label, v, v_min, v_max, v_min, v_max, format, sliderWidth,
+                   flags);
+}
+
+// c_min, c_max = clamp min, clamp max
+bool SliderFloat(const std::string &label, float &v, float v_min, float v_max,
+                 float c_min, float c_max, const char *format = "%.2f",
+                 float sliderWidth = 0, ImGuiSliderFlags flags = 0);
+
+// clamp default initialized with v_min, v_max
+inline bool SliderFloat(const std::string &label, float &v, float v_min,
+                        float v_max, const char *format = "%.2f",
+                        float sliderWidth = 0, ImGuiSliderFlags flags = 0) {
+  return SliderFloat(label, v, v_min, v_max, v_min, v_max, format, sliderWidth,
+                     flags);
+}
 
 template <typename... Args>
 void drawDebugText(const std::string &Format, Args &&...args) {
@@ -100,5 +126,10 @@ template <typename T> bool RadioButton(const char *label, T *v, T v_button) {
 }
 
 } // namespace ImGui
+
+inline bool operator==(const ImVec2 &a, const ImVec2 &b) {
+  return a.x == b.x && a.y == b.y;
+}
+inline bool operator!=(const ImVec2 &a, const ImVec2 &b) { return !(a == b); }
 
 #endif // !HELPERS_H

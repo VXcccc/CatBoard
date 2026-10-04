@@ -990,7 +990,7 @@ void RenderFrame() {
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
                    ImGuiWindowFlags_NoSavedSettings |
-                   ImGuiWindowFlags_HorizontalScrollbar);
+                   ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoBringToFrontOnFocus);
 
   for (size_t i{0}; i < std::size(tabs); ++i) {
     if (ImGui::Button(tabs[i].label,
@@ -1046,6 +1046,9 @@ void RenderFrame() {
   }
 
   ImGui::End();
+
+  if (currentTab == SettingsTab::Layouts && editState.showLayoutEditor)
+    Layouts::drawLayoutPropertiesDock(layoutEditState);
 
   ImGui::Render();
   const float clearColor[4] = {0.10f, 0.10f, 0.12f, 1.0f};

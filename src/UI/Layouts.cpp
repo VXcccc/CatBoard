@@ -13,6 +13,7 @@
 #include <filesystem>
 #include <fstream>
 #include <string_view>
+#include <synchapi.h>
 #include <vector>
 #include <winscard.h>
 #include <winuser.h>
@@ -122,26 +123,43 @@ void clearUndo(LayoutEditState &state) {
   state.redoSelections.clear();
 }
 
+static void sanitizeSelection(LayoutEditState &state) {
+  std::vector<ImGuiID> valid;
+  void *it{nullptr};
+  ImGuiID id{};
+  const ImGuiID idCount{static_cast<ImGuiID>(state.layout.keys.size())};
+  while (state.selection.GetNextSelectedItem(&it, &id))
+    if (id < idCount)
+      valid.push_back(id);
+
+  state.selection.Clear();
+  for (ImGuiID v : valid)
+    state.selection.SetItemSelected(v, true);
+}
+
 void undo(LayoutEditState &state) {
   if (state.undoLayouts.empty())
     return;
+
   state.redoLayouts.push_back(state.layout);
   state.redoSelections.push_back(state.selection);
 
   state.layout = state.undoLayouts.back();
   state.undoLayouts.pop_back();
 
-  if (!state.undoLayouts.empty()) {
+  if (!state.undoSelections.empty()) {
     state.selection = state.undoSelections.back();
     state.undoSelections.pop_back();
   }
 
+  sanitizeSelection(state);
   state.mouseCenterSelected = false;
 }
 
 void redo(LayoutEditState &state) {
   if (state.redoLayouts.empty())
     return;
+
   state.undoLayouts.push_back(state.layout);
   state.undoSelections.push_back(state.selection);
 
@@ -153,6 +171,7 @@ void redo(LayoutEditState &state) {
     state.redoSelections.pop_back();
   }
 
+  sanitizeSelection(state);
   state.mouseCenterSelected = false;
 }
 
@@ -275,6 +294,7 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop) {
     max = 2000.0f;
   }
 
+  ImGui::SetNextItemWidth(150);
   const bool changed{
       ImGui::DragFloat(KeyPropName[static_cast<int>(prop)].c_str(), &value,
                        state.step, min, max)};
@@ -308,6 +328,10 @@ float mostFreqWH(const std::vector<Key> &keys, KeyProp prop) {
   }
 
   return result;
+}
+
+static float snapValue(float v, float grid) {
+  return std::round(v / grid) * grid;
 }
 
 void recordKeyCode(LayoutEditState &state, Key &key) {
@@ -379,15 +403,52 @@ void deleteSelectedKeys(LayoutEditState &state) {
   state.selection.Clear();
 }
 
-void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
+static void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
   void *it{nullptr};
-  ImGuiID id;
-
+  ImGuiID id{};
   while (state.selection.GetNextSelectedItem(&it, &id)) {
-    int idx{static_cast<int>(id)};
-    state.layout.keys[idx].x += delta.x;
-    state.layout.keys[idx].y += delta.y;
+    Key &key{state.layout.keys[static_cast<int>(id)]};
+    key.x += delta.x;
+    key.y += delta.y;
   }
+}
+
+// static void arrowMoveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
+//   const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt &&
+//                   state.gridSize > 0.0f};
+//
+//   void *it{nullptr};
+//   ImGuiID id{};
+//   while (state.selection.GetNextSelectedItem(&it, &id)) {
+//     if (id >= state.layout.keys.size())
+//       continue;
+//
+//     Key &k{state.layout.keys[id]};
+//     k.x += delta.x;
+//     k.y += delta.y;
+//
+//     if (snap) {
+//       k.x = snapValue(k.x, state.gridSize);
+//       k.y = snapValue(k.y, state.gridSize);
+//     }
+//   }
+// }
+
+static ImVec2 computeDragDelta(
+    LayoutEditState &state,
+    const ImVec2 &mouseDeltaLogical) { // logical = already divided by zoom
+  state.moveRaw.x += mouseDeltaLogical.x;
+  state.moveRaw.y += mouseDeltaLogical.y;
+
+  const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt};
+  const ImVec2 target{
+      snap ? snapValue(state.moveRaw.x, state.gridSize) : state.moveRaw.x,
+      snap ? snapValue(state.moveRaw.y, state.gridSize) : state.moveRaw.y};
+
+  const ImVec2 delta{target.x - state.moveAnchor.x,
+                     target.y - state.moveAnchor.y};
+  state.moveAnchor = target;
+  return delta;
 }
 
 void changeSelectedLetterCase(LayoutEditState &state, bool upper) {
@@ -410,11 +471,14 @@ void changeSelectedLetterCase(LayoutEditState &state, bool upper) {
 }
 
 void handleEditorShortcuts(LayoutEditState &state) {
-  std::array<std::pair<ImGuiKey, ImVec2>, 4> moveKeys{{
-      {ImGuiKey_UpArrow, {0.0f, -state.step}},
-      {ImGuiKey_DownArrow, {0.0f, state.step}},
-      {ImGuiKey_LeftArrow, {-state.step, 0.0f}},
-      {ImGuiKey_RightArrow, {state.step, 0.0f}},
+  const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt &&
+                  state.gridSize > 0.0f};
+  const float stepSize{snap ? state.gridSize : state.step};
+  const std::array<std::pair<ImGuiKey, ImVec2>, 4> moveKeys{{
+      {ImGuiKey_UpArrow, {0.0f, -stepSize}},
+      {ImGuiKey_DownArrow, {0.0f, stepSize}},
+      {ImGuiKey_LeftArrow, {-stepSize, 0.0f}},
+      {ImGuiKey_RightArrow, {stepSize, 0.0f}},
   }};
 
   if (ImGui::GetIO().WantTextInput)
@@ -435,18 +499,25 @@ void handleEditorShortcuts(LayoutEditState &state) {
     deleteSelectedKeys(state);
   }
 
+  // scroll zoom
   const auto &io{ImGui::GetIO()};
   if (ImGui::IsWindowHovered() && io.MouseWheel != 0.0f &&
-      ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsAnyItemActive() == false){
+      ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsAnyItemActive() == false) {
 
-      state.zoom = std::clamp(state.zoom * (1.0f + io.MouseWheel * 0.10f),
+    state.zoom = std::clamp(state.zoom * (1.0f + io.MouseWheel * 0.10f),
                             state.zoomMin, state.zoomMax);
   }
 
-  ImVec2 delta{};
-  bool startedNewMove{false};
+  // mmb move
+  if (ImGui::IsWindowHovered() &&
+      ImGui::IsMouseDragging(ImGuiMouseButton_Middle)) {
+    state.ViewOffset.x += io.MouseDelta.x / state.zoom;
+    state.ViewOffset.y += io.MouseDelta.y / state.zoom;
+  }
 
   // arrows handle
+  ImVec2 delta{};
+  bool startedNewMove{false};
   for (const auto &[key, movement] : moveKeys) {
     if (ImGui::IsKeyPressed(key, true)) {
       delta.x += movement.x;
@@ -459,16 +530,15 @@ void handleEditorShortcuts(LayoutEditState &state) {
 
   if (delta.x == 0.0f && delta.y == 0.0f)
     return;
-
   if (startedNewMove) {
     saveUndoClearRedo(state);
   }
-
   if (state.selection.Size > 0 &&
       state.selection.Size < static_cast<int>(state.layout.keys.size())) {
     moveSelectedKeys(state, delta);
   }
 }
+
 static void drawGrid(LayoutEditState &state, ImDrawList *draw,
                      const ImVec2 &origin) {
   if (state.gridEnabled) {
@@ -478,7 +548,7 @@ static void drawGrid(LayoutEditState &state, ImDrawList *draw,
     const float w{static_cast<float>(state.layout.windowWidth * state.zoom)};
     const float h{static_cast<float>(state.layout.windowHeight * state.zoom)};
 
-    if (step >= 6.0f) {
+    if (step >= 4.0f) {
       for (float x{step}; x < w; x += step) {
         draw->AddLine({origin.x + x, origin.y}, {origin.x + x, origin.y + h},
                       gridCol, 1.0f);
@@ -491,11 +561,129 @@ static void drawGrid(LayoutEditState &state, ImDrawList *draw,
   }
 }
 
+enum class Edge { Top, Bottom, Left, Right };
+
+static void beginResize(LayoutEditState &state, const Key &key, Edge edge) {
+  switch (edge) {
+  case Edge::Top:
+    state.resizeRaw = key.y;
+    state.resizeFixed = key.y + key.h;
+    break;
+  case Edge::Bottom:
+    state.resizeRaw = key.y + key.h;
+    state.resizeFixed = key.y;
+    break;
+  case Edge::Left:
+    state.resizeRaw = key.x;
+    state.resizeFixed = key.x + key.w;
+    break;
+  case Edge::Right:
+    state.resizeRaw = key.x + key.w;
+    state.resizeFixed = key.x;
+    break;
+  }
+}
+
+static void applyResize(LayoutEditState &state, Key &key, Edge edge,
+                        const ImVec2 &deltaPx, float zoom) {
+  const bool vertical{edge == Edge::Top || edge == Edge::Bottom};
+  const bool movesMinSide{edge == Edge::Top || edge == Edge::Left};
+
+  const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt};
+  const float minSize{snap ? state.gridSize : state.step * zoom};
+
+  state.resizeRaw += (vertical ? deltaPx.y : deltaPx.x) / zoom;
+
+  float pos{snap ? snapValue(state.resizeRaw, state.gridSize)
+                 : state.resizeRaw};
+  const float fixed{state.resizeFixed};
+
+  if (movesMinSide) {
+    pos = (std::min)(pos, fixed - minSize);
+    if (vertical) {
+      key.y = pos;
+      key.h = fixed - pos;
+    } else {
+      key.x = pos;
+      key.w = fixed - pos;
+    }
+  } else {
+    pos = (std::max)(pos, fixed + minSize);
+    if (vertical)
+      key.h = pos - fixed;
+    else
+      key.w = pos - fixed;
+  }
+}
+
+static bool resizeHandle(LayoutEditState &state, ImDrawList *draw,
+                         const char *id, Key &key, Edge edge, const ImVec2 &a,
+                         const ImVec2 &b) {
+  ImGui::SetCursorScreenPos(a);
+  ImGui::InvisibleButton(id, {b.x - a.x, b.y - a.y});
+
+  const bool hovered{ImGui::IsItemHovered()};
+  const bool active{ImGui::IsItemActive()};
+
+  if (ImGui::IsItemActivated()) {
+    saveUndoClearRedo(state);
+    beginResize(state, key, edge);
+  }
+
+  if (active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f))
+    applyResize(state, key, edge, ImGui::GetIO().MouseDelta, state.zoom);
+
+  if (hovered || active)
+    ImGui::SetMouseCursor((edge == Edge::Top || edge == Edge::Bottom)
+                              ? ImGuiMouseCursor_ResizeNS
+                              : ImGuiMouseCursor_ResizeEW);
+
+  draw->AddRectFilled(a, b, IM_COL32(255, 255, 255, 180));
+  return active;
+}
+
+static void drawResizeHandles(LayoutEditState &state, ImDrawList *draw,
+                              Key &key, const ImVec2 &min, const ImVec2 &max) {
+  const float w{max.x - min.x};
+  const float h{max.y - min.y};
+
+  const float thick{std::clamp((std::min)(w, h) * 0.12f, 3.0f, 6.0f)};
+  constexpr float padding{6.0f};
+
+  const float lenH{
+      std::clamp(w * 0.5f, 0.0f, (std::max)(0.0f, w - 2 * padding))};
+  const float lenV{
+      std::clamp(h * 0.5f, 0.0f, (std::max)(0.0f, h - 2 * padding))};
+
+  const float cx{(min.x + max.x) * 0.5f};
+  const float cy{(min.y + max.y) * 0.5f};
+
+  ImGui::PushID("resize");
+
+  if (lenH >= 4.0f) {
+    resizeHandle(state, draw, "top", key, Edge::Top, {cx - lenH * 0.5f, min.y},
+                 {cx + lenH * 0.5f, min.y + thick});
+    resizeHandle(state, draw, "bottom", key, Edge::Bottom,
+                 {cx - lenH * 0.5f, max.y - thick}, {cx + lenH * 0.5f, max.y});
+  }
+  if (lenV >= 4.0f) {
+    resizeHandle(state, draw, "left", key, Edge::Left,
+                 {min.x, cy - lenV * 0.5f}, {min.x + thick, cy + lenV * 0.5f});
+    resizeHandle(state, draw, "right", key, Edge::Right,
+                 {max.x - thick, cy - lenV * 0.5f}, {max.x, cy + lenV * 0.5f});
+  }
+
+  ImGui::PopID();
+}
+
 void drawLayoutEditorCanvas(LayoutEditState &state) {
   handleEditorShortcuts(state);
 
   const float zoom{state.zoom};
-  const ImVec2 origin{ImGui::GetCursorScreenPos()};
+  const ImVec2 cursor{ImGui::GetCursorScreenPos()};
+  const ImVec2 origin{cursor.x + state.ViewOffset.x * state.zoom,
+                      cursor.y + state.ViewOffset.y * state.zoom};
+
   ImDrawList *draw{ImGui::GetWindowDrawList()};
   const auto whiteCol32 = IM_COL32(255, 255, 255, 255);
 
@@ -519,13 +707,18 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     if (ImGui::IsItemActivated()) {
       state.mouseCenterSelected = true;
       state.selection.Clear();
+      state.moveRaw = {state.layout.mouse.mouseCenterX,
+                       state.layout.mouse.mouseCenterY};
+      state.moveAnchor = state.moveRaw;
       saveUndoClearRedo(state);
     }
     if (ImGui::IsItemActive() &&
         ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-      const ImVec2 delta{ImGui::GetIO().MouseDelta};
-      state.layout.mouse.mouseCenterX += delta.x / zoom;
-      state.layout.mouse.mouseCenterY += delta.y / zoom;
+      const ImVec2 mouseDelta{ImGui::GetIO().MouseDelta.x / zoom,
+                              ImGui::GetIO().MouseDelta.y / zoom};
+      const ImVec2 delta{computeDragDelta(state, mouseDelta)};
+      state.layout.mouse.mouseCenterX += delta.x;
+      state.layout.mouse.mouseCenterY += delta.y;
     }
     ImU32 fill{state.mouseCenterSelected ? IM_COL32(80, 140, 255, 220)
                                          : IM_COL32(200, 80, 80, 220)};
@@ -554,20 +747,25 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     ImGui::PushID(i);
     ImGui::SetCursorScreenPos(keyPos);
     ImGui::SetNextItemSelectionUserData(i);
-    ImGui::Selectable("##body", isSelected, ImGuiSelectableFlags_None, keySize);
+    ImGui::Selectable("##body", isSelected, ImGuiSelectableFlags_AllowOverlap,
+                      keySize);
 
     if (ImGui::IsItemActivated()) {
       state.mouseCenterSelected = false;
+      state.moveRaw = {key.x, key.y};
+      state.moveAnchor = {key.x, key.y};
       saveUndoClearRedo(state);
     }
+
     if (ImGui::IsItemActive() &&
         ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
-      const ImVec2 delta{ImGui::GetIO().MouseDelta.x / zoom,
-                         ImGui::GetIO().MouseDelta.y / zoom};
+      const ImVec2 mouseDelta{ImGui::GetIO().MouseDelta.x / zoom,
+                              ImGui::GetIO().MouseDelta.y / zoom};
+      const ImVec2 delta{computeDragDelta(state, mouseDelta)};
 
-      moveSelectedKeys(state, delta);
-
-      if (!state.selection.Contains(static_cast<ImGuiID>(i))) {
+      if (state.selection.Contains(static_cast<ImGuiID>(i))) {
+        moveSelectedKeys(state, delta);
+      } else {
         key.x += delta.x;
         key.y += delta.y;
       }
@@ -590,16 +788,30 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
 
   msIo = ImGui::EndMultiSelect();
   state.selection.ApplyRequests(msIo);
+
+  if (state.selection.Size == 1 && !state.mouseCenterSelected) {
+    void *it{nullptr};
+    ImGuiID id{};
+    if (state.selection.GetNextSelectedItem(&it, &id) &&
+        id < state.layout.keys.size()) {
+      Key &key{state.layout.keys[id]};
+      const ImVec2 kMin{origin.x + key.x * zoom, origin.y + key.y * zoom};
+      const ImVec2 kMax{kMin.x + key.w * zoom, kMin.y + key.h * zoom};
+      drawResizeHandles(state, draw, key, kMin, kMax);
+    }
+  }
 }
 
 void drawLayoutEditorProperties(LayoutEditState &state) {
   if (state.mouseCenterSelected) {
     ImGui::Text("Mouse center");
 
+    ImGui::SetNextItemWidth(150);
     ImGui::DragFloat("X", &state.layout.mouse.mouseCenterX, state.step);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
+    ImGui::SetNextItemWidth(150);
     ImGui::DragFloat("Y", &state.layout.mouse.mouseCenterY, state.step);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
@@ -620,6 +832,11 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
 
   int idx{static_cast<int>(id)};
 
+  if (idx < 0 || idx >= static_cast<int>(state.layout.keys.size())) {
+    state.selection.Clear();
+    return;
+  }
+
   Key &key{state.layout.keys[idx]};
 
   if (state.selection.Size == 1) {
@@ -628,13 +845,18 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
       state.focusLabelInput = false;
     }
 
+    ImGui::SetNextItemWidth(150);
     ImGui::InputText("Label", &key.label);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
-    ImGui::InputText("Shift label", &key.shiftLabel);
+    ImGui::SetNextItemWidth(150);
+    ImGui::InputText("Shift", &key.shiftLabel);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
+
+    ImGui::SameLine();
+    Helper::HelpMarker("Shift label");
 
     ImGui::Text("Key code: %d", key.keyCode);
     ImGui::SameLine();
@@ -672,13 +894,34 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   }
 }
 
+void drawLayoutPropertiesDock(LayoutEditState &state) {
+  const ImVec2 display{ImGui::GetIO().DisplaySize};
+  constexpr float pad{30.0f};
+  constexpr float dockHeight{240.0f};
+
+  ImGui::SetNextWindowPos({display.x - pad, display.y - dockHeight - (pad * 2)},
+                          ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+  ImGui::SetNextWindowSize({dockHeight, 0.0f});
+  ImGui::SetNextWindowBgAlpha(0.35f);
+
+  const ImGuiWindowFlags flags{
+      ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+      ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize |
+      ImGuiWindowFlags_NoFocusOnAppearing};
+  ImGui::Begin("Properties##dock", nullptr, flags);
+  drawLayoutEditorProperties(state);
+  ImGui::End();
+}
+
 void drawLayoutEditorOptions(LayoutEditState &state) {
   ImGui::BeginChild("Options", ImVec2(410, 120), true);
 
   if (ImGui::Button("Edit current layout")) {
     saveUndoClearRedo(state);
+    state.layout.keys.clear();
     state.layout = activeLayout;
     state.selection.Clear();
+    state.resetViewOffset();
     state.mouseCenterSelected = false;
     state.layoutNameInput = Config::activeConfig.selectedLayout;
     state.defaultKeyHeight = mostFreqWH(state.layout.keys, KeyProp::H);
@@ -691,6 +934,7 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
     saveUndoClearRedo(state);
     state.layout.keys.clear();
     state.selection.Clear();
+    state.resetViewOffset();
     state.mouseCenterSelected = false;
   }
 
@@ -703,13 +947,13 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
   ImGui::SetNextItemWidth(150);
   ImGui::InputText("##LayoutName", &state.layoutNameInput);
   ImGui::SameLine();
+
   if (ImGui::Button("Save layout")) {
     const auto path = Paths::getLayoutPath(state.layoutNameInput);
 
     if (std::filesystem::exists(path)) {
       ImGui::OpenPopup("Save Layout");
     } else {
-      // clearUndo(state);
       state.layoutNameError = Helper::getFileCreateError(
           saveLayout(state.layoutNameInput, state.layout));
 
@@ -726,8 +970,6 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
                 "Do you want to overwrite it?");
 
     if (ImGui::Button("Yes", ImVec2(100, 0))) {
-      // clearUndo(state);
-
       state.layoutNameError = Helper::getFileCreateError(
           saveLayout(state.layoutNameInput, state.layout));
 
@@ -755,14 +997,12 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
     Helper::drawErrorInSettings(state.layoutNameError);
   }
 
-  // todo get a user resolution to clamp beetwen them
-  ImGui::SetNextItemWidth(300);
-  ImGui::SliderInt("Window width", &state.layout.windowWidth, 10, 1920);
-  state.layout.windowWidth = std::clamp(state.layout.windowWidth, 10, 1920);
+  // todo make clamp between user monitor
+  Helper::SliderInt("Window width", state.layout.windowWidth, 10, 1920, "%d",
+                    300);
 
-  ImGui::SetNextItemWidth(300);
-  ImGui::SliderInt("Window height", &state.layout.windowHeight, 10, 1080);
-  state.layout.windowHeight = std::clamp(state.layout.windowHeight, 10, 1080);
+  Helper::SliderInt("Window height", state.layout.windowHeight, 10, 1080, "%d",
+                    300);
 
   ImGui::EndChild();
 
@@ -770,23 +1010,26 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
 
   ImGui::BeginChild("add key options", ImVec2(410, 120), true);
 
-  ImGui::SetNextItemWidth(300);
-  ImGui::SliderFloat("Gap", &state.gap, 0.0f, 10.0f, "%.2f");
-  state.gap = std::clamp(state.gap, -20.0f, 100.0f); // freedom
+  ImGui::Checkbox("Enable grid", &state.gridEnabled);
 
-  ImGui::SetNextItemWidth(300);
-  ImGui::SliderFloat("Step", &state.step, 0.0f, 10.0f, "%.2f");
-  state.step = std::clamp(state.step, 0.0f, 100.0f);
+  if (state.gridEnabled) {
+    ImGui::Checkbox("Snap to grid", &state.snapToGrid);
+    Helper::SliderFloat("Grid size", state.gridSize, 1.0f, 30.0f, 1.0f, 100.0f,
+                        "%.2f", 300);
+    // ImGui::SeparatorText("");
+  }
 
-  ImGui::SetNextItemWidth(300);
-  ImGui::SliderFloat("Key width", &state.defaultKeyWidth, 10.0f, 200.0f,
-                     "%.0f");
-  state.defaultKeyWidth = std::clamp(state.defaultKeyWidth, 10.0f, 200.0f);
+  Helper::SliderFloat("Gap", state.gap, 0.0f, 10.0f, -20.0f, 100.0f, "%.2f",
+                      300);
 
-  ImGui::SetNextItemWidth(300);
-  ImGui::SliderFloat("Key height", &state.defaultKeyHeight, 10.0f, 200.0f,
-                     "%.0f");
-  state.defaultKeyHeight = std::clamp(state.defaultKeyHeight, 10.0f, 200.0f);
+  Helper::SliderFloat("Step", state.step, 0.0f, 10.0f, 0.0f, 100.0f, "%.2f",
+                      300);
+
+  Helper::SliderFloat("Key width", state.defaultKeyWidth, 10.0f, 200.0f, "%.0f",
+                      300);
+
+  Helper::SliderFloat("Key height", state.defaultKeyHeight, 10.0f, 200.0f,
+                      "%.0f", 300);
 
   ImGui::Checkbox("Move with multi resize", &state.moveWhenMultiResize);
 
@@ -807,10 +1050,10 @@ void drawLayoutEditorTab(LayoutEditState &state) {
   drawLayoutEditorCanvas(state);
   ImGui::EndChild();
 
-  ImGui::SameLine();
+  // ImGui::SameLine();
 
-  ImGui::BeginChild("properties", ImVec2(250, 250), true);
-  drawLayoutEditorProperties(state);
-  ImGui::EndChild();
+  // ImGui::BeginChild("properties", ImVec2(250, 250), true);
+  // drawLayoutEditorProperties(state);
+  // ImGui::EndChild();
 }
 } // namespace Layouts

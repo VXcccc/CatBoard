@@ -58,11 +58,22 @@ struct LayoutEditState {
   bool moveWhenMultiResize{true};
 
   bool gridEnabled{true};
+  bool snapToGrid{true};
   float gridSize{1.0f};
   float zoom{1.0f};
-  //todo move this variables ig
+
+  // todo maybe move this variables
   float zoomMin{1.0f};
   float zoomMax{100.0f};
+
+  ImVec2 ViewOffset{0.0f, 0.0f};
+  void resetViewOffset() { ViewOffset = {0.0f, 0.0f}; }
+
+  float resizeRaw{};
+  float resizeFixed{};
+
+  ImVec2 moveRaw{};
+  ImVec2 moveAnchor{};
 };
 
 extern std::vector<std::string> layouts;
@@ -75,4 +86,6 @@ bool loadLayout(std::string_view name);
 bool deleteLayout(std::string_view name);
 
 void drawLayoutEditorTab(LayoutEditState &state);
+
+void drawLayoutPropertiesDock(LayoutEditState &state);
 } // namespace Layouts

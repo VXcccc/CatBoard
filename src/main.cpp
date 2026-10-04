@@ -8,6 +8,10 @@
 // - Introduction, links and more at the top of imgui.cpp
 //
 
+#ifndef DEBUG_CATBOARD
+#define DEBUG_CATBOARD
+#endif
+
 #include "Config/Config.h"
 #include "Config/Constants.h"
 #include "Input/Keyboard.h"
@@ -337,6 +341,11 @@ int main(int, char **) {
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&lastDeltaTime);
 
+  //debug
+#ifdef DEBUG_CATBOARD
+  SettingsWindow::Show();
+#endif
+
   while (!done) {
     const auto frameStart{std::chrono::steady_clock::now()};
     // Poll and handle messages (inputs, window resize, etc.)
@@ -489,7 +498,7 @@ int main(int, char **) {
     // debug
     // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
     //             1000.0f / io.Framerate, io.Framerate);
-    // ImGui::ShowDemoWindow();
+    ImGui::ShowDemoWindow();
 
     const auto frameEnd{std::chrono::steady_clock::now()};
 
