@@ -2,6 +2,7 @@
 #include "Config/Config.h"
 #include "Config/ConfigJson.h"
 #include "Config/Constants.h"
+#include "Input/Mouse.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "UI/MainWindow.h"
@@ -274,7 +275,8 @@ void setSelectedKeysProperty(LayoutEditState &state, KeyProp prop,
   }
 }
 
-void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop) {
+void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
+                          float sliderWidth = 150.0f) {
   if (!isKeysPropsEqual(state, prop))
     return;
 
@@ -294,7 +296,7 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop) {
     max = 2000.0f;
   }
 
-  ImGui::SetNextItemWidth(150);
+  ImGui::SetNextItemWidth(sliderWidth);
   const bool changed{
       ImGui::DragFloat(KeyPropName[static_cast<int>(prop)].c_str(), &value,
                        state.step, min, max)};
@@ -343,28 +345,29 @@ void recordKeyCode(LayoutEditState &state, Key &key) {
       if (GetAsyncKeyState(vk) & 0x8000) {
         saveUndoClearRedo(state);
         key.keyCode = vk;
-        if (key.label.empty()) {
-          key.label = Helper::VkToName(vk);
-        }
+        // if (key.label.empty()) {
+        //   key.label = Helper::VkToName(vk);
+        // }
         state.recordingKeyCode = false;
 
-        state.focusLabelInput = true;
         break;
       }
     }
+    if (!state.recordingKeyCode)
+      state.focusLabelInput = true;
   }
 }
 
 void addKey(LayoutEditState &state) {
   state.selection.Clear();
-  std::pair<float, float> lastKeySize{state.defaultKeyWidth,
-                                      state.defaultKeyHeight};
+  std::pair<float, float> defaultKeySize{state.defaultKeyWidth,
+                                         state.defaultKeyHeight};
 
   std::pair<float, float> lastKeyPos{
       state.layout.keys.empty()
           ? std::pair<float, float>{10.0f, 10.0f}
           : std::pair<float, float>{state.layout.keys.back().x +
-                                        lastKeySize.first + state.gap,
+                                        defaultKeySize.first + state.gap,
                                     state.layout.keys.back().y}};
 
   Key newKey{0,
@@ -372,8 +375,8 @@ void addKey(LayoutEditState &state) {
              "",
              lastKeyPos.first,
              lastKeyPos.second,
-             lastKeySize.first,
-             lastKeySize.second};
+             defaultKeySize.first,
+             defaultKeySize.second};
   saveUndoClearRedo(state);
   state.layout.keys.push_back(newKey);
   state.selection.SetItemSelected((int)state.layout.keys.size() - 1, true);
@@ -413,7 +416,8 @@ static void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
   }
 }
 
-// static void arrowMoveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
+// static void arrowMoveSelectedKeys(LayoutEditState &state, const ImVec2
+// &delta) {
 //   const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt &&
 //                   state.gridSize > 0.0f};
 //
@@ -505,7 +509,7 @@ void handleEditorShortcuts(LayoutEditState &state) {
       ImGui::IsKeyDown(ImGuiMod_Ctrl) && ImGui::IsAnyItemActive() == false) {
 
     state.zoom = std::clamp(state.zoom * (1.0f + io.MouseWheel * 0.10f),
-                            state.zoomMin, state.zoomMax);
+                            Consts::EDITOR_MINZOOM, Consts::EDITOR_MAXZOOM);
   }
 
   // mmb move
@@ -533,8 +537,11 @@ void handleEditorShortcuts(LayoutEditState &state) {
   if (startedNewMove) {
     saveUndoClearRedo(state);
   }
-  if (state.selection.Size > 0 &&
-      state.selection.Size < static_cast<int>(state.layout.keys.size())) {
+  if (state.mouseCenterSelected) {
+    state.layout.mouse.centerX += delta.x;
+    state.layout.mouse.centerY += delta.y;
+  }
+  if (state.selection.Size > 0) {
     moveSelectedKeys(state, delta);
   }
 }
@@ -584,13 +591,26 @@ static void beginResize(LayoutEditState &state, const Key &key, Edge edge) {
   }
 }
 
+static void beginMouseResize(LayoutEditState &state, float center, float size,
+                             Edge edge) {
+  const bool movesMinSide{edge == Edge::Top || edge == Edge::Left};
+
+  if (movesMinSide) {
+    state.resizeRaw = center - size * 0.5f;
+    state.resizeFixed = center + size * 0.5f;
+  } else {
+    state.resizeRaw = center + size * 0.5f;
+    state.resizeFixed = center - size * 0.5f;
+  }
+}
+
 static void applyResize(LayoutEditState &state, Key &key, Edge edge,
                         const ImVec2 &deltaPx, float zoom) {
   const bool vertical{edge == Edge::Top || edge == Edge::Bottom};
   const bool movesMinSide{edge == Edge::Top || edge == Edge::Left};
 
   const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt};
-  const float minSize{snap ? state.gridSize : state.step * zoom};
+  const float minSize{snap ? state.gridSize : state.step};
 
   state.resizeRaw += (vertical ? deltaPx.y : deltaPx.x) / zoom;
 
@@ -613,6 +633,36 @@ static void applyResize(LayoutEditState &state, Key &key, Edge edge,
       key.h = pos - fixed;
     else
       key.w = pos - fixed;
+  }
+}
+
+static void applyMouseResize(LayoutEditState &state, Edge edge, float &center,
+                             float &size) {
+  const bool movesMinSide{edge == Edge::Top || edge == Edge::Left};
+
+  state.resizeRaw += ((edge == Edge::Top || edge == Edge::Bottom)
+                          ? ImGui::GetIO().MouseDelta.y
+                          : ImGui::GetIO().MouseDelta.x) /
+                     state.zoom;
+
+  const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt};
+  const float minSize{snap ? state.gridSize : state.step};
+
+  float pos{snap ? snapValue(state.resizeRaw, state.gridSize)
+                 : state.resizeRaw};
+
+  const float fixed{state.resizeFixed};
+
+  if (movesMinSide) {
+    pos = (std::min)(pos, fixed - minSize);
+
+    size = fixed - pos;
+    center = (fixed + pos) * 0.5f;
+  } else {
+    pos = (std::max)(pos, fixed + minSize);
+
+    size = pos - fixed;
+    center = (fixed + pos) * 0.5f;
   }
 }
 
@@ -642,6 +692,70 @@ static bool resizeHandle(LayoutEditState &state, ImDrawList *draw,
   return active;
 }
 
+static bool mouseRectResizeHandle(LayoutEditState &state, ImDrawList *draw,
+                                  const char *id, float &size, float &center,
+                                  bool vertical, Edge edge, const ImVec2 &a,
+                                  const ImVec2 &b) {
+  ImGui::SetCursorScreenPos(a);
+  ImGui::InvisibleButton(id, {b.x - a.x, b.y - a.y});
+
+  const bool hovered{ImGui::IsItemHovered()};
+  const bool active{ImGui::IsItemActive()};
+
+  if (ImGui::IsItemActivated()) {
+    saveUndoClearRedo(state);
+    beginMouseResize(state, center, size, edge);
+  }
+
+  if (active && ImGui::IsMouseDragging(ImGuiMouseButton_Left, 0.0f)) {
+    applyMouseResize(state, edge, center, size);
+  }
+
+  if (hovered || active) {
+    ImGui::SetMouseCursor(vertical ? ImGuiMouseCursor_ResizeNS
+                                   : ImGuiMouseCursor_ResizeEW);
+  }
+
+  draw->AddRectFilled(a, b, IM_COL32(255, 255, 255, 180));
+  return active;
+}
+
+static void drawMouseRectResizeHandles(LayoutEditState &state, ImDrawList *draw,
+                                       const ImVec2 &center) {
+  auto &mouse{state.layout.mouse};
+
+  const float halfW{mouse.width * 0.5f * state.zoom};
+  const float halfH{mouse.height * 0.5f * state.zoom};
+
+  constexpr float thick{6.0f};
+
+  const float lenH{(std::min)(24.0f, halfW)};
+  const float lenV{(std::min)(24.0f, halfH)};
+
+  ImGui::PushID("mouse_rect_handles");
+
+  mouseRectResizeHandle(state, draw, "left", mouse.width, mouse.centerX, false,
+                        Edge::Left,
+                        {center.x - halfW - thick * 0.5f, center.y - lenV},
+                        {center.x - halfW + thick * 0.5f, center.y + lenV});
+
+  mouseRectResizeHandle(state, draw, "right", mouse.width, mouse.centerX, false,
+                        Edge::Right,
+                        {center.x + halfW - thick * 0.5f, center.y - lenV},
+                        {center.x + halfW + thick * 0.5f, center.y + lenV});
+
+  mouseRectResizeHandle(state, draw, "top", mouse.height, mouse.centerY, true,
+                        Edge::Top,
+                        {center.x - lenH, center.y - halfH - thick * 0.5f},
+                        {center.x + lenH, center.y - halfH + thick * 0.5f});
+
+  mouseRectResizeHandle(state, draw, "bottom", mouse.height, mouse.centerY,
+                        true, Edge::Bottom,
+                        {center.x - lenH, center.y + halfH - thick * 0.5f},
+                        {center.x + lenH, center.y + halfH + thick * 0.5f});
+
+  ImGui::PopID();
+}
 static void drawResizeHandles(LayoutEditState &state, ImDrawList *draw,
                               Key &key, const ImVec2 &min, const ImVec2 &max) {
   const float w{max.x - min.x};
@@ -678,6 +792,7 @@ static void drawResizeHandles(LayoutEditState &state, ImDrawList *draw,
 
 void drawLayoutEditorCanvas(LayoutEditState &state) {
   handleEditorShortcuts(state);
+  ImGui::PushStyleColor(ImGuiCol_NavHighlight, ImVec4(0, 0, 0, 0));
 
   const float zoom{state.zoom};
   const ImVec2 cursor{ImGui::GetCursorScreenPos()};
@@ -696,19 +811,20 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
 
   // mouse center
   {
-    const ImVec2 mousePos{origin.x + state.layout.mouse.mouseCenterX * zoom,
-                          origin.y + state.layout.mouse.mouseCenterY * zoom};
+    const auto &mouse{Config::activeConfig.theme.mouse};
+
+    const ImVec2 mouseCenter{origin.x + state.layout.mouse.centerX * zoom,
+                             origin.y + state.layout.mouse.centerY * zoom};
 
     ImGui::PushID("mouse_center");
-    ImGui::SetCursorScreenPos({mousePos.x - 6.0f, mousePos.y - 6.0f});
+    ImGui::SetCursorScreenPos({mouseCenter.x - 6.0f, mouseCenter.y - 6.0f});
     ImGui::SetNextItemAllowOverlap();
     ImGui::InvisibleButton("mouse_center_handle", ImVec2(12.0f, 12.0f));
 
     if (ImGui::IsItemActivated()) {
       state.mouseCenterSelected = true;
       state.selection.Clear();
-      state.moveRaw = {state.layout.mouse.mouseCenterX,
-                       state.layout.mouse.mouseCenterY};
+      state.moveRaw = {state.layout.mouse.centerX, state.layout.mouse.centerY};
       state.moveAnchor = state.moveRaw;
       saveUndoClearRedo(state);
     }
@@ -717,14 +833,37 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
       const ImVec2 mouseDelta{ImGui::GetIO().MouseDelta.x / zoom,
                               ImGui::GetIO().MouseDelta.y / zoom};
       const ImVec2 delta{computeDragDelta(state, mouseDelta)};
-      state.layout.mouse.mouseCenterX += delta.x;
-      state.layout.mouse.mouseCenterY += delta.y;
+      state.layout.mouse.centerX += delta.x;
+      state.layout.mouse.centerY += delta.y;
     }
-    ImU32 fill{state.mouseCenterSelected ? IM_COL32(80, 140, 255, 220)
-                                         : IM_COL32(200, 80, 80, 220)};
-    draw->AddCircleFilled(mousePos, 6.0f, fill);
-    draw->AddCircle(mousePos, 6.0f, whiteCol32, 16, 1.5f);
+    const ImU32 fill{state.mouseCenterSelected ? IM_COL32(80, 140, 255, 220)
+                                               : IM_COL32(60, 60, 60, 220)};
+
+    draw->AddCircleFilled(mouseCenter, 6.0f, fill);
+    draw->AddCircle(mouseCenter, 6.0f, whiteCol32, 16, 1.5f);
+
+    const ::Mouse::Type &curType{mouse.style.type};
+
+    if (::Mouse::isTypeCircle(curType)) {
+      draw->AddCircle(mouseCenter, state.layout.mouse.radius * zoom, fill, 64,
+                      mouse.outerThickness);
+    } else if (::Mouse::isTypeRect(curType)) {
+      const ImVec2 topLeft(
+          mouseCenter.x - (state.layout.mouse.width * 0.5f) * zoom,
+          mouseCenter.y - (state.layout.mouse.height * 0.5f) * zoom);
+      const ImVec2 bottomRight(
+          mouseCenter.x + (state.layout.mouse.width * 0.5f) * zoom,
+          mouseCenter.y + (state.layout.mouse.height * 0.5f) * zoom);
+      draw->AddRect(topLeft, bottomRight, fill, mouse.rounding, 0,
+                    mouse.outerThickness);
+    }
     ImGui::PopID();
+  }
+  if (state.mouseCenterSelected &&
+      ::Mouse::isTypeRect(Config::activeConfig.theme.mouse.style.type)) {
+    drawMouseRectResizeHandles(state, draw,
+                               {origin.x + state.layout.mouse.centerX * zoom,
+                                origin.y + state.layout.mouse.centerY * zoom});
   }
 
   ImGuiMultiSelectFlags msFlags{ImGuiMultiSelectFlags_BoxSelect2d |
@@ -789,6 +928,7 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
   msIo = ImGui::EndMultiSelect();
   state.selection.ApplyRequests(msIo);
 
+  // const ::Mouse::Type &curType{Config::activeConfig.theme.mouse.style.type};
   if (state.selection.Size == 1 && !state.mouseCenterSelected) {
     void *it{nullptr};
     ImGuiID id{};
@@ -800,27 +940,44 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
       drawResizeHandles(state, draw, key, kMin, kMax);
     }
   }
+  ImGui::PopStyleColor();
 }
 
 void drawLayoutEditorProperties(LayoutEditState &state) {
+  constexpr float sliderWidth{150.0f};
+
   if (state.mouseCenterSelected) {
     ImGui::Text("Mouse center");
+    const auto &mouseStyle{Config::activeConfig.theme.mouse.style};
 
-    ImGui::SetNextItemWidth(150);
-    ImGui::DragFloat("X", &state.layout.mouse.mouseCenterX, state.step);
+    ImGui::SetNextItemWidth(sliderWidth);
+    ImGui::DragFloat("X", &state.layout.mouse.centerX, state.step);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
-    ImGui::SetNextItemWidth(150);
-    ImGui::DragFloat("Y", &state.layout.mouse.mouseCenterY, state.step);
+    ImGui::SetNextItemWidth(sliderWidth);
+    ImGui::DragFloat("Y", &state.layout.mouse.centerY, state.step);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
+    if (::Mouse::isTypeCircle(mouseStyle.type)) {
+      ImGui::SetNextItemWidth(sliderWidth);
+      ImGui::DragFloat("Radius", &state.layout.mouse.radius, state.step);
+    }
+    if (::Mouse::isTypeRect(mouseStyle.type)) {
+      ImGui::SetNextItemWidth(sliderWidth);
+      ImGui::DragFloat("Width", &state.layout.mouse.width, state.step);
+      ImGui::SetNextItemWidth(sliderWidth);
+      ImGui::DragFloat("Height", &state.layout.mouse.height, state.step);
+    }
     return;
   }
 
   if (state.selection.Size == 0) {
     ImGui::TextDisabled("No keys selected");
+    if (ImGui::Button("Add key")) {
+      addKey(state);
+    }
     return;
   }
 
@@ -845,12 +1002,12 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
       state.focusLabelInput = false;
     }
 
-    ImGui::SetNextItemWidth(150);
+    ImGui::SetNextItemWidth(sliderWidth);
     ImGui::InputText("Label", &key.label);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
 
-    ImGui::SetNextItemWidth(150);
+    ImGui::SetNextItemWidth(sliderWidth);
     ImGui::InputText("Shift", &key.shiftLabel);
     if (ImGui::IsItemActivated())
       saveUndoClearRedo(state);
@@ -871,10 +1028,10 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
     ImGui::Text("%d keys selected", state.selection.Size);
   }
 
-  drawMultiKeyProperty(state, KeyProp::X);
-  drawMultiKeyProperty(state, KeyProp::Y);
-  drawMultiKeyProperty(state, KeyProp::W);
-  drawMultiKeyProperty(state, KeyProp::H);
+  drawMultiKeyProperty(state, KeyProp::X, sliderWidth);
+  drawMultiKeyProperty(state, KeyProp::Y, sliderWidth);
+  drawMultiKeyProperty(state, KeyProp::W, sliderWidth);
+  drawMultiKeyProperty(state, KeyProp::H, sliderWidth);
 
   if (ImGui::Button("UPPER")) {
     changeSelectedLetterCase(state, true);
@@ -894,7 +1051,7 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   }
 }
 
-void drawLayoutPropertiesDock(LayoutEditState &state) {
+void drawLayoutPropertiesOverlay(LayoutEditState &state) {
   const ImVec2 display{ImGui::GetIO().DisplaySize};
   constexpr float pad{30.0f};
   constexpr float dockHeight{240.0f};
@@ -902,13 +1059,13 @@ void drawLayoutPropertiesDock(LayoutEditState &state) {
   ImGui::SetNextWindowPos({display.x - pad, display.y - dockHeight - (pad * 2)},
                           ImGuiCond_Always, ImVec2(1.0f, 0.0f));
   ImGui::SetNextWindowSize({dockHeight, 0.0f});
-  ImGui::SetNextWindowBgAlpha(0.35f);
+  ImGui::SetNextWindowBgAlpha(0.5f);
 
   const ImGuiWindowFlags flags{
       ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
       ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize |
       ImGuiWindowFlags_NoFocusOnAppearing};
-  ImGui::Begin("Properties##dock", nullptr, flags);
+  ImGui::Begin("Properties##overlay", nullptr, flags);
   drawLayoutEditorProperties(state);
   ImGui::End();
 }
@@ -1019,10 +1176,10 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
     // ImGui::SeparatorText("");
   }
 
-  Helper::SliderFloat("Gap", state.gap, 0.0f, 10.0f, -20.0f, 100.0f, "%.2f",
+  Helper::SliderFloat("Gap", state.gap, 0.0f, 30.0f, -20.0f, 100.0f, "%.2f",
                       300);
 
-  Helper::SliderFloat("Step", state.step, 0.0f, 10.0f, 0.0f, 100.0f, "%.2f",
+  Helper::SliderFloat("Step", state.step, 0.0f, 30.0f, 0.0f, 100.0f, "%.2f",
                       300);
 
   Helper::SliderFloat("Key width", state.defaultKeyWidth, 10.0f, 200.0f, "%.0f",
@@ -1030,6 +1187,9 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
 
   Helper::SliderFloat("Key height", state.defaultKeyHeight, 10.0f, 200.0f,
                       "%.0f", 300);
+
+  Helper::SliderFloat("Zoom", state.zoom, Consts::EDITOR_MINZOOM,
+                      Consts::EDITOR_MAXZOOM, "%.2f", 300);
 
   ImGui::Checkbox("Move with multi resize", &state.moveWhenMultiResize);
 

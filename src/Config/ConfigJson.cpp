@@ -68,15 +68,15 @@ void to_json(json &j, const MouseTheme &mouseTheme) {
       {"outer", mouseTheme.outer},
       {"fill", mouseTheme.fill},
       {"lerpColor", mouseTheme.lerpColor},
-      {"radius", mouseTheme.radius},
+      // {"radius", mouseTheme.radius},
       {"smallRadius", mouseTheme.smallRadius},
       {"outerThickness", mouseTheme.outerThickness},
       {"sensitivity", mouseTheme.sensitivity},
       {"decayRate", mouseTheme.decayRate},
       {"imagesDisplay", mouseTheme.imagesDisplay},
       {"imageOpacity", mouseTheme.imageOpacity},
-      {"width", mouseTheme.width},
-      {"height", mouseTheme.height},
+      // {"width", mouseTheme.width},
+      // {"height", mouseTheme.height},
       {"fadeTime", mouseTheme.fadeTime},
       {"rounding", mouseTheme.rounding},
       {"trail", mouseTheme.trail},
@@ -106,8 +106,8 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
   if (j.contains("lerpColor"))
     j.at("lerpColor").get_to(mouseTheme.lerpColor);
 
-  if (j.contains("radius"))
-    j.at("radius").get_to(mouseTheme.radius);
+  // if (j.contains("radius"))
+  //   j.at("radius").get_to(mouseTheme.radius);
 
   if (j.contains("smallRadius"))
     j.at("smallRadius").get_to(mouseTheme.smallRadius);
@@ -127,11 +127,11 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
   if (j.contains("imageOpacity"))
     j.at("imageOpacity").get_to(mouseTheme.imageOpacity);
 
-  if (j.contains("width"))
-    j.at("width").get_to(mouseTheme.width);
-
-  if (j.contains("height"))
-    j.at("height").get_to(mouseTheme.height);
+  // if (j.contains("width"))
+  //   j.at("width").get_to(mouseTheme.width);
+  //
+  // if (j.contains("height"))
+  //   j.at("height").get_to(mouseTheme.height);
 
   if (j.contains("fadeTime"))
     j.at("fadeTime").get_to(mouseTheme.fadeTime);
@@ -442,17 +442,29 @@ void from_json(const nlohmann::json &j, Key &key) {
 
 void to_json(nlohmann::json &j, const Mouse &mouse) {
   j = {
-      {"mouseCenterX", mouse.mouseCenterX},
-      {"mouseCenterY", mouse.mouseCenterY},
+      {"centerX", mouse.centerX},
+      {"centerY", mouse.centerY},
+      {"width", mouse.width},
+      {"height", mouse.height},
+      {"radius", mouse.radius},
   };
 }
 
 void from_json(const nlohmann::json &j, Mouse &mouse) {
-  if (j.contains("mouseCenterX"))
-    j.at("mouseCenterX").get_to(mouse.mouseCenterX);
+  if (j.contains("centerX"))
+    j.at("centerX").get_to(mouse.centerX);
 
-  if (j.contains("mouseCenterY"))
-    j.at("mouseCenterY").get_to(mouse.mouseCenterY);
+  if (j.contains("centerY"))
+    j.at("centerY").get_to(mouse.centerY);
+
+  if (j.contains("width"))
+    j.at("width").get_to(mouse.width);
+
+  if (j.contains("height"))
+    j.at("height").get_to(mouse.height);
+
+  if (j.contains("radius"))
+    j.at("radius").get_to(mouse.radius);
 }
 
 void to_json(nlohmann::json &j, const Layout &layout) {

@@ -2,6 +2,7 @@
 #define _USE_MATH_DEFINES
 
 #include "Input/Mouse.h"
+#include "UI/Layouts.h"
 #include "Config/Config.h"
 #include "System/Helpers.h"
 #include "cassert"
@@ -26,7 +27,16 @@ std::array<TrailStyle, static_cast<std::size_t>(TrailType::maxTrailStyles)>
 MouseState g_mouseState{Config::activeConfig.theme.mouse.sensitivity,
                         Config::activeConfig.theme.mouse.decayRate,
                         Config::activeConfig.theme.mouse.fadeTime};
+//extern helpers
+bool isTypeCircle(Mouse::Type type) {
+  return (type == Type::CatBoard || type == Type::NohBoard);
+}
+bool isTypeRect(Mouse::Type type) {
+  return (type == Type::Wrap || type == Type::Pan);
+}
+
 // helper
+
 static float distance(const ImVec2 &v1, const ImVec2 &v2) {
   const float dx{v1.x - v2.x};
   const float dy{v1.y - v2.y};
@@ -218,14 +228,13 @@ void MouseState::updateScroll(float dt) {
     m_scrollUpValue += delta;
     m_scrollUpTimer = holdTime;
   } else if (delta < 0) {
-    m_scrollDownValue += delta; 
+    m_scrollDownValue += delta;
     m_scrollDownTimer = holdTime;
   }
 
   m_scrollUpTimer = (std::max)(0.0f, m_scrollUpTimer - dt);
   m_scrollDownTimer = (std::max)(0.0f, m_scrollDownTimer - dt);
 
-  
   if (m_scrollUpTimer <= 0.0f)
     m_scrollUpValue = 0;
   if (m_scrollDownTimer <= 0.0f)
@@ -412,7 +421,7 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
 
   const ImU32 innerColor{Helper::ToImU32(inner())};
   const ImU32 outerColor{Helper::ToImU32(mouse.outer)};
-  float radius{mouse.radius};
+  float radius{Layouts::activeLayout.mouse.radius};
 
   // outer circle
   draw->AddCircleFilled(center, radius, Helper::ToImU32(mouse.fill));
@@ -472,7 +481,7 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
 
 void renderDefaultMouseIndicator(const ImVec2 &center) {
   const auto &mouse{Config::activeConfig.theme.mouse};
-  float radius{mouse.radius};
+  float radius{Layouts::activeLayout.mouse.radius};
   ImDrawList *draw = ImGui::GetBackgroundDrawList();
 
   const ImU32 innerColor{Helper::ToImU32(inner())};
@@ -497,8 +506,10 @@ void renderDefaultMouseIndicator(const ImVec2 &center) {
 
 void renderWrapIndicator(const ImVec2 &center) {
   const auto &mouse{Config::activeConfig.theme.mouse};
-  float halfWidth{mouse.width / 2};
-  float halfHeight{mouse.height / 2};
+  const auto &layout{Layouts::activeLayout};
+
+  const float halfWidth{layout.mouse.width / 2};
+  const float halfHeight{layout.mouse.height / 2};
 
   ImDrawList *draw = ImGui::GetBackgroundDrawList();
 
@@ -540,12 +551,14 @@ void renderWrapIndicator(const ImVec2 &center) {
 
 void renderPanIndicator(const ImVec2 &center) {
   const auto &mouse{Config::activeConfig.theme.mouse};
-  float halfWidth{mouse.width / 2};
-  float halfHeight{mouse.height / 2};
+  const auto &layout{Layouts::activeLayout};
+
+  const float halfWidth{layout.mouse.width / 2};
+  const float halfHeight{layout.mouse.height / 2};
 
   ImDrawList *draw = ImGui::GetBackgroundDrawList();
 
-  float fade{getFade()};
+  const float fade{getFade()};
 
   const ImU32 innerColor{applyFade(inner(), fade)};
   const ImU32 outlineColor{Helper::ToImU32(mouse.outer)};

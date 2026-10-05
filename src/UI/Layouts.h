@@ -23,8 +23,11 @@ bool operator==(const Key &k1, const Key &k2);
 bool operator!=(const Key &k1, const Key &k2);
 
 struct Mouse {
-  float mouseCenterX{10.0f};
-  float mouseCenterY{10.0f};
+  float centerX{10.0f};
+  float centerY{10.0f};
+  float width{100.0f};
+  float height{75.0f};
+  float radius{37.0f};
 };
 
 struct Layout {
@@ -62,10 +65,6 @@ struct LayoutEditState {
   float gridSize{1.0f};
   float zoom{1.0f};
 
-  // todo maybe move this variables
-  float zoomMin{1.0f};
-  float zoomMax{100.0f};
-
   ImVec2 ViewOffset{0.0f, 0.0f};
   void resetViewOffset() { ViewOffset = {0.0f, 0.0f}; }
 
@@ -87,5 +86,5 @@ bool deleteLayout(std::string_view name);
 
 void drawLayoutEditorTab(LayoutEditState &state);
 
-void drawLayoutPropertiesDock(LayoutEditState &state);
+void drawLayoutPropertiesOverlay(LayoutEditState &state);
 } // namespace Layouts

@@ -213,7 +213,7 @@ bool updateAnimations(const Layouts::Layout &layout,
   const auto &theme{Config::activeConfig.theme};
 
   static bool prevAnimation{true};
-  if (!theme.animation) {
+  if (!theme.animation || theme.animationSpeed <= 0) {
     if (prevAnimation) {
       for (const auto &key : layout.keys)
         outKeysScale[key.keyCode] = 1.0f;

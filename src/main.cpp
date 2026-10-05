@@ -341,7 +341,7 @@ int main(int, char **) {
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&lastDeltaTime);
 
-  //debug
+  // debug
 #ifdef DEBUG_CATBOARD
   SettingsWindow::Show();
 #endif
@@ -412,13 +412,13 @@ int main(int, char **) {
 
     const Mouse::Type &curType{Config::activeConfig.theme.mouse.style.type};
 
-    if (curType == Mouse::Type::NohBoard || curType == Mouse::Type::CatBoard) {
+    if (Mouse::isTypeCircle(curType)) {
       Mouse::g_mouseState.updateMouseState(
-          deltaTime, Config::activeConfig.theme.mouse.radius);
-    } else if (curType == Mouse::Type::Wrap || curType == Mouse::Type::Pan) {
+          deltaTime, Layouts::activeLayout.mouse.radius);
+    } else if (Mouse::isTypeRect(curType)) {
       Mouse::g_mouseState.updateMouseState(
-          deltaTime, (Config::activeConfig.theme.mouse.width / 2),
-          (Config::activeConfig.theme.mouse.height / 2));
+          deltaTime, (Layouts::activeLayout.mouse.width / 2),
+          (Layouts::activeLayout.mouse.height / 2));
     }
 
     if (Config::activeConfig.theme.mouse.highlightM1)
@@ -483,8 +483,8 @@ int main(int, char **) {
                              currentFullKeysDown, keysScale, keysColors);
 
     if (Config::activeConfig.theme.mouse.enabled) {
-      ImVec2 mouseCenter(Layouts::activeLayout.mouse.mouseCenterX,
-                         Layouts::activeLayout.mouse.mouseCenterY);
+      ImVec2 mouseCenter(Layouts::activeLayout.mouse.centerX,
+                         Layouts::activeLayout.mouse.centerY);
 
       if (Config::activeConfig.theme.mouse.imagesDisplay) {
         Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,

@@ -58,7 +58,6 @@ struct MouseTheme {
 
   bool lerpColor{false};
 
-  float radius{37.0f};
   float smallRadius{7.4f};
   float outerThickness{3.0f};
   float sensitivity{0.5f};
@@ -70,8 +69,6 @@ struct MouseTheme {
   float imageOffsetX{0.0f};
   float imageOffsetY{-50.0f};
 
-  float width{100.0f};
-  float height{75.0f};
 
   float fadeTime{0.6f};
   float rounding{6.0f};

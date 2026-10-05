@@ -548,7 +548,6 @@ void drawKeyboardSection(SettingsEditState &state) {
       ImGui::SliderFloat("Press scale", &state.theme.pressScale, 0.0f, 3.0f,
                          "%.2f");
       break;
-
     case Config::AnimType::Lift:
       ImGui::SliderFloat("Press scale", &state.theme.pressScale, -2.0f, 4.0f,
                          "%.2f");
@@ -557,10 +556,7 @@ void drawKeyboardSection(SettingsEditState &state) {
       break;
     }
 
-    if (state.theme.animType == Config::AnimType::Lift) {
-    } else
-
-      ImGui::SliderInt("Animation speed", &state.theme.animationSpeed, 0, 1000);
+    ImGui::SliderInt("Animation speed", &state.theme.animationSpeed, 0, 1000);
   }
 
   ImGui::Checkbox("Enable Outline", &state.theme.keyOutline.enable);
@@ -580,10 +576,8 @@ void drawKeyboardSection(SettingsEditState &state) {
 void drawMouseSection(SettingsEditState &state) {
   auto &mouse{state.theme.mouse};
   auto &trail{mouse.trail};
-  bool circleType{mouse.style.type == Mouse::Type::CatBoard ||
-                  mouse.style.type == Mouse::Type::NohBoard};
-  bool rectType{mouse.style.type == Mouse::Type::Wrap ||
-                mouse.style.type == Mouse::Type::Pan};
+  bool circleType{Mouse::isTypeCircle(mouse.style.type)};
+  bool rectType{Mouse::isTypeRect(mouse.style.type)};
 
   ImGui::SeparatorText("Mouse");
 
@@ -606,14 +600,6 @@ void drawMouseSection(SettingsEditState &state) {
       mouse.higlightScale = std::clamp(mouse.higlightScale, 0.0f, 10.0f);
     }
 
-    if (circleType)
-      ImGui::SliderFloat("Radius", &state.theme.mouse.radius, 0.0f, 100.0f,
-                         "%.2f");
-
-    if (rectType) {
-      ImGui::SliderFloat("Width", &state.theme.mouse.width, 0.0f, 1920.0f);
-      ImGui::SliderFloat("Height", &state.theme.mouse.height, 0.0f, 1920.0f);
-    }
 
     ImGui::SliderFloat("Indicator radius", &state.theme.mouse.smallRadius, 0.0f,
                        100.0f, "%.2f");
@@ -990,7 +976,8 @@ void RenderFrame() {
                ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
                    ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
                    ImGuiWindowFlags_NoSavedSettings |
-                   ImGuiWindowFlags_HorizontalScrollbar | ImGuiWindowFlags_NoBringToFrontOnFocus);
+                   ImGuiWindowFlags_HorizontalScrollbar |
+                   ImGuiWindowFlags_NoBringToFrontOnFocus);
 
   for (size_t i{0}; i < std::size(tabs); ++i) {
     if (ImGui::Button(tabs[i].label,
@@ -1048,7 +1035,7 @@ void RenderFrame() {
   ImGui::End();
 
   if (currentTab == SettingsTab::Layouts && editState.showLayoutEditor)
-    Layouts::drawLayoutPropertiesDock(layoutEditState);
+    Layouts::drawLayoutPropertiesOverlay(layoutEditState);
 
   ImGui::Render();
   const float clearColor[4] = {0.10f, 0.10f, 0.12f, 1.0f};

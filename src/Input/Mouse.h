@@ -135,5 +135,8 @@ void renderMouseTrail(const ImVec2 &center, TrailType type);
 
 void updateM1Highlight(const std::array<bool, 256> &currentFullKeysDown);
 
+bool isTypeCircle(Mouse::Type type);
+bool isTypeRect(Mouse::Type type);
+
 extern MouseState g_mouseState;
 } // namespace Mouse
