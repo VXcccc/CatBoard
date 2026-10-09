@@ -27,7 +27,7 @@
 #include <vector>
 #include <winuser.h>
 
-static ImFont* s_settingsFont{};
+static ImFont *s_settingsFont{};
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -603,7 +603,6 @@ void drawMouseSection(SettingsEditState &state) {
       mouse.higlightScale = std::clamp(mouse.higlightScale, 0.0f, 10.0f);
     }
 
-
     ImGui::SliderFloat("Indicator radius", &state.theme.mouse.smallRadius, 0.0f,
                        100.0f, "%.2f");
 
@@ -629,8 +628,10 @@ void drawMouseSection(SettingsEditState &state) {
     if (state.theme.mouse.trail.enable) {
       drawTrailStyleCombo(state, Helper::extractNames(Mouse::trailStyles));
 
-      ImGui::SliderFloat("Trail duration", &state.theme.mouse.trail.duration,
-                         0.0f, 3.0f);
+      if (mouse.trail.style.type == Mouse::TrailType::Circle) {
+        ImGui::SliderFloat("Trail duration", &state.theme.mouse.trail.duration,
+                           0.0f, 3.0f);
+      }
 
       ImGui::SliderFloat("Min width", &mouse.trail.minWidth, 0.0f, 10.0f,
                          "%.2f");
@@ -702,7 +703,8 @@ void drawFontSection(SettingsEditState &state) {
 
   drawFontCombo(state);
 
-  Helper::SliderFloat("Font size", state.font.sizePixels, 1.0f, 100.0f, 1.0f, 300.0f);
+  Helper::SliderFloat("Font size", state.font.sizePixels, 1.0f, 100.0f, 1.0f,
+                      300.0f);
 
   if (ImGui::Button("Open fonts folder")) {
     Paths::openFontsDirectory();

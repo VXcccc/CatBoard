@@ -8,6 +8,7 @@
 #include <exception>
 #include <filesystem>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 namespace Helper {

@@ -9,7 +9,7 @@
 //
 
 #ifndef DEBUG_CATBOARD
-#define DEBUG_CATBOARD
+// #define DEBUG_CATBOARD
 #endif
 
 #include "Config/Config.h"
@@ -93,6 +93,7 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
 void fpsLimitter(
     const std::chrono::time_point<std::chrono::steady_clock> &frameStart);
 void handleObsMode();
+void initDebugConsole();
 
 namespace MainWindow {
 static ImVec4 s_clearColor{Consts::defaultClearColor};
@@ -141,6 +142,10 @@ void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
 // Main code
 int main(int, char **) {
   // timeBeginPeriod(1);
+#ifdef DEBUG_CATBOARD
+  initDebugConsole();
+#endif
+
   Config::Load();
 
   if (!(Layouts::installDefaultLayouts())) {
@@ -342,9 +347,7 @@ int main(int, char **) {
   QueryPerformanceCounter(&lastDeltaTime);
 
   // debug
-#ifdef DEBUG_CATBOARD
   SettingsWindow::Show();
-#endif
 
   while (!done) {
     const auto frameStart{std::chrono::steady_clock::now()};
@@ -354,7 +357,7 @@ int main(int, char **) {
 
     static Fonts::Font lastAppliedFont{};
     Fonts::updateFont(lastAppliedFont, Fonts::overlayFont);
-    //layout editor font
+    // layout editor font
 
     handleObsMode();
 
@@ -490,9 +493,11 @@ int main(int, char **) {
     }
 
     // debug
+#ifdef DEBUG_CATBOARD
     // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
     //             1000.0f / io.Framerate, io.Framerate);
     ImGui::ShowDemoWindow();
+#endif // !DEBUG_CATBOARD
 
     const auto frameEnd{std::chrono::steady_clock::now()};
 
@@ -655,6 +660,25 @@ POINT getOverlayPosition(int windowWidth, int windowHeight) {
   result.x = std::clamp(static_cast<int>(savedPos.x), minX, maxX);
   result.y = std::clamp(static_cast<int>(savedPos.y), minY, maxY);
   return result;
+}
+
+void initDebugConsole() {
+  if (GetConsoleWindow() == nullptr && !AllocConsole())
+    return;
+
+  FILE *stream{};
+
+  if (freopen_s(&stream, "CONIN$", "r", stdin) != 0)
+    return;
+
+  if (freopen_s(&stream, "CONOUT$", "w", stdout) != 0)
+    return;
+
+  if (freopen_s(&stream, "CONOUT$", "w", stderr) != 0)
+    return;
+
+  std::printf("Debugging Window:\n");
+  std::fflush(stdout);
 }
 
 bool CreateDeviceD3D(HWND hWnd) {

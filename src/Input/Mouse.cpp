@@ -9,6 +9,8 @@
 #include <cmath>
 #include <vector>
 
+#include <cstdio>
+
 namespace Mouse {
 
 namespace {
@@ -248,7 +250,10 @@ void MouseState::updateTrail(float deltaTime, TrailType type) {
 }
 
 void MouseState::ageTrail(float deltaTime) {
-  const float maxAge{Config::activeConfig.theme.mouse.trail.duration};
+  const auto &mouse{Config::activeConfig.theme.mouse};
+  const float maxAge{mouse.trail.style.type == TrailType::Circle
+                         ? mouse.trail.duration
+                         : mouse.fadeTime};
 
   for (auto &point : m_trail)
     point.age += deltaTime;
@@ -272,15 +277,23 @@ void MouseState::appendWrapSegment(const ImVec2 &current) {
   const ImVec2 previous{m_trail.back().pos};
   const float stepLength{distance(m_wrapExit, previous)};
 
-  if (stepLength < minStepLength)
+  if (stepLength < minStepLength) {
+    appendTrailPoint(current, true);
     return;
+  }
 
   const ImVec2 direction{(m_wrapExit.x - previous.x) / stepLength,
                          (m_wrapExit.y - previous.y) / stepLength};
-  const ImVec2 reverseDirection{-direction.x, -direction.y};
+  const ImVec2 exitPoint{m_shape.boundaryAlong(previous, direction)};
 
-  appendTrailPoint(m_shape.boundaryAlong(previous, direction), false);
-  appendTrailPoint(m_shape.boundaryAlong(current, reverseDirection), true);
+  const bool flippedX{(m_wrapExit.x < 0.0f) != (current.x < 0.0f)};
+  const bool flippedY{(m_wrapExit.y < 0.0f) != (current.y < 0.0f)};
+
+  const ImVec2 entryPoint{flippedX ? -exitPoint.x : exitPoint.x,
+                          flippedY ? -exitPoint.y : exitPoint.y};
+
+  appendTrailPoint(exitPoint, false);
+  appendTrailPoint(entryPoint, true);
 }
 
 void MouseState::trimTrailToMaxLength(float maxLength) {
@@ -436,7 +449,7 @@ static void renderCatmullTrail(const ImVec2 &center,
   const auto &points{g_mouseState.getTrailPoints()};
 
   const float fade{getFade()};
-  if (points.empty() || g_mouseState.getIdleTime() >= fade)
+  if (points.empty() || 0.0f >= fade)
     return;
 
   const ImU32 normalColor{applyFade(trail.color, fade)};
@@ -460,8 +473,7 @@ static void renderCatmullTrail(const ImVec2 &center,
     for (std::size_t i{1}; i < smooth.size(); ++i) {
       const float progress{static_cast<float>(i) /
                            static_cast<float>(smooth.size() - 1)};
-      float width{trail.minWidth +
-                  (trail.maxWidth - trail.minWidth) * progress};
+      float width{std::lerp(trail.minWidth, trail.maxWidth, progress)};
       if (smooth[i].highlighted)
         width *= mouse.higlightScale;
 
@@ -501,7 +513,7 @@ static void renderCircleTrail(const ImVec2 &center,
     ImU32 color =
         (baseColor & 0x00FFFFFF) | (static_cast<ImU32>(alpha * 255) << 24);
 
-    float radius{trail.minWidth + trail.maxWidth * t};
+    float radius{std::lerp(trail.minWidth, trail.maxWidth, t)};
     if (pt.highlighted)
       radius *= mouse.higlightScale;
 
