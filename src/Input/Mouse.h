@@ -42,24 +42,34 @@ struct TrailPoint {
   bool highlighted{false};
 };
 
+struct RoundedRect {
+  float halfWidth{0.0f};
+  float halfHeight{0.0f};
+  float radius{0.0f};
+
+  static RoundedRect make(float halfWidth, float halfHeight, float rounding);
+
+  RoundedRect shrunk(float amount) const;
+  bool contains(const ImVec2 &point) const;
+  ImVec2 boundaryAlong(const ImVec2 &inside, const ImVec2 &direction) const;
+};
+
+struct TrailClip {
+  RoundedRect shape;
+  ImVec2 offset{0.0f, 0.0f};
+
+  bool contains(const ImVec2 &trailPoint) const {
+    return shape.contains({trailPoint.x + offset.x, trailPoint.y + offset.y});
+  }
+};
+
 class MouseState {
 public:
   MouseState(float sensitivity, float decayRate, float fadeTime)
       : m_sensitivity(sensitivity), m_decayRate(decayRate),
         m_fadeTime(fadeTime) {}
 
-  // void setDeltaX(const POINT &currentMousePos, const POINT &prevMousePos) {
-  //   m_deltaX = currentMousePos.x - prevMousePos.x;
-  // }
-  //
-  // void setDeltaY(const POINT &currentMousePos, const POINT &prevMousePos) {
-  //   m_deltaY = currentMousePos.y - prevMousePos.y;
-  // }
-
-  // void setOffsetX(float deltaX) { m_offsetX += deltaX * m_sensitivity; }
   float getOffsetX() const { return m_offsetX; }
-
-  // void setOffsetY(float deltaY) { m_offsetY += deltaY * m_sensitivity; }
   float getOffsetY() const { return m_offsetY; }
 
   void setSensivity(float sensitivity) { m_sensitivity = sensitivity; }
@@ -92,11 +102,16 @@ public:
 
   bool isUpTimerBigger() const { return (m_scrollUpTimer > m_scrollDownTimer); }
 
-  // void addTotalTrailDist(float dist) { m_trailTotalDist += dist; }
-
 private:
   void updateCatmullTrail(float deltaTime);
   void updateCircleTrail(float deltaTime);
+
+  void ageTrail(float deltaTime);
+  void appendTrailPoint(const ImVec2 &pos, bool breakLine);
+  void appendWrapSegment(const ImVec2 &current);
+  void trimTrailToMaxLength(float maxLength);
+
+  ImVec2 trailPos() const { return ImVec2{m_offsetX, m_offsetY}; }
 
   int m_pendingDeltaX{0};
   int m_pendingDeltaY{0};
@@ -113,6 +128,10 @@ private:
   float m_idleTime{0.0f};
   float m_fadeTime{0.6f};
 
+  RoundedRect m_shape;
+  bool m_justWrapped{false};
+  ImVec2 m_wrapExit;
+
   std::deque<TrailPoint> m_trail;
   float m_trailTotalDist{0.0f};
 
@@ -121,17 +140,10 @@ private:
   int m_scrollDownValue{0};
   float m_scrollDownTimer{0.0f};
   float m_scrollUpTimer{0.0f};
-
-  bool m_justWrapped{false};
-
-  bool m_panActive{false};
-  ImVec2 trailPos() const { return ImVec2{m_offsetX, m_offsetY}; }
 };
 
 void renderMouseIndicator(const ImVec2 &center,
                           const Mouse::Type mouseStyleType);
-
-void renderMouseTrail(const ImVec2 &center, TrailType type);
 
 void updateM1Highlight(const std::array<bool, 256> &currentFullKeysDown);
 

@@ -27,6 +27,8 @@
 #include <vector>
 #include <winuser.h>
 
+static ImFont* s_settingsFont{};
+
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
                                                              WPARAM wParam,
@@ -178,9 +180,10 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   ImGuiIO &io = ImGui::GetIO();
 
   Fonts::Font settingsFont{"JetBrainsMonoNerdFontMono-Bold", 17.0f};
-  ImFont *font = io.Fonts->AddFontFromFileTTF(
+  s_settingsFont = io.Fonts->AddFontFromFileTTF(
       Paths::getFontPath(settingsFont.name).string().c_str(),
       settingsFont.sizePixels);
+  io.FontDefault = s_settingsFont;
 
   io.IniFilename = nullptr; // .ini for settings
   ImGui::StyleColorsDark();
@@ -699,8 +702,7 @@ void drawFontSection(SettingsEditState &state) {
 
   drawFontCombo(state);
 
-  ImGui::SliderFloat("Font size", &state.font.sizePixels, 0.0f, 100.0f, "%.2f");
-  state.font.sizePixels = std::clamp(state.font.sizePixels, 1.0f, 300.0f);
+  Helper::SliderFloat("Font size", state.font.sizePixels, 1.0f, 100.0f, 1.0f, 300.0f);
 
   if (ImGui::Button("Open fonts folder")) {
     Paths::openFontsDirectory();
@@ -969,6 +971,8 @@ void RenderFrame() {
   ImGui_ImplWin32_NewFrame();
   ImGui::NewFrame();
 
+  ImGui::PushFont(s_settingsFont);
+
   // maybe destroy the win titlebar and use imgui but idk rn
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
@@ -1032,6 +1036,7 @@ void RenderFrame() {
     drawApplyCancel(editState, newSettings);
   }
 
+  ImGui::PopFont();
   ImGui::End();
 
   if (currentTab == SettingsTab::Layouts && editState.showLayoutEditor)

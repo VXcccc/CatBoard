@@ -32,7 +32,7 @@ void renderKeyboard(const Layouts::Layout &layout,
                         &keysColors) { // todo maybe remove currentFullKeysDown
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   const auto &theme{Config::activeConfig.theme};
-  ImGui::PushFont(Fonts::activeFont);
+  ImGui::PushFont(Fonts::overlayFont);
 
   if (theme.keysImagesDisplay) {
     Images::drawKeyboardImages(draw, currentKeysDown);

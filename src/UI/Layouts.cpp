@@ -3,6 +3,7 @@
 #include "Config/ConfigJson.h"
 #include "Config/Constants.h"
 #include "Input/Mouse.h"
+#include "Media/Fonts.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "UI/MainWindow.h"
@@ -332,8 +333,8 @@ float mostFreqWH(const std::vector<Key> &keys, KeyProp prop) {
   return result;
 }
 
-static float snapValue(float v, float grid) {
-  return std::round(v / grid) * grid;
+static float snapValue(float v, float gridSize) {
+  return (std::round(v / gridSize) * gridSize);
 }
 
 void recordKeyCode(LayoutEditState &state, Key &key) {
@@ -384,7 +385,6 @@ void addKey(LayoutEditState &state) {
 
   // insta record after adding key
   state.recordingKeyCode = true;
-  // state.focusLabelInput = true;
 }
 
 void deleteSelectedKeys(LayoutEditState &state) {
@@ -415,28 +415,6 @@ static void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
     key.y += delta.y;
   }
 }
-
-// static void arrowMoveSelectedKeys(LayoutEditState &state, const ImVec2
-// &delta) {
-//   const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt &&
-//                   state.gridSize > 0.0f};
-//
-//   void *it{nullptr};
-//   ImGuiID id{};
-//   while (state.selection.GetNextSelectedItem(&it, &id)) {
-//     if (id >= state.layout.keys.size())
-//       continue;
-//
-//     Key &k{state.layout.keys[id]};
-//     k.x += delta.x;
-//     k.y += delta.y;
-//
-//     if (snap) {
-//       k.x = snapValue(k.x, state.gridSize);
-//       k.y = snapValue(k.y, state.gridSize);
-//     }
-//   }
-// }
 
 static ImVec2 computeDragDelta(
     LayoutEditState &state,
@@ -640,13 +618,13 @@ static void applyMouseResize(LayoutEditState &state, Edge edge, float &center,
                              float &size) {
   const bool movesMinSide{edge == Edge::Top || edge == Edge::Left};
 
+  const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt};
+  const float minSize{snap ? state.gridSize : state.step};
+
   state.resizeRaw += ((edge == Edge::Top || edge == Edge::Bottom)
                           ? ImGui::GetIO().MouseDelta.y
                           : ImGui::GetIO().MouseDelta.x) /
                      state.zoom;
-
-  const bool snap{state.snapToGrid && !ImGui::GetIO().KeyAlt};
-  const float minSize{snap ? state.gridSize : state.step};
 
   float pos{snap ? snapValue(state.resizeRaw, state.gridSize)
                  : state.resizeRaw};
@@ -756,6 +734,7 @@ static void drawMouseRectResizeHandles(LayoutEditState &state, ImDrawList *draw,
 
   ImGui::PopID();
 }
+
 static void drawResizeHandles(LayoutEditState &state, ImDrawList *draw,
                               Key &key, const ImVec2 &min, const ImVec2 &max) {
   const float w{max.x - min.x};
@@ -793,8 +772,12 @@ static void drawResizeHandles(LayoutEditState &state, ImDrawList *draw,
 void drawLayoutEditorCanvas(LayoutEditState &state) {
   handleEditorShortcuts(state);
   ImGui::PushStyleColor(ImGuiCol_NavHighlight, ImVec4(0, 0, 0, 0));
-
   const float zoom{state.zoom};
+
+  // static Fonts::Font lastAppliedFont{};
+  // Fonts::updateFont(lastAppliedFont, Fonts::editorFont);
+  ImGui::PushFont(Fonts::overlayFont);
+
   const ImVec2 cursor{ImGui::GetCursorScreenPos()};
   const ImVec2 origin{cursor.x + state.ViewOffset.x * state.zoom,
                       cursor.y + state.ViewOffset.y * state.zoom};
@@ -941,6 +924,7 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     }
   }
   ImGui::PopStyleColor();
+  ImGui::PopFont();
 }
 
 void drawLayoutEditorProperties(LayoutEditState &state) {
@@ -1179,7 +1163,7 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
   Helper::SliderFloat("Gap", state.gap, 0.0f, 30.0f, -20.0f, 100.0f, "%.2f",
                       300);
 
-  Helper::SliderFloat("Step", state.step, 0.0f, 30.0f, 0.0f, 100.0f, "%.2f",
+  Helper::SliderFloat("Step", state.step, 0.01f, 30.0f, 0.01f, 100.0f, "%.2f",
                       300);
 
   Helper::SliderFloat("Key width", state.defaultKeyWidth, 10.0f, 200.0f, "%.0f",

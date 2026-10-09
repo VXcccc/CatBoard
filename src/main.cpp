@@ -257,8 +257,8 @@ int main(int, char **) {
     Helper::fatalError(L"Failed to install default fonts");
   }
   Fonts::refreshFonts();
-  if (!(Fonts::loadFont(Config::activeConfig.font))) {
-    if (!(Fonts::loadFont(Fonts::Font{}))) {
+  if (!(Fonts::loadFont(Config::activeConfig.font, Fonts::overlayFont))) {
+    if (!(Fonts::loadFont(Fonts::Font{}, Fonts::overlayFont))) {
       Helper::fatalError(L"Failed to load font");
     }
   }
@@ -353,14 +353,8 @@ int main(int, char **) {
     // backend.
 
     static Fonts::Font lastAppliedFont{};
-    if (Config::activeConfig.font.name != lastAppliedFont.name ||
-        Config::activeConfig.font.sizePixels != lastAppliedFont.sizePixels) {
-      if (Fonts::loadFont(Config::activeConfig.font)) {
-        lastAppliedFont = Config::activeConfig.font;
-      } else {
-        Fonts::loadFont(Fonts::Font{});
-      }
-    }
+    Fonts::updateFont(lastAppliedFont, Fonts::overlayFont);
+    //layout editor font
 
     handleObsMode();
 
@@ -413,8 +407,8 @@ int main(int, char **) {
     const Mouse::Type &curType{Config::activeConfig.theme.mouse.style.type};
 
     if (Mouse::isTypeCircle(curType)) {
-      Mouse::g_mouseState.updateMouseState(
-          deltaTime, Layouts::activeLayout.mouse.radius);
+      Mouse::g_mouseState.updateMouseState(deltaTime,
+                                           Layouts::activeLayout.mouse.radius);
     } else if (Mouse::isTypeRect(curType)) {
       Mouse::g_mouseState.updateMouseState(
           deltaTime, (Layouts::activeLayout.mouse.width / 2),
@@ -446,7 +440,7 @@ int main(int, char **) {
 
     prevFullKeyState = currentFullKeysDown;
 
-    int prevScrollState;
+    static int prevScrollState;
     int currentScrollState{Mouse::g_mouseState.getScrollDownTimes() +
                            Mouse::g_mouseState.getScrollUpTimes()};
     bool scrollActive{prevScrollState != currentScrollState};

@@ -11,7 +11,8 @@ namespace Fonts {
 extern const std::string defaultFontName;
 extern const float defaultPixelsSize;
 
-extern ImFont *activeFont;
+extern ImFont *overlayFont;
+
 extern std::vector<std::string> fonts;
 
 enum class LetterCaseMode { defaultMode, allCapital, allLower, maxLetterCase };
@@ -23,7 +24,7 @@ struct LetterCaseOptions {
 };
 
 struct LetterCase {
-  LetterCaseMode mode{LetterCaseMode::allLower};
+  LetterCaseMode mode{LetterCaseMode::defaultMode};
   LetterCaseOptions options{};
   bool upper{false};
 };
@@ -34,7 +35,12 @@ struct Font {
   LetterCase letterCase{};
 };
 
-bool loadFont(const Font &font);
+bool loadFont(const Font &font, ImFont *&activeFont);
+bool loadFont(const Font &font, ImFont *&activeFont, bool editor);
+void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
+                float explicitSize);
+void updateFont(Font &outLastAppliedFont, ImFont *&activeFont);
+
 bool installDefaultFonts();
 void refreshFonts();
 

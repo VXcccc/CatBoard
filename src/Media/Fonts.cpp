@@ -1,4 +1,5 @@
 #include "Media/Fonts.h"
+#include "Config/Config.h"
 #include "Config/Constants.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
@@ -13,11 +14,11 @@
 
 namespace Fonts {
 std::vector<std::string> fonts{};
-ImFont *activeFont{nullptr};
+ImFont *overlayFont{nullptr};
 const std::string defaultFontName{"courbd"};
 const float defaultPixelsSize{20.0f};
 
-bool loadFont(const Font &font) {
+bool loadFont(const Font &font, ImFont *&activeFont) {
   ImGuiIO &io{ImGui::GetIO()};
 
   const auto path{Paths::getFontPath(font.name)};
@@ -26,7 +27,7 @@ bool loadFont(const Font &font) {
     return false;
   }
 
-  io.Fonts->Clear();
+  io.Fonts->ClearFonts();
 
   activeFont =
       io.Fonts->AddFontFromFileTTF(path.string().c_str(), font.sizePixels);
@@ -35,12 +36,41 @@ bool loadFont(const Font &font) {
     return false;
   }
 
-  io.Fonts->Build();
-
-  ImGui_ImplDX11_InvalidateDeviceObjects();
-  ImGui_ImplDX11_CreateDeviceObjects();
+  // io.Fonts->Build();
+  //
+  // ImGui_ImplDX11_InvalidateDeviceObjects();
+  // ImGui_ImplDX11_CreateDeviceObjects();
 
   return true;
+}
+
+void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
+                float explicitSize) {
+  const auto &f{Config::activeConfig.font};
+  Font font{f};
+  font.sizePixels = explicitSize;
+
+  if (f.name != outLastAppliedFont.name ||
+      font.sizePixels != outLastAppliedFont.sizePixels) {
+    if (Fonts::loadFont(font, activeFont)) {
+      outLastAppliedFont = font;
+    } else {
+      Fonts::loadFont(Fonts::Font{}, activeFont);
+    }
+  }
+}
+
+void updateFont(Font &outLastAppliedFont, ImFont *&activeFont) {
+  const auto &font{Config::activeConfig.font};
+
+  if (font.name != outLastAppliedFont.name ||
+      font.sizePixels != outLastAppliedFont.sizePixels) {
+    if (Fonts::loadFont(font, activeFont)) {
+      outLastAppliedFont = font;
+    } else {
+      Fonts::loadFont(Fonts::Font{}, activeFont);
+    }
+  }
 }
 
 bool installDefaultFonts() {
