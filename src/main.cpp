@@ -275,38 +275,6 @@ int main(int, char **) {
 
   SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext);
 
-  // Load Fonts
-  // fontCfg.FontDataOwnedByAtlas = false;
-
-  // io.Fonts->AddFontFromMemoryTTF(Courier_new, sizeof(Courier_new), 20.0f,
-  // &fontCfg);
-
-  // IM_ASSERT(Fonts::activeFont != nullptr);
-
-  // - If fonts are not explicitly loaded, Dear ImGui will select an embedded
-  // font: either AddFontDefaultVector() or AddFontDefaultBitmap().
-  //   This selection is based on (style.FontSizeBase * style.FontScaleMain *
-  //   style.FontScaleDpi) reaching a small threshold.
-  // - You can load multiple fonts and use ImGui::PushFont()/PopFont() to select
-  // them.
-  // - If a file cannot be loaded, AddFont functions will return a nullptr.
-  // Please handle those errors in your code (e.g. use an assertion, display
-  // an error and quit).
-  // - Read 'docs/FONTS.md' for more instructions on fonts.
-  // - Use '#define IMGUI_ENABLE_FREETYPE' in your imconfig file to use FreeType
-  // for higher quality font rendering.
-  // - Remember that in C/C++ if you want to include a backslash \ in a string
-  // literal you need to write a double backslash \\ !
-  // style.FontSizeBase = 20.0f;
-  // io.Fonts->AddFontDefaultVector();
-  // io.Fonts->AddFontDefaultBitmap();
-  // io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\segoeui.ttf");
-  // io.Fonts->AddFontFromFileTTF("../../misc/fonts/DroidSans.ttf");
-  // io.Fonts->AddFontFromFileTTF("../../misc/fonts/Roboto-Medium.ttf");
-  // io.Fonts->AddFontFromFileTTF("../../misc/fonts/Cousine-Regular.ttf");
-  // ImFont* font =
-  // io.Fonts->AddFontFromFileTTF("c:\\Windows\\Fonts\\ArialUni.ttf");
-  // IM_ASSERT(font != nullptr);
 
   g_fpsTimer = CreateWaitableTimerExW(nullptr, nullptr,
                                       CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,

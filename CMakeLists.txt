@@ -10,9 +10,6 @@ set(MINIAUDIO_DIR ${CMAKE_SOURCE_DIR}/ThirdParty/miniaudio)
 set(MINIAUDIO_VORBIS_DIR ${MINIAUDIO_DIR}/extras/decoders/libvorbis)
 set(imgui_SOURCE_DIR ${CMAKE_SOURCE_DIR}/ThirdParty/imgui)
 
-
-
-
 find_package(Vorbis CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} WIN32

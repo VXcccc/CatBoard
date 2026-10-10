@@ -1,5 +1,4 @@
 #include "UI/SettingsWindow.h"
-#include "Resource/ResourceConstants.h"
 #include "Config/Config.h"
 #include "Config/ConfigJson.h"
 #include "Config/Constants.h"
@@ -8,11 +7,13 @@
 #include "Media/Fonts.h"
 #include "Media/Images.h"
 #include "Media/Sound.h"
+#include "Resource/ResourceConstants.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "System/Tray.h"
 #include "UI/Layouts.h"
 #include "UI/MainWindow.h"
+#include "UI/Themes.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -24,6 +25,7 @@
 #include <dxgi.h>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <type_traits>
 #include <vector>
 #include <winuser.h>
 
@@ -36,6 +38,7 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
 
 namespace SettingsWindow {
 
+// Forward declarations
 static HWND s_hwnd = nullptr;
 static ID3D11Device *s_device = nullptr;
 static ID3D11DeviceContext *s_deviceContext = nullptr;
@@ -44,8 +47,6 @@ static ID3D11RenderTargetView *s_rtv = nullptr;
 static ImGuiContext *s_imguiContext = nullptr;
 static bool s_visible = false;
 static UINT s_resizeWidth = 0, s_resizeHeight = 0;
-
-// Forward declarations
 
 static void CreateRenderTarget() {
   ID3D11Texture2D *backBuffer = nullptr;
@@ -186,7 +187,8 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   io.FontDefault = s_settingsFont;
 
   io.IniFilename = nullptr; // .ini for settings
-  ImGui::StyleColorsDark();
+  Themes::LoadUiSettings();
+  Themes::ApplyTheme(Themes::activeTheme);
   ImGui_ImplWin32_Init(s_hwnd);
   ImGui_ImplDX11_Init(s_device, s_deviceContext);
 
@@ -297,6 +299,7 @@ struct SettingsEditState {
   std::size_t currentMouseStyle{};
   std::size_t currentImagePack{};
   std::size_t currentTrailStyle{};
+  std::size_t currentUITheme{};
 
   std::string configNameInput{};
   std::string configNameError;
@@ -423,10 +426,15 @@ std::size_t findIndexByName(const std::vector<std::string> &vec,
 }
 
 // Helper draw functions
+template <typename T>
+concept ComboItem =
+    std::is_same_v<T, std::string> || std::is_convertible_v<T, const char *>;
 
+template <typename Container>
+  requires ComboItem<typename Container::value_type>
 void drawGenericCombo(
-    const char *label, const std::vector<std::string> &items,
-    const char *emptyLabel, std::size_t &outCurrentItem,
+    const char *label, const Container &items, const char *emptyLabel,
+    std::size_t &outCurrentItem,
     std::function<void(std::size_t, const std::string &)> onSelect) {
   validateCurrentIndex(outCurrentItem, std::size(items));
 
@@ -446,6 +454,7 @@ void drawGenericCombo(
     ImGui::EndCombo();
   }
 }
+
 
 void drawLayoutCombo(SettingsEditState &state) {
   drawGenericCombo("Layout", Layouts::layouts, "No layouts",
@@ -514,6 +523,16 @@ void drawTrailStyleCombo(SettingsEditState &state,
                      state.theme.mouse.trail.style.type =
                          static_cast<Mouse::TrailType>(i);
                      state.theme.mouse.trail.style.name = name;
+                   });
+}
+
+void drawThemeCombo(SettingsEditState &state) {
+  drawGenericCombo("UI Theme", Themes::styles, "No Themes", state.currentUITheme,
+                   [&state](std::size_t i, const std::string &name) {
+                     state.currentUITheme = i;
+                     Themes::activeTheme = static_cast<int>(i);
+                     Themes::SaveUiSettings();
+                     Themes::ApplyTheme(Themes::activeTheme);
                    });
 }
 
@@ -800,6 +819,8 @@ void drawMiscTab(SettingsEditState &state) {
 
   ImGui::SliderInt("FPS", &state.misc.fps, 5, 360);
   state.misc.fps = std::clamp(state.misc.fps, 5, 2000);
+
+  drawThemeCombo(state);
 }
 
 void drawBindsTab(SettingsEditState &state) {
@@ -966,6 +987,8 @@ void RenderFrame() {
     editState.currentTrailStyle =
         findIndexByName(Helper::extractNames(Mouse::trailStyles),
                         Config::activeConfig.theme.mouse.trail.style.name);
+
+    editState.currentUITheme = static_cast<std::size_t>(Themes::activeTheme);
   }
   wasVisibleLastFrame = visibleNow;
 
@@ -1045,7 +1068,9 @@ void RenderFrame() {
     Layouts::drawLayoutPropertiesOverlay(layoutEditState);
 
   ImGui::Render();
-  const float clearColor[4] = {0.10f, 0.10f, 0.12f, 1.0f};
+
+  const ImVec4 bg = ImGui::GetStyle().Colors[ImGuiCol_WindowBg];
+  const float clearColor[4] = {bg.x, bg.y, bg.z, bg.w};
   s_deviceContext->OMSetRenderTargets(1, &s_rtv, nullptr);
   s_deviceContext->ClearRenderTargetView(s_rtv, clearColor);
   ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());

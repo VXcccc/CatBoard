@@ -67,4 +67,6 @@ void SetObsMode(HWND hWnd, bool enabled) {
                enabled ? obsWindowHeight : windowHeight,
                SWP_NOMOVE | SWP_FRAMECHANGED);
 }
+
+
 }; // namespace MainWindow

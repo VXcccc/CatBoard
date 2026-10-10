@@ -51,6 +51,10 @@ std::filesystem::path getActiveConfigPath() {
   return getAppDataDir() / "ActiveConfig.json";
 }
 
+std::filesystem::path getUIJsonPath() {
+  return getAppDataDir() / "UI.json";
+}
+
 std::filesystem::path configDirectory() { return categoryDirectory("Configs"); }
 std::filesystem::path layoutDirectory() { return categoryDirectory("Layouts"); }
 std::filesystem::path soundsDirectory() { return categoryDirectory("Sounds"); }

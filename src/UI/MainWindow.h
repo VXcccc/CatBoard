@@ -23,4 +23,6 @@ void setClearColor(const ImVec4 &clearColor);
 
 void SetDragMode(HWND hWnd, bool enabled);
 void SetObsMode(HWND hWnd, bool enabled);
+
+void setup_catppuccin_mocha_theme();
 } // namespace MainWindow

@@ -11,6 +11,7 @@ std::filesystem::path getAppDataDir();
 std::filesystem::path getExecutableDir();
 
 std::filesystem::path getActiveConfigPath();
+std::filesystem::path getUIJsonPath();
 
 std::filesystem::path configDirectory();
 std::filesystem::path layoutDirectory();
