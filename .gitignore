@@ -2,3 +2,5 @@ build/
 .cache/
 Legacy/
 todo.txt
+CMakePresets.json
+.clangd

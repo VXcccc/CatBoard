@@ -1,12 +1,17 @@
-// Dear ImGui: standalone example application for Windows API + DirectX 11
-
-// Learn about Dear ImGui:
-// - FAQ                  https://dearimgui.com/faq
-// - Getting Started      https://dearimgui.com/getting-started
-// - Documentation        https://dearimgui.com/docs (same as your local docs/
-// folder).
-// - Introduction, links and more at the top of imgui.cpp
+// CatBoard
+// Copyright (C) 2026 VXcccc
 //
+// This program is free software: you can redistribute it and/or modify
+// it under the terms of the GNU General Public License as published
+// by the Free Software Foundation, either version 3 of the License,
+// or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+// See the GNU General Public License for more details.
+//
+// See LICENSE for the full license text.
 
 #ifndef DEBUG_CATBOARD
 // #define DEBUG_CATBOARD

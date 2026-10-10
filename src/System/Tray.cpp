@@ -1,5 +1,5 @@
 #include "System/Tray.h"
-#include "Assets/Resource/ResourceConstants.h"
+#include "Resource/ResourceConstants.h"
 #include "Config/Constants.h"
 #include "UI/MainWindow.h"
 #include "UI/SettingsWindow.h"

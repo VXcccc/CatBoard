@@ -1,5 +1,5 @@
 #include "UI/SettingsWindow.h"
-#include "Assets/Resource/ResourceConstants.h"
+#include "Resource/ResourceConstants.h"
 #include "Config/Config.h"
 #include "Config/ConfigJson.h"
 #include "Config/Constants.h"

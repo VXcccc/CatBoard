@@ -219,6 +219,7 @@ void MouseState::updateMouseState(float deltaTime, float halfWidth,
   if (m_idleTime >= m_fadeTime) {
     m_offsetX = 0.0f;
     m_offsetY = 0.0f;
+    m_trail.clear();
   }
 
   if (mouse.style.type == Type::Pan)
@@ -251,6 +252,12 @@ void MouseState::updateTrail(float deltaTime, TrailType type) {
 
 void MouseState::ageTrail(float deltaTime) {
   const auto &mouse{Config::activeConfig.theme.mouse};
+
+  // The Catmull trail uses fadeTime as maxAge to avoid an unnecessary
+  // redundacy.(cuz lifetime already controlled by maxLength)
+  // If you want to control its lifetime independently of fadeTime,
+  // use trail.duration instead and add a corresponding slider for catmull to
+  // SettingsWindow.
   const float maxAge{mouse.trail.style.type == TrailType::Circle
                          ? mouse.trail.duration
                          : mouse.fadeTime};

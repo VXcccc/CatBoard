@@ -6,28 +6,12 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-include(FetchContent)
+set(MINIAUDIO_DIR ${CMAKE_SOURCE_DIR}/ThirdParty/miniaudio)
+set(MINIAUDIO_VORBIS_DIR ${MINIAUDIO_DIR}/extras/decoders/libvorbis)
+set(imgui_SOURCE_DIR ${CMAKE_SOURCE_DIR}/ThirdParty/imgui)
 
-FetchContent_Declare(
-    imgui
-    GIT_REPOSITORY https://github.com/ocornut/imgui.git
-    GIT_TAG v1.92.8-docking
-)
-FetchContent_MakeAvailable(imgui)
 
-FetchContent_Declare(
-    json
-    GIT_REPOSITORY https://github.com/nlohmann/json.git
-    GIT_TAG v3.11.3
-)
-FetchContent_MakeAvailable(json)
 
-FetchContent_Declare(
-    miniaudio
-    GIT_REPOSITORY https://github.com/mackron/miniaudio.git
-    GIT_TAG master
-)
-FetchContent_MakeAvailable(miniaudio)
 
 find_package(Vorbis CONFIG REQUIRED)
 
@@ -54,7 +38,7 @@ add_executable(${PROJECT_NAME} WIN32
     src/UI/Layouts.cpp
     src/UI/Render.cpp
 
-    src/Assets/Resource/app.rc
+    Resource/app.rc
 
     ${imgui_SOURCE_DIR}/imgui.cpp
     ${imgui_SOURCE_DIR}/imgui_draw.cpp
@@ -65,7 +49,8 @@ add_executable(${PROJECT_NAME} WIN32
     ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
     ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
 
-    ${miniaudio_SOURCE_DIR}/miniaudio.c
+    ${MINIAUDIO_DIR}/miniaudio.c
+    ${MINIAUDIO_VORBIS_DIR}/miniaudio_libvorbis.c
 )
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
@@ -73,34 +58,40 @@ target_compile_definitions(${PROJECT_NAME} PRIVATE
   _UNICODE
 )
 
+
 target_include_directories(${PROJECT_NAME} PRIVATE
-    src
-    src/Assets/Resource
+    ${CMAKE_SOURCE_DIR}
+    ${CMAKE_SOURCE_DIR}/ThirdParty
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/Assets
+
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/backends
     ${miniaudio_SOURCE_DIR}
+
+    ${MINIAUDIO_DIR}
+    ${MINIAUDIO_VORBIS_DIR}
 )
 
+
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    nlohmann_json::nlohmann_json
     d3d11 dxgi d3dcompiler dwmapi dcomp
     Vorbis::vorbisfile
-    miniaudio_libvorbis
     winmm
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_SOURCE_DIR}/src/Assets/Layouts"
+    "${CMAKE_SOURCE_DIR}/Assets/Layouts"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Layouts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/src/Assets/Sounds"
+        "${CMAKE_SOURCE_DIR}/Assets/Sounds"
         "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Sounds"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_SOURCE_DIR}/src/Assets/Fonts"
+      "${CMAKE_SOURCE_DIR}/Assets/Fonts"
       "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Fonts"
     COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_SOURCE_DIR}/src/Assets/Images"
+      "${CMAKE_SOURCE_DIR}/Assets/Images"
       "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Images"
 )
 

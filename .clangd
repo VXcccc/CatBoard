@@ -1,6 +1,0 @@
-CompileFlags:
-  CompilationDatabase: build/mingw-debug
-  Remove:
-    - -fmodules-ts
-    - -fmodule-mapper=*
-    - -fdeps-format=*
