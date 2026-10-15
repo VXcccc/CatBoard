@@ -1,8 +1,9 @@
 #include "Input/Hotkeys.h"
+#include "Config/Config.h"
 #include "System/Helpers.h"
+#include "System/Tray.h"
 #include "UI/MainWindow.h"
 #include "UI/SettingsWindow.h"
-#include "System/Tray.h"
 #include <array>
 #include <nlohmann/json.hpp>
 #include <windows.h>
@@ -12,11 +13,15 @@ namespace Binds {
 
 bool g_bindJustRecorded{false};
 
-BindsArray defaultBinds{
+const BindsArray defaultBinds{
     Bind{"Drag mode", VK_F4, "F4", BindType::dragMode},
     Bind{"Hide overlay", VK_F6, "F6", BindType::hideOverlay},
-    Bind{"Open settings", VK_F9, "F9", BindType::openSettings}};
+    Bind{"Open settings", VK_F9, "F9", BindType::openSettings},
+    Bind{"Resize mode", VK_F10, "F10", BindType::resizeMode}};
 
+static_assert(defaultBinds.size() ==
+                  static_cast<std::size_t>(BindType::max_bindTypes),
+              "default binds array out of sync with bynd type enum");
 
 void handleBindType(const BindType type, HWND hWnd) {
   switch (type) {
@@ -38,6 +43,10 @@ void handleBindType(const BindType type, HWND hWnd) {
       SettingsWindow::Hide();
     }
     break;
+  case BindType::resizeMode:
+    MainWindow::g_resizeMode = !MainWindow::g_resizeMode;
+    MainWindow::SetResizeMode(hWnd, MainWindow::g_resizeMode);
+
   default:
     break;
   }
@@ -109,4 +118,28 @@ bool recordBind(Bind &outBind) {
   return false;
 }
 
-} // namespace Input
+// add for compability with old configs if new bind added
+void syncBindsOrder(BindsVector &outBinds) {
+  const auto previousBinds{outBinds};
+
+  BindsVector ordered;
+  ordered.reserve(Binds::defaultBinds.size());
+
+  for (const auto &defaultBind : Binds::defaultBinds) {
+    const auto it = std::find_if(previousBinds.begin(), previousBinds.end(),
+                                 [&defaultBind](const Bind &bind) {
+                                   return (bind.type == defaultBind.type &&
+                                           bind.name == defaultBind.name);
+                                 });
+
+    if (it != previousBinds.end()) {
+      ordered.push_back(*it);
+    } else {
+      ordered.push_back(defaultBind);
+    }
+  }
+
+  outBinds = std::move(ordered);
+}
+
+} // namespace Binds

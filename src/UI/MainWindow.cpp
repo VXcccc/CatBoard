@@ -9,8 +9,21 @@
 
 namespace MainWindow {
 bool g_dragMode{false};
+bool g_resizeMode{false};
 
 void SetDragMode(HWND hWnd, bool enabled) {
+  LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
+  if (enabled) {
+    exStyle &= ~WS_EX_TRANSPARENT;
+  } else {
+    exStyle |= WS_EX_TRANSPARENT;
+  }
+  SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
+  SetWindowPos(hWnd, nullptr, 0, 0, 0, 0,
+               SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+}
+
+void SetResizeMode(HWND hWnd, bool enabled) {
   LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
   if (enabled) {
     exStyle &= ~WS_EX_TRANSPARENT;

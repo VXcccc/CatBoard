@@ -551,10 +551,12 @@ static RectBounds rectBoundsAround(const ImVec2 &center) {
   const float halfWidth{size.width / 2.0f};
   const float halfHeight{size.height / 2.0f};
 
-  return {halfWidth,
-          halfHeight,
-          {center.x - halfWidth, center.y - halfHeight},
-          {center.x + halfWidth, center.y + halfHeight}};
+  const auto &ovScale{Config::activeConfig.overlay.scale};
+  return {
+      halfWidth,
+      halfHeight,
+      {center.x - (halfWidth * ovScale), center.y - (halfHeight * ovScale)},
+      {center.x + (halfWidth * ovScale), center.y + (halfHeight * ovScale)}};
 }
 
 static void drawRectFill(ImDrawList *draw, const RectBounds &bounds) {

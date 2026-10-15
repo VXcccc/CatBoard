@@ -24,7 +24,7 @@ void refreshConfigs() {
   Helper::refresh(configs, Paths::configDirectory(), ".json");
 }
 
-void Load() {
+void LoadActiveConfig() {
   const auto path{Paths::getActiveConfigPath()};
 
   // first load
@@ -58,7 +58,7 @@ bool Apply(const Settings &settings) {
   return file.good();
 }
 
-Helper::FileCreateResult createConfig(std::string_view name) {
+Helper::FileCreateResult Create(std::string_view name) {
   if (!Paths::ensureConfigDirectory()) {
     return Helper::FileCreateResult::DirectoryError;
   }
@@ -87,7 +87,7 @@ Helper::FileCreateResult createConfig(std::string_view name) {
   return Helper::FileCreateResult::Success;
 }
 
-bool saveConfig(std::string_view name, const Config::Settings &settings) {
+bool Save(std::string_view name, const Config::Settings &settings) {
   if (!Paths::ensureConfigDirectory()) {
     return false;
   }
@@ -104,7 +104,7 @@ bool saveConfig(std::string_view name, const Config::Settings &settings) {
   return file.good();
 }
 
-bool loadConfig(std::string_view name) {
+bool Load(std::string_view name) {
   const auto path{Paths::getConfigPath(name)};
 
   try {
@@ -122,7 +122,7 @@ bool loadConfig(std::string_view name) {
   return true;
 }
 
-bool deleteConfig(std::string_view name) {
+bool Delete(std::string_view name) {
   const auto path = Paths::getConfigPath(name);
 
   if (!std::filesystem::exists(path)) {

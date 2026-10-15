@@ -243,7 +243,7 @@ void to_json(json &j, const Settings &settings) {
        {"selectedLayout", settings.selectedLayout},
        {"soundPack", settings.soundPack},
        {"binds", settings.binds},
-       {"overlayPos", settings.overlayPos},
+       {"overlayPos", settings.overlay},
        {"font", settings.font},
        {"misc", settings.misc},
        {"configName", settings.configName},
@@ -267,7 +267,7 @@ void from_json(const json &j, Settings &settings) {
     j.at("binds").get_to(settings.binds);
 
   if (j.contains("overlayPos"))
-    j.at("overlayPos").get_to(settings.overlayPos);
+    j.at("overlayPos").get_to(settings.overlay);
 
   if (j.contains("font"))
     j.at("font").get_to(settings.font);
@@ -298,15 +298,15 @@ void from_json(const json &j, Misc &misc) {
     j.at("fps").get_to(misc.fps);
 }
 
-void to_json(json &j, const OverlayPosition &overlayPos) {
-  j = {{"x", overlayPos.x}, {"y", overlayPos.y}};
+void to_json(json &j, const Overlay &overlay) {
+  j = {{"x", overlay.x}, {"y", overlay.y}};
 }
 
-void from_json(const json &j, OverlayPosition &overlayPos) {
+void from_json(const json &j, Overlay &overlay) {
   if (j.contains("x"))
-    j.at("x").get_to(overlayPos.x);
+    j.at("x").get_to(overlay.x);
   if (j.contains("y"))
-    j.at("y").get_to(overlayPos.y);
+    j.at("y").get_to(overlay.y);
 }
 
 } // namespace Config
@@ -589,3 +589,27 @@ void from_json(const json &j, Pack &pack) {
 
 } // namespace Images
 
+namespace Binds {
+
+void to_json(json &j, const Bind &bind) {
+  j = {{"name", bind.name},
+       {"vkCode", bind.vkCode},
+       {"keyName", bind.keyName},
+       {"type", static_cast<int>(bind.type)}};
+}
+
+void from_json(const json &j, Bind &bind) {
+  if (j.contains("name"))
+    j.at("name").get_to(bind.name);
+
+  if (j.contains("vkCode"))
+    j.at("vkCode").get_to(bind.vkCode);
+
+  if (j.contains("keyName"))
+    j.at("keyName").get_to(bind.keyName);
+
+  if (j.contains("type"))
+    bind.type = static_cast<BindType>(j.at("type").get<int>());
+}
+
+} // namespace Binds

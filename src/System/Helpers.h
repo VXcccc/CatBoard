@@ -1,7 +1,7 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-#include "Config/Config.h"
+// #include "Config/Config.h"
 #include "imgui.h"
 #include <array>
 #include <concepts>
@@ -10,6 +10,10 @@
 #include <string>
 #include <type_traits>
 #include <vector>
+
+namespace Config {
+using ColorRGBA = std::array<int, 4>;
+}
 
 namespace Helper {
 enum class FileCreateResult {
@@ -112,6 +116,14 @@ std::vector<std::string> extractNames(const std::array<T, size> &arr) {
     result.emplace_back(style.name);
   }
   return result;
+}
+
+template <typename T, std::size_t size>
+std::vector<T> arrToVec(const std::array<T, size> &arr) {
+  std::vector<T> vec{};
+  vec.reserve(size);
+  vec.insert(vec.end(), arr.begin(), arr.end());
+  return vec;
 }
 
 }; // namespace Helper

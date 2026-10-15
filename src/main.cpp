@@ -46,9 +46,7 @@
 #include <hidclass.h>
 #include <hidusage.h>
 #include <shellapi.h>
-#include <string>
 #include <tchar.h>
-// #include <thread>
 #include <vector>
 #include <windef.h>
 #include <windows.h>
@@ -58,10 +56,10 @@
 #include <strsafe.h>
 
 #include <mmsystem.h>
-#pragma comment(lib, "winmm.lib")
+// #pragma comment(lib, "winmm.lib")
 
 #include <dcomp.h>
-#pragma comment(lib, "dcomp.lib")
+// #pragma comment(lib, "dcomp.lib")
 
 #ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
 #define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
@@ -153,7 +151,7 @@ int main(int, char **) {
   initDebugConsole();
 #endif
 
-  Config::Load();
+  Config::LoadActiveConfig();
 
   if (!(Layouts::installDefaultLayouts())) {
     Helper::fatalError(L"Failed to install default layouts");
@@ -332,7 +330,6 @@ int main(int, char **) {
 
     static Fonts::Font lastAppliedFont{};
     Fonts::updateFont(lastAppliedFont, Fonts::overlayFont);
-    // layout editor font
 
     handleObsMode();
 
@@ -454,8 +451,9 @@ int main(int, char **) {
     Keyboard::renderKeyboard(Layouts::activeLayout, currentKeysDown,
                              currentFullKeysDown, keysScale, keysColors);
 
-    ImVec2 mouseCenter(Layouts::activeLayout.mouse.centerX,
-                       Layouts::activeLayout.mouse.centerY);
+    const auto &ovScale{Config::activeConfig.overlay.scale};
+    ImVec2 mouseCenter(Layouts::activeLayout.mouse.centerX * ovScale,
+                       Layouts::activeLayout.mouse.centerY * ovScale);
     if (Config::activeConfig.theme.mouse.enabled) {
       Mouse::renderMouseIndicator(mouseCenter,
                                   Config::activeConfig.theme.mouse.style.type);
@@ -471,8 +469,8 @@ int main(int, char **) {
     //             1000.0f / io.Framerate, io.Framerate);
     ImGui::ShowDemoWindow();
 #endif // !DEBUG_CATBOARD
-       
-    ImGui::ShowDemoWindow();
+
+    // ImGui::ShowDemoWindow();
 
     const auto frameEnd{std::chrono::steady_clock::now()};
 
@@ -611,8 +609,8 @@ void fpsLimitter(
 }
 
 POINT getOverlayPosition(int windowWidth, int windowHeight) {
-  POINT savedPos{Config::activeConfig.overlayPos.x,
-                 Config::activeConfig.overlayPos.y};
+  POINT savedPos{Config::activeConfig.overlay.x,
+                 Config::activeConfig.overlay.y};
 
   // todo maybe rework this shi
   int centerX{savedPos.x + windowWidth / 2};
@@ -808,10 +806,10 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     break;
   case WM_EXITSIZEMOVE: {
-    // RECT rect;
-    // GetWindowRect(hWnd, &rect);
-    // Config::activeConfig.overlayPos.x = rect.left;
-    // Config::activeConfig.overlayPos.y = rect.top;
+    RECT rect;
+    GetWindowRect(hWnd, &rect);
+    Config::activeConfig.overlay.x = rect.left;
+    Config::activeConfig.overlay.y = rect.top;
     Config::Apply(Config::activeConfig);
     return 0;
   }

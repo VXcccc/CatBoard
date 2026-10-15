@@ -8,6 +8,7 @@
 namespace MainWindow {
 
 extern bool g_dragMode;
+extern bool g_resizeMode;
 
 void Show();
 void Hide();
@@ -22,5 +23,6 @@ ID3D11Device *get_g_pd3dDevice();
 void setClearColor(const ImVec4 &clearColor);
 
 void SetDragMode(HWND hWnd, bool enabled);
+void SetResizeMode(HWND hWnd, bool enabled);
 void SetObsMode(HWND hWnd, bool enabled);
 } // namespace MainWindow

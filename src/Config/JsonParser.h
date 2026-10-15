@@ -26,8 +26,8 @@ void from_json(const json &j, Theme &theme);
 void to_json(json &j, const SoundPackSelection &soundPack);
 void from_json(const json &j, SoundPackSelection &soundPack);
 
-void to_json(json &j, const OverlayPosition &overlayPos);
-void from_json(const json &j, OverlayPosition &overlayPos);
+void to_json(json &j, const Overlay &overlay);
+void from_json(const json &j, Overlay &overlay);
 
 void to_json(json &j, const Misc &misc);
 void from_json(const json &j, Misc &misc);
@@ -98,4 +98,11 @@ void to_json(json &j, const Pack &pack);
 void from_json(const json &j, Pack &pack);
 
 } // namespace Images
+
+namespace Binds {
+
+void to_json(json &j, const Bind &bind);
+void from_json(const json &j, Bind &bind);
+
+} // namespace Binds
 #endif // CONFIG_JSON_H

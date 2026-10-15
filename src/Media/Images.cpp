@@ -238,10 +238,11 @@ void drawKeyboardImages(ImDrawList *draw,
     if (!texture.srv)
       continue;
 
-    ImVec2 topLeft{key.x, key.y};
+    const auto& ovScale{Config::activeConfig.overlay.scale};
+    ImVec2 topLeft{key.x * ovScale, key.y * ovScale};
     // todo fix the problem with different size of key in layout and in image
     // size
-    ImVec2 bottomRight{key.x + key.w, key.y + key.h};
+    ImVec2 bottomRight{(key.x + key.w) * ovScale, (key.y + key.h) * ovScale};
     draw->AddImage(
         (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
         ImVec2(1, 1),
@@ -273,14 +274,16 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
 
   const auto &mouse{Config::activeConfig.theme.mouse};
 
-  float partX{((part.x + mouse.imageOffsetX) * mouse.imageScale)};
-  float partY{((part.y + mouse.imageOffsetY) * mouse.imageScale)};
+  const auto &ovScale{Config::activeConfig.overlay.scale};
+
+  float partX{((part.x + mouse.imageOffsetX) * mouse.imageScale) * ovScale};
+  float partY{((part.y + mouse.imageOffsetY) * mouse.imageScale) * ovScale};
   ImVec2 partCenter{center.x + partX, center.y + partY};
 
-  ImVec2 topLeft{partCenter.x - (part.w * mouse.imageScale) * 0.5f,
-                 partCenter.y - (part.h * mouse.imageScale) * 0.5f};
-  ImVec2 bottomRight{topLeft.x + (part.w * mouse.imageScale),
-                     topLeft.y + (part.h * mouse.imageScale)};
+  ImVec2 topLeft{(partCenter.x - ((part.w * mouse.imageScale) * ovScale) * 0.5f),
+                 partCenter.y - ((part.h * mouse.imageScale) * ovScale) * 0.5f};
+  ImVec2 bottomRight{topLeft.x + ((part.w * mouse.imageScale) * ovScale),
+                     topLeft.y + ((part.h * mouse.imageScale) * ovScale)};
 
   draw->AddImage(
       (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),

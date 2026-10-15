@@ -58,8 +58,11 @@ void renderKeyboard(const Layouts::Layout &layout,
     const ImVec2 center{keyCenterHalfSize.first};
     const ImVec2 halfSize{keyCenterHalfSize.second};
 
-    ImVec2 topLeft(center.x - halfSize.x, center.y - halfSize.y);
-    ImVec2 bottomRight(center.x + halfSize.x, center.y + halfSize.y);
+    const auto &ovScale{Config::activeConfig.overlay.scale};
+    ImVec2 topLeft((center.x - halfSize.x) * ovScale,
+                   (center.y - halfSize.y) * ovScale);
+    ImVec2 bottomRight((center.x + halfSize.x) * ovScale,
+                       (center.y + halfSize.y) * ovScale);
 
     ImU32 fill{
         Helper::ToImU32(Helper::toConfigColor(keysColors[key.keyCode].fill))};
@@ -82,8 +85,8 @@ void renderKeyboard(const Layouts::Layout &layout,
         currentFullKeysDown, Config::activeConfig.font, key)};
 
     ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-    ImVec2 textPos{center.x - (textSize.x * 0.5f),
-                   center.y - (textSize.y * 0.5f)};
+    ImVec2 textPos{(center.x * ovScale) - (textSize.x * 0.5f) ,
+                   (center.y * ovScale) - (textSize.y * 0.5f) };
     draw->AddText(textPos, textColor, displayLabel.c_str());
   }
   ImGui::PopFont();
@@ -218,7 +221,7 @@ bool updateAnimations(const Layouts::Layout &layout,
       for (const auto &key : layout.keys)
         outKeysScale[key.keyCode] = 1.0f;
       prevAnimation = false;
-      return true; 
+      return true;
     }
     return false;
   }
@@ -234,8 +237,9 @@ bool updateAnimations(const Layouts::Layout &layout,
     bool down{currentKeysDown[key.keyCode]};
     float targetScale{(down) ? theme.pressScale : 1.0f};
 
+    outKeysScale[key.keyCode] =
+        std::lerp(outKeysScale[key.keyCode], targetScale, t);
 
-    outKeysScale[key.keyCode] += (targetScale - outKeysScale[key.keyCode]) * t;
     if (std::abs(outKeysScale[key.keyCode] - 1.0f) > 0.001f) {
       animationActive = true;
     }

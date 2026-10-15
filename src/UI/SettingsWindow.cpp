@@ -17,6 +17,7 @@
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
+#include "imgui_internal.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include <algorithm>
 #include <array>
@@ -279,7 +280,9 @@ struct SettingsEditState {
   Config::SoundPackSelection soundPack;
   int volumePercent{};
 
-  Binds::BindsArray binds{};
+  Binds::BindsVector binds{};
+
+  Config::Overlay overlay{};
 
   Fonts::Font font{};
 
@@ -325,6 +328,8 @@ void restoreFromConfig(SettingsEditState &state,
 
   state.font = prevSettings.font;
 
+  state.overlay = prevSettings.overlay;
+
   state.misc = prevSettings.misc;
 
   state.configName = prevSettings.configName;
@@ -345,7 +350,7 @@ Config::Settings buildSettings(const SettingsEditState &state) {
               state.soundPack.layoutKeysOnlySound,
               static_cast<float>(state.volumePercent) / 100.0f},
           state.binds,
-          Config::activeConfig.overlayPos,
+          state.overlay,
           state.font,
           state.misc,
           state.configName,
@@ -825,11 +830,22 @@ void drawMiscTab(SettingsEditState &state) {
   state.misc.fps = std::clamp(state.misc.fps, 5, 2000);
 
   drawThemeCombo(state);
+
+  ImGui::SeparatorText("Overlay Properties");
+  if (ImGui::DragInt("OverlayX", &state.overlay.x))
+    MainWindow::ApplyOverlayPosition();
+  if (ImGui::DragInt("OverlayY", &state.overlay.y))
+    MainWindow::ApplyOverlayPosition();
+
+  Helper::SliderFloat("Overlay Scale", state.overlay.scale, 0.0f, 3.0f, 0.0f,
+                      10.0f);
 }
 
 void drawBindsTab(SettingsEditState &state) {
+  Binds::syncBindsOrder(state.binds);
   for (auto &bind : state.binds) {
-    ImGui::Text("%s", bind.bindName.c_str());
+    ImGui::TextUnformatted(bind.name.c_str());
+
     ImGui::SameLine();
     if (ImGui::Button(bind.keyName.c_str())) {
       Binds::recordBind(bind);
@@ -867,14 +883,13 @@ void drawConfigsTab(SettingsEditState &state) {
   drawConfigCombo(state);
 
   if (ImGui::Button("Save config")) {
-    Config::saveConfig(Config::configs[state.currentConfig],
-                       buildSettings(state));
+    Config::Save(Config::configs[state.currentConfig], buildSettings(state));
   }
 
   ImGui::SameLine();
 
   if (ImGui::Button("Load config")) {
-    if (Config::loadConfig(Config::configs[state.currentConfig])) {
+    if (Config::Load(Config::configs[state.currentConfig])) {
       restoreFromConfig(state, Config::activeConfig);
 
       if (!Layouts::loadLayout(Config::activeConfig.selectedLayout)) {
@@ -894,7 +909,7 @@ void drawConfigsTab(SettingsEditState &state) {
   ImGui::SameLine();
 
   if (ImGui::Button("Delete config")) {
-    Config::deleteConfig(Config::configs[state.currentConfig]);
+    Config::Delete(Config::configs[state.currentConfig]);
     Config::refreshConfigs();
     validateCurrentIndex(state.currentConfig, std::size(Config::configs));
   }
@@ -910,7 +925,7 @@ void drawConfigsTab(SettingsEditState &state) {
   ImGui::SameLine();
   if (ImGui::Button("Create config")) {
     state.configNameError =
-        Helper::getFileCreateError(Config::createConfig(state.configNameInput));
+        Helper::getFileCreateError(Config::Create(state.configNameInput));
     if (state.configNameError.empty()) {
       Config::refreshConfigs();
     }
@@ -951,7 +966,6 @@ void drawSettingsTabs(SettingsTab &outCurrentTab) {
       ImGui::SameLine();
   }
 }
-
 
 void RenderFrame() {
   if (!s_visible)

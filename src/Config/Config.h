@@ -9,6 +9,7 @@
 #include "Media/Fonts.h"
 #include "Media/Images.h"
 #include "Media/Sound.h"
+#include "System/Helpers.h"
 #include "UI/Layouts.h"
 #include "imgui.h"
 #include <array>
@@ -21,6 +22,7 @@ using json = nlohmann::json;
 
 namespace Helper {
 enum class FileCreateResult;
+
 }
 
 namespace Config {
@@ -70,7 +72,6 @@ struct MouseTheme {
   float imageOffsetX{0.0f};
   float imageOffsetY{-50.0f};
 
-
   float fadeTime{0.6f};
   float rounding{6.0f};
 
@@ -114,9 +115,12 @@ struct SoundPackSelection {
   float volume{1.0f};
 };
 
-struct OverlayPosition {
+struct Overlay {
   int x{0};
   int y{600};
+  float scale{1.0f};
+
+  bool operator==(const Overlay &) const = default;
 };
 
 struct Misc {
@@ -130,8 +134,8 @@ struct Settings {
   Theme theme{};
   std::string selectedLayout{Layouts::defaultLayoutName};
   SoundPackSelection soundPack{};
-  Binds::BindsArray binds{Binds::defaultBinds};
-  OverlayPosition overlayPos{};
+  Binds::BindsVector binds{Helper::arrToVec(Binds::defaultBinds)};
+  Overlay overlay{};
   Fonts::Font font{};
   Misc misc{};
   std::string configName{"Default"};
@@ -142,13 +146,13 @@ struct Settings {
 extern Settings activeConfig;
 extern std::vector<std::string> configs;
 
-bool loadConfig(std::string_view name);
-bool saveConfig(std::string_view name, const Config::Settings &settings);
-bool deleteConfig(std::string_view name);
-Helper::FileCreateResult createConfig(std::string_view name);
+bool Load(std::string_view name);
+bool Save(std::string_view name, const Config::Settings &settings);
+bool Delete(std::string_view name);
+Helper::FileCreateResult Create(std::string_view name);
 void refreshConfigs();
 
-void Load();
+void LoadActiveConfig();
 bool Apply(const Settings &settings);
 } // namespace Config
 
