@@ -26,7 +26,7 @@ extern std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
 enum class TrailType { Circle, Catmull, maxTrailStyles };
 
 struct TrailStyle {
-  std::string name{"Catmull trail"};
+  std::string name{"Catmull"};
   TrailType type{TrailType::Catmull};
 };
 

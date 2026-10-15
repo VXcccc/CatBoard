@@ -1,7 +1,7 @@
 #include "UI/SettingsWindow.h"
 #include "Config/Config.h"
-#include "Config/ConfigJson.h"
 #include "Config/Constants.h"
+#include "Config/JsonParser.h"
 #include "Input/Hotkeys.h"
 #include "Input/Mouse.h"
 #include "Media/Fonts.h"
@@ -455,7 +455,6 @@ void drawGenericCombo(
   }
 }
 
-
 void drawLayoutCombo(SettingsEditState &state) {
   drawGenericCombo("Layout", Layouts::layouts, "No layouts",
                    state.currentLayout,
@@ -473,7 +472,7 @@ void drawImagePackCombo(SettingsEditState &state) {
                    [&state](std::size_t i, const std::string &name) {
                      if (Images::Load(name)) {
                        state.currentImagePack = i;
-                       state.imagePack.name = name;
+                       state.imagePack = Images::activePack;
                      }
                    });
 }
@@ -527,7 +526,8 @@ void drawTrailStyleCombo(SettingsEditState &state,
 }
 
 void drawThemeCombo(SettingsEditState &state) {
-  drawGenericCombo("UI Theme", Themes::styles, "No Themes", state.currentUITheme,
+  drawGenericCombo("UI Theme", Themes::styles, "No Themes",
+                   state.currentUITheme,
                    [&state](std::size_t i, const std::string &name) {
                      state.currentUITheme = i;
                      Themes::activeTheme = static_cast<int>(i);
@@ -686,10 +686,11 @@ void drawImageSection(SettingsEditState &state) {
   }
 
   ImGui::Checkbox("Mouse display", &state.theme.mouse.imagesDisplay);
+  auto &mouse{state.theme.mouse};
   if (state.theme.mouse.imagesDisplay) {
-    ImGui::SliderInt("Mouse opacity", &state.theme.mouse.imageOpacity, 0, 255);
-    state.theme.mouse.imageOpacity =
-        std::clamp(state.theme.mouse.imageOpacity, 0, 255);
+    Helper::SliderInt("Mouse opacity", mouse.imageOpacity, 0, 255);
+    Helper::SliderFloat("Mouse scale", mouse.imageScale, 0.0f, 3.0f, 0.0f,
+                        10.0f);
 
     ImGui::DragFloat("Offset X", &state.theme.mouse.imageOffsetX);
     ImGui::DragFloat("Offset Y", &state.theme.mouse.imageOffsetY);
@@ -708,6 +709,9 @@ void drawImageSection(SettingsEditState &state) {
       state.theme.idleFill[3] = prevIdleAlpha;
       state.theme.activeFill[3] = prevActiveAlpha;
     }
+  }
+  if (state.theme.keysImagesDisplay) {
+    Images::drawSizeOfImages(state.imagePack);
   }
 
   if (state.theme.keysImagesDisplay) {
@@ -936,6 +940,19 @@ void drawApplyCancel(SettingsEditState &state,
   }
 }
 
+void drawSettingsTabs(SettingsTab &outCurrentTab) {
+  for (size_t i{0}; i < std::size(tabs); ++i) {
+    if (ImGui::Button(tabs[i].label,
+                      ImVec2(ImGui::GetWindowSize().x / std::size(tabs) - 12.0f,
+                             25.0f))) // todo remove magic numbers
+      outCurrentTab = tabs[i].type;
+
+    if (i + 1 < std::size(tabs))
+      ImGui::SameLine();
+  }
+}
+
+
 void RenderFrame() {
   if (!s_visible)
     return;
@@ -1008,15 +1025,7 @@ void RenderFrame() {
                    ImGuiWindowFlags_HorizontalScrollbar |
                    ImGuiWindowFlags_NoBringToFrontOnFocus);
 
-  for (size_t i{0}; i < std::size(tabs); ++i) {
-    if (ImGui::Button(tabs[i].label,
-                      ImVec2(ImGui::GetWindowSize().x / std::size(tabs) - 12.0f,
-                             25.0f))) // todo remove magic numbers
-      currentTab = tabs[i].type;
-
-    if (i + 1 < std::size(tabs))
-      ImGui::SameLine();
-  }
+  drawSettingsTabs(currentTab);
 
   handleUndoRedoInput(editState, lastCommitted, currentTab);
 

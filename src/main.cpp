@@ -119,18 +119,20 @@ void Hide() {
 bool IsVisible() { return s_visible; }
 
 void ApplyOverlayPosition() {
-  int windowWidth = (int)(Layouts::activeLayout.windowWidth * g_main_scale);
-  int windowHeight = (int)(Layouts::activeLayout.windowHeight * g_main_scale);
+  int windowWidth{(int)(Layouts::activeLayout.windowWidth * g_main_scale)};
+  int windowHeight{(int)(Layouts::activeLayout.windowHeight * g_main_scale)};
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
   SetWindowPos(s_hwnd, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
 
 void ApplyOverlaySize() {
-  int windowWidth =
-      static_cast<int>(Layouts::activeLayout.windowWidth * g_main_scale);
+  bool obsMode{Config::activeConfig.misc.obsMode};
+  int windowWidth{
+      static_cast<int>(Layouts::activeLayout.windowWidth * g_main_scale)};
 
-  int windowHeight =
-      static_cast<int>(Layouts::activeLayout.windowHeight * g_main_scale);
+  int windowHeight{static_cast<int>(
+      obsMode ? Layouts::activeLayout.windowHeight + 40.0f * g_main_scale
+              : Layouts::activeLayout.windowHeight * g_main_scale)};
 
   SetWindowPos(s_hwnd, nullptr, 0, 0, windowWidth, windowHeight,
                SWP_NOMOVE | SWP_NOZORDER);
@@ -183,7 +185,8 @@ int main(int, char **) {
   }
 
   if (!(Images::Load(Config::activeConfig.imagePack.name))) {
-    Helper::fatalError(L"Failed to load image pack");
+    if (!(Images::Load(Images::defaultPack.name)))
+      Helper::fatalError(L"Failed to load image pack");
   }
   Images::refreshImagePacks();
 
@@ -274,7 +277,6 @@ int main(int, char **) {
   }
 
   SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext);
-
 
   g_fpsTimer = CreateWaitableTimerExW(nullptr, nullptr,
                                       CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
@@ -452,17 +454,15 @@ int main(int, char **) {
     Keyboard::renderKeyboard(Layouts::activeLayout, currentKeysDown,
                              currentFullKeysDown, keysScale, keysColors);
 
+    ImVec2 mouseCenter(Layouts::activeLayout.mouse.centerX,
+                       Layouts::activeLayout.mouse.centerY);
     if (Config::activeConfig.theme.mouse.enabled) {
-      ImVec2 mouseCenter(Layouts::activeLayout.mouse.centerX,
-                         Layouts::activeLayout.mouse.centerY);
-
-      if (Config::activeConfig.theme.mouse.imagesDisplay) {
-        Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                                currentFullKeysDown);
-      }
-
       Mouse::renderMouseIndicator(mouseCenter,
                                   Config::activeConfig.theme.mouse.style.type);
+    }
+    if (Config::activeConfig.theme.mouse.imagesDisplay) {
+      Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
+                              currentFullKeysDown);
     }
 
     // debug
@@ -471,6 +471,8 @@ int main(int, char **) {
     //             1000.0f / io.Framerate, io.Framerate);
     ImGui::ShowDemoWindow();
 #endif // !DEBUG_CATBOARD
+       
+    ImGui::ShowDemoWindow();
 
     const auto frameEnd{std::chrono::steady_clock::now()};
 
@@ -806,10 +808,10 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     break;
   case WM_EXITSIZEMOVE: {
-    RECT rect;
-    GetWindowRect(hWnd, &rect);
-    Config::activeConfig.overlayPos.x = rect.left;
-    Config::activeConfig.overlayPos.y = rect.top;
+    // RECT rect;
+    // GetWindowRect(hWnd, &rect);
+    // Config::activeConfig.overlayPos.x = rect.left;
+    // Config::activeConfig.overlayPos.y = rect.top;
     Config::Apply(Config::activeConfig);
     return 0;
   }

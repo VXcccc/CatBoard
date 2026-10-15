@@ -97,6 +97,14 @@
             "h": 41.0,
             "buttonIdle": "m4b",
             "buttonActive": "m4w"
+        },
+        "bottom": {
+            "x": 0.0,
+            "y": 0.0,
+            "w": 1.0,
+            "h": 1.0,
+            "buttonIdle": "",
+            "buttonActive": ""
         }
     },
     "name": "DefaultImagePack"

@@ -1,6 +1,6 @@
 #include "UI/Layouts.h"
 #include "Config/Config.h"
-#include "Config/ConfigJson.h"
+#include "Config/JsonParser.h"
 #include "Config/Constants.h"
 #include "Input/Mouse.h"
 #include "Media/Fonts.h"

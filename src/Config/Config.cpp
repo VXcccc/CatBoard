@@ -1,5 +1,5 @@
 #include "Config/Config.h"
-#include "Config/ConfigJson.h"
+#include "Config/JsonParser.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "imgui.h"
@@ -57,7 +57,6 @@ bool Apply(const Settings &settings) {
   activeConfig = settings;
   return file.good();
 }
-
 
 Helper::FileCreateResult createConfig(std::string_view name) {
   if (!Paths::ensureConfigDirectory()) {

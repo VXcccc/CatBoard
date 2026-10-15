@@ -1,4 +1,4 @@
-#include "Config/ConfigJson.h"
+#include "Config/JsonParser.h"
 #include "Config/Config.h"
 #include <nlohmann/json.hpp>
 
@@ -74,6 +74,7 @@ void to_json(json &j, const MouseTheme &mouseTheme) {
       {"decayRate", mouseTheme.decayRate},
       {"imagesDisplay", mouseTheme.imagesDisplay},
       {"imageOpacity", mouseTheme.imageOpacity},
+      {"imageScale", mouseTheme.imageScale},
       {"fadeTime", mouseTheme.fadeTime},
       {"rounding", mouseTheme.rounding},
       {"trail", mouseTheme.trail},
@@ -120,6 +121,9 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
 
   if (j.contains("imageOpacity"))
     j.at("imageOpacity").get_to(mouseTheme.imageOpacity);
+
+  if (j.contains("imageScale"))
+    j.at("imageScale").get_to(mouseTheme.imageScale);
 
   if (j.contains("fadeTime"))
     j.at("fadeTime").get_to(mouseTheme.fadeTime);
@@ -430,10 +434,8 @@ void from_json(const nlohmann::json &j, Key &key) {
 
 void to_json(nlohmann::json &j, const Mouse &mouse) {
   j = {
-      {"centerX", mouse.centerX},
-      {"centerY", mouse.centerY},
-      {"width", mouse.width},
-      {"height", mouse.height},
+      {"centerX", mouse.centerX}, {"centerY", mouse.centerY},
+      {"width", mouse.width},     {"height", mouse.height},
       {"radius", mouse.radius},
   };
 }
@@ -477,5 +479,113 @@ void from_json(const nlohmann::json &j, Layout &layout) {
   if (j.contains("keys"))
     j.at("keys").get_to(layout.keys);
 }
-
 } // namespace Layouts
+
+namespace Images {
+
+void to_json(json &j, const Image &image) {
+  j = {{"backGroundFileName", image.backGroundFileName},
+       {"activeFileName", image.activeFileName},
+       {"vkCode", image.vkCode}};
+}
+
+void from_json(const json &j, Image &image) {
+  if (j.contains("backGroundFileName"))
+    j.at("backGroundFileName").get_to(image.backGroundFileName);
+
+  if (j.contains("activeFileName"))
+    j.at("activeFileName").get_to(image.activeFileName);
+
+  if (j.contains("vkCode"))
+    j.at("vkCode").get_to(image.vkCode);
+}
+
+void to_json(json &j, const MouseButton &mouseButton) {
+  j = {{"x", mouseButton.x},
+       {"y", mouseButton.y},
+       {"w", mouseButton.w},
+       {"h", mouseButton.h},
+       {"buttonIdle", mouseButton.buttonIdle},
+       {"buttonActive", mouseButton.buttonActive}};
+}
+
+void from_json(const json &j, MouseButton &mouseButton) {
+  if (j.contains("x"))
+    j.at("x").get_to(mouseButton.x);
+
+  if (j.contains("y"))
+    j.at("y").get_to(mouseButton.y);
+
+  if (j.contains("w"))
+    j.at("w").get_to(mouseButton.w);
+
+  if (j.contains("h"))
+    j.at("h").get_to(mouseButton.h);
+
+  if (j.contains("buttonIdle"))
+    j.at("buttonIdle").get_to(mouseButton.buttonIdle);
+
+  if (j.contains("buttonActive"))
+    j.at("buttonActive").get_to(mouseButton.buttonActive);
+}
+
+void to_json(json &j, const Mouse &mouse) {
+  j = {{"left", mouse.left},
+       {"right", mouse.right},
+       {"middle", mouse.middle},
+       {"scrollUp", mouse.scrollUp},
+       {"scrollDown", mouse.scrollDown},
+       {"mouse4", mouse.mouse4},
+       {"mouse5", mouse.mouse5},
+       {"bottom", mouse.bottom}};
+}
+
+void from_json(const json &j, Mouse &mouse) {
+  if (j.contains("left"))
+    j.at("left").get_to(mouse.left);
+
+  if (j.contains("right"))
+    j.at("right").get_to(mouse.right);
+
+  if (j.contains("middle"))
+    j.at("middle").get_to(mouse.middle);
+
+  if (j.contains("scrollUp"))
+    j.at("scrollUp").get_to(mouse.scrollUp);
+
+  if (j.contains("scrollDown"))
+    j.at("scrollDown").get_to(mouse.scrollDown);
+
+  if (j.contains("mouse4"))
+    j.at("mouse4").get_to(mouse.mouse4);
+
+  if (j.contains("mouse5"))
+    j.at("mouse5").get_to(mouse.mouse5);
+
+  if (j.contains("bottom"))
+    j.at("bottom").get_to(mouse.bottom);
+}
+
+void to_json(json &j, const Pack &pack) {
+  j = {{"name", pack.name},
+       {"defaultKey", pack.defaultKey},
+       {"explicitImages", pack.explicitImages},
+       {"mouse", pack.mouse}};
+}
+
+void from_json(const json &j, Pack &pack) {
+  if (j.contains("name"))
+    j.at("name").get_to(pack.name);
+
+  if (j.contains("defaultKey"))
+    j.at("defaultKey").get_to(pack.defaultKey);
+
+  if (j.contains("explicitImages"))
+    j.at("explicitImages").get_to(pack.explicitImages);
+
+  if (j.contains("mouse"))
+    j.at("mouse").get_to(pack.mouse);
+}
+
+} // namespace Images
+

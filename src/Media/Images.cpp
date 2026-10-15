@@ -1,5 +1,6 @@
 #include "Media/Images.h"
 #include "Config/Config.h"
+#include "Config/JsonParser.h"
 #include "Input/Hotkeys.h"
 #include "Input/Mouse.h"
 #include "System/Helpers.h"
@@ -15,6 +16,7 @@
 #include <d3d11.h>
 #include <dxgi.h>
 #include <dxgi1_2.h>
+#include <format>
 #include <fstream>
 #include <hidclass.h>
 #include <hidusage.h>
@@ -38,6 +40,7 @@
 
 namespace Images {
 // extern
+Images::Pack defaultPack{};
 Images::Pack activePack{};
 std::vector<std::string> packs{};
 
@@ -196,6 +199,33 @@ const Image *findImageForKey(int vkCode) {
   return &activePack.defaultKey;
 }
 
+void drawSizeOfImages(const Pack &pack) {
+  if (!ImGui::CollapsingHeader("Images Size"))
+    return;
+
+  std::string output{};
+  bool defaultRecorded{false};
+  for (const auto &key : Layouts::activeLayout.keys) {
+    const Image *image{findImageForKey(key.keyCode)};
+    // maybe by activeFileName is better idk
+    const std::string &fileName{image->backGroundFileName};
+    Texture texture{getOrLoadTexture(fileName)};
+    if (!texture.srv)
+      continue;
+
+    if (*image == pack.defaultKey && !defaultRecorded) {
+      output.append(
+          std::format("Default key: W: {}, H: {} \n", texture.w, texture.h));
+      defaultRecorded = true;
+    } else if (*image != pack.defaultKey){
+      output.append(std::format("{}: W: {}, H: {} \n", image->backGroundFileName,
+                                texture.w, texture.h));
+    }
+  }
+  
+  ImGui::TextWrapped("%s", output.c_str());
+}
+
 void drawKeyboardImages(ImDrawList *draw,
                         const std::array<bool, 256> &currentKeysDown) {
   for (const auto &key : Layouts::activeLayout.keys) {
@@ -241,12 +271,16 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   if (!texture.srv)
     return;
 
-  float offsetY{Config::activeConfig.theme.mouse.imageOffsetY};
-  float offsetX{Config::activeConfig.theme.mouse.imageOffsetX};
-  ImVec2 partCenter{center.x + part.x + offsetX, center.y + part.y + offsetY};
+  const auto &mouse{Config::activeConfig.theme.mouse};
 
-  ImVec2 topLeft{partCenter.x - part.w * 0.5f, partCenter.y - part.h * 0.5f};
-  ImVec2 bottomRight{topLeft.x + part.w, topLeft.y + part.h};
+  float partX{((part.x + mouse.imageOffsetX) * mouse.imageScale)};
+  float partY{((part.y + mouse.imageOffsetY) * mouse.imageScale)};
+  ImVec2 partCenter{center.x + partX, center.y + partY};
+
+  ImVec2 topLeft{partCenter.x - (part.w * mouse.imageScale) * 0.5f,
+                 partCenter.y - (part.h * mouse.imageScale) * 0.5f};
+  ImVec2 bottomRight{topLeft.x + (part.w * mouse.imageScale),
+                     topLeft.y + (part.h * mouse.imageScale)};
 
   draw->AddImage(
       (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
@@ -275,12 +309,12 @@ void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
   drawMousePart(draw, center, mouse.right, currentKeysDown[VK_RBUTTON]);
   drawMousePart(draw, center, mouse.mouse4, currentKeysDown[VK_XBUTTON1]);
   drawMousePart(draw, center, mouse.mouse5, currentKeysDown[VK_XBUTTON2]);
+  drawMousePart(draw, center, mouse.bottom, false);
   // fix middle
 
   drawMousePart(draw, center, mouse.middle, currentKeysDown[VK_MBUTTON]);
-  
+
   drawMousePart(draw, center, mouse.scrollUp, scrollUpActive);
   drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);
 }
 } // namespace Images
-

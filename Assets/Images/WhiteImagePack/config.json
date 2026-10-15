@@ -71,7 +71,7 @@
             "y": -77.0,
             "w": 12.0,
             "h": 19.0,
-            "buttonIdle": "sub",
+            "buttonIdle": "",
             "buttonActive": "suw"
         },
         "scrollDown": {
@@ -79,7 +79,7 @@
             "y": -58.0,
             "w": 12.0,
             "h": 19.0,
-            "buttonIdle": "sdb",
+            "buttonIdle": "",
             "buttonActive": "sdw"
         },
         "mouse5": {
@@ -97,6 +97,14 @@
             "h": 41.0,
             "buttonIdle": "m4b",
             "buttonActive": "m4w"
+        },
+        "bottom": {
+            "x": 0.0,
+            "y": 0.0,
+            "w": 1.0,
+            "h": 1.0,
+            "buttonIdle": "",
+            "buttonActive": ""
         }
     },
     "name": "DefaultImagePack"

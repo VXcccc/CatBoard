@@ -11,13 +11,11 @@ using json = nlohmann::json;
 void to_json(json &j, const Outline &outline);
 void from_json(const json &j, Outline &outline);
 
-
 void to_json(json &j, const Trail &trail);
 void from_json(const json &j, Trail &trail);
 
 void to_json(json &j, const MouseTheme &mouseTheme);
 void from_json(const json &j, MouseTheme &mouseTheme);
-
 
 void to_json(json &j, const AnimType &animType);
 void from_json(const json &j, AnimType &animType);
@@ -57,7 +55,6 @@ void from_json(const json &j, Font &font);
 namespace Mouse {
 using json = nlohmann::json;
 
-
 void to_json(json &j, const Type &type);
 void from_json(const json &j, Type &type);
 
@@ -85,4 +82,20 @@ void from_json(const nlohmann::json &j, Layout &layout);
 
 } // namespace Layouts
 
+namespace Images {
+using json = nlohmann::json;
+
+void to_json(json &j, const Image &image);
+void from_json(const json &j, Image &image);
+
+void to_json(json &j, const MouseButton &mouseButton);
+void from_json(const json &j, MouseButton &mouseButton);
+
+void to_json(json &j, const Mouse &mouse);
+void from_json(const json &j, Mouse &mouse);
+
+void to_json(json &j, const Pack &pack);
+void from_json(const json &j, Pack &pack);
+
+} // namespace Images
 #endif // CONFIG_JSON_H

@@ -65,6 +65,7 @@ struct MouseTheme {
 
   bool imagesDisplay{false};
   int imageOpacity{255};
+  float imageScale{1.0f};
 
   float imageOffsetX{0.0f};
   float imageOffsetY{-50.0f};

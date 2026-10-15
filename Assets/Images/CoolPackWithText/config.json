@@ -1,0 +1,106 @@
+{
+    "defaultKey": {
+        "activeFileName": "P",
+        "backGroundFileName": "L",
+        "vkCode": 0
+    },
+    "explicitImages": [
+        { "activeFileName": "SpaceP", "backGroundFileName": "SpaceL", "vkCode": 32 },
+
+        { "activeFileName": "1P", "backGroundFileName": "1L", "vkCode": 49 },
+        { "activeFileName": "2P", "backGroundFileName": "2L", "vkCode": 50 },
+        { "activeFileName": "3P", "backGroundFileName": "3L", "vkCode": 51 },
+        { "activeFileName": "4P", "backGroundFileName": "4L", "vkCode": 52 },
+        { "activeFileName": "5P", "backGroundFileName": "5L", "vkCode": 53 },
+
+        { "activeFileName": "QP", "backGroundFileName": "QL", "vkCode": 81 },
+        { "activeFileName": "WP", "backGroundFileName": "WL", "vkCode": 87 },
+        { "activeFileName": "EP", "backGroundFileName": "EL", "vkCode": 69 },
+        { "activeFileName": "RP", "backGroundFileName": "RL", "vkCode": 82 },
+        { "activeFileName": "TP", "backGroundFileName": "TL", "vkCode": 84 },
+
+        { "activeFileName": "AP", "backGroundFileName": "AL", "vkCode": 65 },
+        { "activeFileName": "SP", "backGroundFileName": "SL", "vkCode": 83 },
+        { "activeFileName": "DP", "backGroundFileName": "DL", "vkCode": 68 },
+        { "activeFileName": "FP", "backGroundFileName": "FL", "vkCode": 70 },
+        { "activeFileName": "GP", "backGroundFileName": "GL", "vkCode": 71 },
+
+        { "activeFileName": "ZP", "backGroundFileName": "ZL", "vkCode": 90 },
+        { "activeFileName": "XP", "backGroundFileName": "XL", "vkCode": 88 },
+        { "activeFileName": "CP", "backGroundFileName": "CL", "vkCode": 67 },
+        { "activeFileName": "VP", "backGroundFileName": "VL", "vkCode": 86 },
+        { "activeFileName": "BP", "backGroundFileName": "BL", "vkCode": 66 },
+        { "activeFileName": "ESCP", "backGroundFileName": "ESCL", "vkCode": 27 },
+        { "activeFileName": "TabP", "backGroundFileName": "TabL", "vkCode": 9 },
+        { "activeFileName": "ShiftP", "backGroundFileName": "ShiftL", "vkCode": 160 },
+        { "activeFileName": "CtrlP", "backGroundFileName": "CtrlL", "vkCode": 162 },
+        { "activeFileName": "AltP", "backGroundFileName": "AltL", "vkCode": 164 }
+    ],
+    "mouse": {
+        "left": {
+            "x": -48.5,
+            "y": -84.0,
+            "w": 94.0,
+            "h": 118.0,
+            "buttonIdle": "MB1L",
+            "buttonActive": "MB1P"
+        },
+        "right": {
+            "x": 48.5,
+            "y": -84.0,
+            "w": 94.0,
+            "h": 118.0,
+            "buttonIdle": "MB2L",
+            "buttonActive": "MB2P"
+        },
+        "middle": {
+            "x": 0.0,
+            "y": -56.5,
+            "w": 35.0,
+            "h": 63.0,
+            "buttonIdle": "MB3L",
+            "buttonActive": "MB3P"
+        },
+        "scrollUp": {
+            "x": -0.5,
+            "y": -72.0,
+            "w": 32.0,
+            "h": 34.0,
+            "buttonIdle": "",
+            "buttonActive": "ScrollUpP"
+        },
+        "scrollDown": {
+            "x": -0.5,
+            "y": -41.0,
+            "w": 32.0,
+            "h": 32.0,
+            "buttonIdle": "",
+            "buttonActive": "ScrollDownP"
+        },
+        "mouse5": {
+            "x": -81.5,
+            "y": 20.0,
+            "w": 28.0,
+            "h": 40.0,
+            "buttonIdle": "MB5L",
+            "buttonActive": "MB5P"
+        },
+        "mouse4": {
+            "x": -74.5,
+            "y": 60.0,
+            "w": 28.0,
+            "h": 40.0,
+            "buttonIdle": "MB4L",
+            "buttonActive": "MB4P"
+        },
+        "bottom": {
+            "x": 0.5,
+            "y": 60.5,
+            "w": 190.0,
+            "h": 165.0,
+            "buttonIdle": "MouseBottom",
+            "buttonActive": ""
+        }
+    },
+  "name": "CoolPackWithText"
+}

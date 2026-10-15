@@ -1,0 +1,81 @@
+{
+    "defaultKey": {
+        "activeFileName": "P",
+        "backGroundFileName": "L",
+        "vkCode": 0
+    },
+    "explicitImages": [
+        {
+            "activeFileName": "SpaceP",
+            "backGroundFileName": "SpaceL",
+            "vkCode": 32
+        }
+    ],
+    "mouse": {
+        "left": {
+            "x": -48.5,
+            "y": -84.0,
+            "w": 94.0,
+            "h": 118.0,
+            "buttonIdle": "MB1L",
+            "buttonActive": "MB1P"
+        },
+        "right": {
+            "x": 48.5,
+            "y": -84.0,
+            "w": 94.0,
+            "h": 118.0,
+            "buttonIdle": "MB2L",
+            "buttonActive": "MB2P"
+        },
+        "middle": {
+            "x": 0.0,
+            "y": -56.5,
+            "w": 35.0,
+            "h": 63.0,
+            "buttonIdle": "MB3L",
+            "buttonActive": "MB3P"
+        },
+        "scrollUp": {
+            "x": -0.5,
+            "y": -72.0,
+            "w": 32.0,
+            "h": 34.0,
+            "buttonIdle": "",
+            "buttonActive": "ScrollUpP"
+        },
+        "scrollDown": {
+            "x": -0.5,
+            "y": -41.0,
+            "w": 32.0,
+            "h": 32.0,
+            "buttonIdle": "",
+            "buttonActive": "ScrollDownP"
+        },
+        "mouse5": {
+            "x": -81.5,
+            "y": 20.0,
+            "w": 28.0,
+            "h": 40.0,
+            "buttonIdle": "MB5L",
+            "buttonActive": "MB5P"
+        },
+        "mouse4": {
+            "x": -74.5,
+            "y": 60.0,
+            "w": 28.0,
+            "h": 40.0,
+            "buttonIdle": "MB4L",
+            "buttonActive": "MB4P"
+        },
+        "bottom": {
+            "x": 0.5,
+            "y": 60.5,
+            "w": 190.0,
+            "h": 165.0,
+            "buttonIdle": "MouseBottom",
+            "buttonActive": ""
+        }
+    },
+  "name": "CoolPack"
+}

@@ -20,7 +20,7 @@ add_executable(${PROJECT_NAME} WIN32
     src/System/Helpers.cpp
 
     src/Config/Config.cpp
-    src/Config/ConfigJson.cpp
+    src/Config/JsonParser.cpp
 
     src/Input/Hotkeys.cpp
     src/Input/Mouse.cpp

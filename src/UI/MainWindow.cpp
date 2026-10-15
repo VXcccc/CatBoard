@@ -30,10 +30,10 @@ void SetObsMode(HWND hWnd, bool enabled) {
   int windowHeight{
       (int)(Layouts::activeLayout.windowHeight * MainWindow::getG_MainScale())};
 
-  // adding 30 pixles cuz of sysmenu
+  // adding 40 pixles cuz of sysmenu
   int obsWindowHeight{((int)(Layouts::activeLayout.windowHeight *
                              MainWindow::getG_MainScale())) +
-                      (30)};
+                      (40)};
 
   LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
   LONG_PTR style{GetWindowLongPtr(hWnd, GWL_STYLE)};
@@ -67,6 +67,5 @@ void SetObsMode(HWND hWnd, bool enabled) {
                enabled ? obsWindowHeight : windowHeight,
                SWP_NOMOVE | SWP_FRAMECHANGED);
 }
-
 
 }; // namespace MainWindow
