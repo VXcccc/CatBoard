@@ -1,6 +1,7 @@
 #pragma once
 
 #include "imgui.h"
+#include <array>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -10,17 +11,31 @@ enum class KeyProp { X, Y, W, H, maxProps };
 constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::maxProps)>
     KeyPropName{"X", "Y", "W", "H"};
 
+enum class KeyType { Keyboard, Wheel, ScrollUpDown, ScrollUp, ScrollDown, Max };
+
+struct SpecialKey {
+  KeyType type;
+  std::string name;
+};
+inline constexpr std::array<SpecialKey, 4> sKeysInfo{
+    SpecialKey{KeyType::Wheel, "Wheel"},
+    SpecialKey{KeyType::ScrollUpDown, "ScrollUpDown"},
+    SpecialKey{KeyType::ScrollUp, "ScrollUp"},
+    SpecialKey{KeyType::ScrollDown, "ScrollDown"},
+};
+
 struct Key {
-  int keyCode;
+  KeyType type{KeyType::Keyboard};
+  int code;
   std::string label;
   std::string shiftLabel;
   float x;
   float y;
   float w;
   float h;
+  bool usesVk() const { return type == KeyType::Keyboard; }
+  bool operator==(const Key &) const = default;
 };
-bool operator==(const Key &k1, const Key &k2);
-bool operator!=(const Key &k1, const Key &k2);
 
 struct Mouse {
   float centerX{10.0f};

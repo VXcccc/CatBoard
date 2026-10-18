@@ -145,7 +145,7 @@ private:
 void renderMouseIndicator(const ImVec2 &center,
                           const Mouse::Type mouseStyleType);
 
-void updateM1Highlight(const std::array<bool, 256> &currentFullKeysDown);
+void updateM1Highlight(bool m1Pressed);
 
 bool isTypeCircle(Mouse::Type type);
 bool isTypeRect(Mouse::Type type);

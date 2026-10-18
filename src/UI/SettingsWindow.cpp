@@ -559,9 +559,9 @@ void drawKeyboardSection(SettingsEditState &state) {
 
   ImGui::Checkbox("Animations", &state.theme.animation);
   if (state.theme.animation) {
-    ImGui::RadioButton("Scale", &state.theme.animType, Config::AnimType::Scale);
+    Helper::RadioEnum("Scale", &state.theme.animType, Config::AnimType::Scale);
     ImGui::SameLine();
-    ImGui::RadioButton("Lift", &state.theme.animType, Config::AnimType::Lift);
+    Helper::RadioEnum("Lift", &state.theme.animType, Config::AnimType::Lift);
     if (state.theme.animType == Config::AnimType::Lift) {
       ImGui::SameLine();
       Helper::HelpMarker(
@@ -699,6 +699,8 @@ void drawImageSection(SettingsEditState &state) {
 
     ImGui::DragFloat("Offset X", &state.theme.mouse.imageOffsetX);
     ImGui::DragFloat("Offset Y", &state.theme.mouse.imageOffsetY);
+
+    Helper::ColorEdit("Scroll counter", state.theme.mouse.scrollCounter);
   }
 
   static int prevIdleAlpha{};
@@ -832,13 +834,24 @@ void drawMiscTab(SettingsEditState &state) {
   drawThemeCombo(state);
 
   ImGui::SeparatorText("Overlay Properties");
+
+  Helper::HelpMarker(
+      "Overlay position that you select here saves into config,\n"
+      "if you use drag mode, the position wont be saved");
+
   if (ImGui::DragInt("OverlayX", &state.overlay.x))
     MainWindow::ApplyOverlayPosition();
   if (ImGui::DragInt("OverlayY", &state.overlay.y))
     MainWindow::ApplyOverlayPosition();
 
-  Helper::SliderFloat("Overlay Scale", state.overlay.scale, 0.0f, 3.0f, 0.0f,
-                      10.0f);
+  if (!state.misc.obsMode) {
+    if (Helper::SliderFloat("Overlay Scale", state.overlay.scale, 0.0f, 3.0f,
+                            0.0f, 10.0f)) {
+      MainWindow::ApplyOverlaySize();
+    }
+  } else {
+    state.overlay.scale = 1.0f;
+  }
 }
 
 void drawBindsTab(SettingsEditState &state) {
@@ -883,7 +896,22 @@ void drawConfigsTab(SettingsEditState &state) {
   drawConfigCombo(state);
 
   if (ImGui::Button("Save config")) {
-    Config::Save(Config::configs[state.currentConfig], buildSettings(state));
+    ImGui::OpenPopup("Save config");
+  }
+
+  if (ImGui::BeginPopupModal("Save config", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::Text("Are you sure you want to save %s config",
+                Config::configs[state.currentConfig].c_str());
+    if (ImGui::Button("Yes", ImVec2(100, 0))) {
+      Config::Save(Config::configs[state.currentConfig], buildSettings(state));
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("No", ImVec2(100, 0))) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
   }
 
   ImGui::SameLine();
@@ -909,9 +937,24 @@ void drawConfigsTab(SettingsEditState &state) {
   ImGui::SameLine();
 
   if (ImGui::Button("Delete config")) {
-    Config::Delete(Config::configs[state.currentConfig]);
-    Config::refreshConfigs();
-    validateCurrentIndex(state.currentConfig, std::size(Config::configs));
+    ImGui::OpenPopup("Delete config");
+  }
+
+  if (ImGui::BeginPopupModal("Delete config", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::Text("Are you sure you want to delete %s config",
+                Config::configs[state.currentConfig].c_str());
+    if (ImGui::Button("Yes", ImVec2(100, 0))) {
+      Config::Delete(Config::configs[state.currentConfig]);
+      Config::refreshConfigs();
+      validateCurrentIndex(state.currentConfig, std::size(Config::configs));
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::SameLine();
+    if (ImGui::Button("No", ImVec2(100, 0))) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
   }
 
   ImGui::SameLine();

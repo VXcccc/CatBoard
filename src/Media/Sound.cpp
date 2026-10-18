@@ -5,8 +5,8 @@
 #include "Config/Constants.h"
 #include "Media/Sound.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
-#include <fstream>
 #include "miniaudio.h"
+#include <fstream>
 #include <optional>
 #include <string>
 #include <string_view>
@@ -32,26 +32,24 @@ ma_uint64 msToFrames(double ms) {
 }
 
 bool initAudio() {
-  ma_decoding_backend_vtable *pCustomBackendVTables[] = {
+  static ma_decoding_backend_vtable *s_backends[] = {
       ma_decoding_backend_libvorbis,
   };
 
-  ma_resource_manager_config resourceManagerConfig =
-      ma_resource_manager_config_init();
-  resourceManagerConfig.ppCustomDecodingBackendVTables = pCustomBackendVTables;
-  resourceManagerConfig.customDecodingBackendCount =
-      sizeof(pCustomBackendVTables) / sizeof(pCustomBackendVTables[0]);
-  resourceManagerConfig.pCustomDecodingBackendUserData = nullptr;
+  ma_resource_manager_config cfg = ma_resource_manager_config_init();
+  cfg.ppCustomDecodingBackendVTables = s_backends;
+  cfg.customDecodingBackendCount =
+      static_cast<ma_uint32>(std::size(s_backends));
+  cfg.pCustomDecodingBackendUserData = nullptr;
 
-  if (ma_resource_manager_init(&resourceManagerConfig, &g_resourceManager) !=
-      MA_SUCCESS) {
+  if (ma_resource_manager_init(&cfg, &g_resourceManager) != MA_SUCCESS) {
     return false;
   }
 
-  ma_engine_config engineConfig = ma_engine_config_init();
-  engineConfig.pResourceManager = &g_resourceManager;
+  ma_engine_config engineCfg = ma_engine_config_init();
+  engineCfg.pResourceManager = &g_resourceManager;
 
-  if (ma_engine_init(&engineConfig, &g_engine) != MA_SUCCESS) {
+  if (ma_engine_init(&engineCfg, &g_engine) != MA_SUCCESS) {
     ma_resource_manager_uninit(&g_resourceManager);
     return false;
   }

@@ -1,8 +1,9 @@
 #include "Media/Images.h"
 #include "Config/Config.h"
 #include "Config/JsonParser.h"
-#include "Input/Hotkeys.h"
+#include "Input/Keyboard.h"
 #include "Input/Mouse.h"
+#include "Media/Fonts.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "UI/Layouts.h"
@@ -206,7 +207,7 @@ void drawSizeOfImages(const Pack &pack) {
   std::string output{};
   bool defaultRecorded{false};
   for (const auto &key : Layouts::activeLayout.keys) {
-    const Image *image{findImageForKey(key.keyCode)};
+    const Image *image{findImageForKey(key.code)};
     // maybe by activeFileName is better idk
     const std::string &fileName{image->backGroundFileName};
     Texture texture{getOrLoadTexture(fileName)};
@@ -217,20 +218,24 @@ void drawSizeOfImages(const Pack &pack) {
       output.append(
           std::format("Default key: W: {}, H: {} \n", texture.w, texture.h));
       defaultRecorded = true;
-    } else if (*image != pack.defaultKey){
-      output.append(std::format("{}: W: {}, H: {} \n", image->backGroundFileName,
-                                texture.w, texture.h));
+    } else if (*image != pack.defaultKey) {
+      output.append(std::format("{}: W: {}, H: {} \n",
+                                image->backGroundFileName, texture.w,
+                                texture.h));
     }
   }
-  
+
   ImGui::TextWrapped("%s", output.c_str());
 }
 
-void drawKeyboardImages(ImDrawList *draw,
-                        const std::array<bool, 256> &currentKeysDown) {
-  for (const auto &key : Layouts::activeLayout.keys) {
-    bool down{currentKeysDown[key.keyCode]};
-    const Image *image{findImageForKey(key.keyCode)};
+void drawKeyboardImages(ImDrawList *draw, const Keyboard::State &state) {
+  for (std::size_t i{0}; i < Layouts::activeLayout.keys.size(); ++i) {
+    const auto &v{state.visuals[i]};
+    const auto &key{Layouts::activeLayout.keys[i]};
+
+    bool down{v.active};
+
+    const Image *image{findImageForKey(key.code)};
     const std::string &fileName{down ? image->activeFileName
                                      : image->backGroundFileName};
 
@@ -238,7 +243,7 @@ void drawKeyboardImages(ImDrawList *draw,
     if (!texture.srv)
       continue;
 
-    const auto& ovScale{Config::activeConfig.overlay.scale};
+    const auto &ovScale{Config::activeConfig.overlay.scale};
     ImVec2 topLeft{key.x * ovScale, key.y * ovScale};
     // todo fix the problem with different size of key in layout and in image
     // size
@@ -252,6 +257,7 @@ void drawKeyboardImages(ImDrawList *draw,
 
 void handleScroll(ImDrawList *draw, const MouseButton &scroll,
                   const ImVec2 &partCenter, bool up) {
+  ImGui::PushFont(Fonts::overlayFont);
   int counter{up ? ::Mouse::g_mouseState.getScrollUpTimes()
                  : ::Mouse::g_mouseState.getScrollDownTimes()};
   if (counter > 0) {
@@ -260,14 +266,18 @@ void handleScroll(ImDrawList *draw, const MouseButton &scroll,
     ImVec2 textSize{ImGui::CalcTextSize(label.c_str())};
     ImVec2 textPos{partCenter.x - (textSize.x * 0.5f),
                    partCenter.y - (textSize.y * 0.5f)};
-    ImU32 textColor{Helper::ToImU32(Config::activeConfig.theme.activeText)};
+    ImU32 textColor{
+        Helper::ToImU32(Config::activeConfig.theme.mouse.scrollCounter)};
     draw->AddText(textPos, textColor, label.c_str());
   }
+  ImGui::PopFont();
 }
 
 void drawMousePart(ImDrawList *draw, const ImVec2 &center,
                    const MouseButton &part, bool active) {
   const std::string &fileName{active ? part.buttonActive : part.buttonIdle};
+  if (fileName.empty())
+    return;
   Texture texture{getOrLoadTexture(fileName)};
   if (!texture.srv)
     return;
@@ -280,8 +290,9 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   float partY{((part.y + mouse.imageOffsetY) * mouse.imageScale) * ovScale};
   ImVec2 partCenter{center.x + partX, center.y + partY};
 
-  ImVec2 topLeft{(partCenter.x - ((part.w * mouse.imageScale) * ovScale) * 0.5f),
-                 partCenter.y - ((part.h * mouse.imageScale) * ovScale) * 0.5f};
+  ImVec2 topLeft{
+      (partCenter.x - ((part.w * mouse.imageScale) * ovScale) * 0.5f),
+      partCenter.y - ((part.h * mouse.imageScale) * ovScale) * 0.5f};
   ImVec2 bottomRight{topLeft.x + ((part.w * mouse.imageScale) * ovScale),
                      topLeft.y + ((part.h * mouse.imageScale) * ovScale)};
 
@@ -297,7 +308,7 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
 }
 
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
-                     const std::array<bool, 256> &currentKeysDown) {
+                     const Keyboard::KeyBitSet &keysDown) {
   const Mouse &mouse{activePack.mouse};
   const auto &mouseState{::Mouse::g_mouseState};
   bool scrollUpActive{mouseState.isScrollUpActive()};
@@ -308,14 +319,14 @@ void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
     scrollUpActive = false;
   }
 
-  drawMousePart(draw, center, mouse.left, currentKeysDown[VK_LBUTTON]);
-  drawMousePart(draw, center, mouse.right, currentKeysDown[VK_RBUTTON]);
-  drawMousePart(draw, center, mouse.mouse4, currentKeysDown[VK_XBUTTON1]);
-  drawMousePart(draw, center, mouse.mouse5, currentKeysDown[VK_XBUTTON2]);
+  drawMousePart(draw, center, mouse.left, keysDown[VK_LBUTTON]);
+  drawMousePart(draw, center, mouse.right, keysDown[VK_RBUTTON]);
+  drawMousePart(draw, center, mouse.mouse4, keysDown[VK_XBUTTON1]);
+  drawMousePart(draw, center, mouse.mouse5, keysDown[VK_XBUTTON2]);
   drawMousePart(draw, center, mouse.bottom, false);
   // fix middle
 
-  drawMousePart(draw, center, mouse.middle, currentKeysDown[VK_MBUTTON]);
+  drawMousePart(draw, center, mouse.middle, keysDown[VK_MBUTTON]);
 
   drawMousePart(draw, center, mouse.scrollUp, scrollUpActive);
   drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);

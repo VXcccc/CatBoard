@@ -1,19 +1,22 @@
 #include "UI/Layouts.h"
 #include "Config/Config.h"
-#include "Config/JsonParser.h"
 #include "Config/Constants.h"
+#include "Config/JsonParser.h"
 #include "Input/Mouse.h"
 #include "Media/Fonts.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "UI/MainWindow.h"
+#include "UI/States.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include <algorithm>
+#include <array>
 #include <cctype>
 #include <filesystem>
 #include <fstream>
+#include <string>
 #include <string_view>
 #include <synchapi.h>
 #include <vector>
@@ -25,13 +28,6 @@ namespace Layouts {
 std::vector<std::string> layouts{};
 Layout activeLayout{};
 std::string defaultLayoutName{"layout7t"};
-
-bool operator==(const Key &k1, const Key &k2) {
-  return (k1.x == k2.x && k1.y == k2.y && k1.w == k2.w && k1.h == k2.h &&
-          k1.label == k2.label && k1.keyCode == k2.keyCode &&
-          k1.shiftLabel == k2.shiftLabel);
-}
-bool operator!=(const Key &k1, const Key &k2) { return !(k1 == k2); }
 
 void refreshLayouts() {
   Helper::refresh(layouts, Paths::layoutDirectory(), ".json");
@@ -57,11 +53,14 @@ bool loadLayoutFile(std::string_view name) {
 }
 
 bool loadLayout(std::string_view name) {
-  if (loadLayoutFile(name))
+  if (loadLayoutFile(name)) {
+    States::keyboard.resyncVisuals(activeLayout);
     return true;
-
-  if (name != defaultLayoutName)
-    return loadLayoutFile(defaultLayoutName);
+  } else if (name != defaultLayoutName)
+    if (loadLayoutFile(defaultLayoutName)) {
+      States::keyboard.resyncVisuals(activeLayout);
+      return true;
+    }
 
   return false;
 }
@@ -338,6 +337,9 @@ static float snapValue(float v, float gridSize) {
 }
 
 void recordKeyCode(LayoutEditState &state, Key &key) {
+  if (!state.recordingKeyCode)
+    return;
+
   if (state.recordingKeyCode) {
     for (int vk{1}; vk < 256; ++vk) {
       if (vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU) {
@@ -345,7 +347,7 @@ void recordKeyCode(LayoutEditState &state, Key &key) {
       }
       if (GetAsyncKeyState(vk) & 0x8000) {
         saveUndoClearRedo(state);
-        key.keyCode = vk;
+        key.code = vk;
         // if (key.label.empty()) {
         //   key.label = Helper::VkToName(vk);
         // }
@@ -359,19 +361,25 @@ void recordKeyCode(LayoutEditState &state, Key &key) {
   }
 }
 
-void addKey(LayoutEditState &state) {
+static std::pair<float, float>
+getLastKeyPos(LayoutEditState &state,
+              const std::pair<float, float> defaultKeySize) {
+  return state.layout.keys.empty()
+             ? std::pair<float, float>{10.0f, 10.0f}
+             : std::pair<float, float>{state.layout.keys.back().x +
+                                           defaultKeySize.first + state.gap,
+                                       state.layout.keys.back().y};
+}
+
+void addKey(LayoutEditState &state, KeyType type = KeyType::Keyboard) {
   state.selection.Clear();
   std::pair<float, float> defaultKeySize{state.defaultKeyWidth,
                                          state.defaultKeyHeight};
 
-  std::pair<float, float> lastKeyPos{
-      state.layout.keys.empty()
-          ? std::pair<float, float>{10.0f, 10.0f}
-          : std::pair<float, float>{state.layout.keys.back().x +
-                                        defaultKeySize.first + state.gap,
-                                    state.layout.keys.back().y}};
+  std::pair<float, float> lastKeyPos{getLastKeyPos(state, defaultKeySize)};
 
-  Key newKey{0,
+  Key newKey{type,
+             0,
              "",
              "",
              lastKeyPos.first,
@@ -384,7 +392,8 @@ void addKey(LayoutEditState &state) {
   state.mouseCenterSelected = false;
 
   // insta record after adding key
-  state.recordingKeyCode = true;
+  if (type == KeyType::Keyboard)
+    state.recordingKeyCode = true;
 }
 
 void deleteSelectedKeys(LayoutEditState &state) {
@@ -962,6 +971,18 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
     if (ImGui::Button("Add key")) {
       addKey(state);
     }
+    if (ImGui::Button("Add special Key")) {
+      ImGui::OpenPopup("SpecialKeyPopup");
+    }
+    if (ImGui::BeginPopup("SpecialKeyPopup")) {
+      // ImGui::SeparatorText("Special keys");
+      for (std::size_t i{0}; i < sKeysInfo.size(); ++i) {
+        const auto &sKey{sKeysInfo[i]};
+        if (ImGui::Selectable(sKey.name.c_str()))
+          addKey(state, sKey.type);
+      }
+      ImGui::EndPopup();
+    }
     return;
   }
 
@@ -999,11 +1020,19 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
     ImGui::SameLine();
     Helper::HelpMarker("Shift label");
 
-    ImGui::Text("Key code: %d", key.keyCode);
-    ImGui::SameLine();
-    if (ImGui::Button(state.recordingKeyCode ? "Press a key..."
-                                             : "Record key")) {
-      state.recordingKeyCode = true;
+    if (key.type == KeyType::Keyboard) {
+      ImGui::Text("Key code: %d", key.code);
+      ImGui::SameLine();
+      if (ImGui::Button(state.recordingKeyCode ? "Press a key..."
+                                               : "Record key")) {
+        state.recordingKeyCode = true;
+      }
+    } else {
+      ImGui::Text("Type: %s", std::find_if(sKeysInfo.begin(), sKeysInfo.end(),
+                                           [&](const SpecialKey &sKey) {
+                                             return sKey.type == key.type;
+                                           })
+                                  ->name.c_str());
     }
 
     recordKeyCode(state, key);

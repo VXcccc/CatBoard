@@ -1,11 +1,18 @@
 #pragma once
 
+#include "Config/Constants.h"
 #include "UI/Layouts.h"
 #include "imgui.h"
+#include <bitset>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 #include <windows.h>
+
+// forward declarations
+namespace Keyboard {
+using KeyBitSet = std::bitset<Consts::VK_COUNT>;
+}
 
 namespace Fonts {
 extern const std::string defaultFontName;
@@ -46,7 +53,7 @@ void refreshFonts();
 
 std::string applyLetterCase(const std::string &label, LetterCaseMode mode);
 
-std::string handleLetterCase(const std::array<bool, 256> &currentFullKeysDown,
+std::string handleLetterCase(const Keyboard::KeyBitSet &currentFullKeysDown,
                              Font &font, const Layouts::Key &key);
 
 } // namespace Fonts

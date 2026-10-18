@@ -1,11 +1,18 @@
 #pragma once
 
+#include "Config/Constants.h"
 #include "imgui.h"
+#include <bitset>
 #include <d3d11.h>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <vector>
 using json = nlohmann::json;
+// forward declarations
+namespace Keyboard {
+struct State;
+using KeyBitSet = std::bitset<Consts::VK_COUNT>;
+} // namespace Keyboard
 
 namespace Images {
 struct Image {
@@ -57,11 +64,11 @@ bool installDefaultImagePacks();
 //                          ID3D11ShaderResourceView **out_srv, int *out_width,
 //                          int *out_height);
 
-void drawKeyboardImages(ImDrawList *draw,
-                        const std::array<bool, 256> &currentKeysDown);
+void drawKeyboardImages(ImDrawList *draw, const Keyboard::State &state);
+
 bool Load(std::string_view name);
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
-                     const std::array<bool, 256> &currentKeysDown);
+                     const Keyboard::KeyBitSet &currentKeysDown);
 
 void refreshImagePacks();
 

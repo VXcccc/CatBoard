@@ -80,6 +80,8 @@ struct MouseTheme {
   bool highlightM1{true};
   ColorRGBA highlightColor{255, 255, 255, 255};
   float higlightScale{1.25f};
+
+  ColorRGBA scrollCounter{0, 0, 0, 255};
 };
 
 enum class AnimType { Scale, Lift, MaxAnimTypes };

@@ -61,26 +61,27 @@ void from_json(const json &j, Trail &trail) {
 }
 
 void to_json(json &j, const MouseTheme &mouseTheme) {
-  j = {
-      {"enabled", mouseTheme.enabled},
-      {"style", mouseTheme.style},
-      {"inner", mouseTheme.inner},
-      {"outer", mouseTheme.outer},
-      {"fill", mouseTheme.fill},
-      {"lerpColor", mouseTheme.lerpColor},
-      {"smallRadius", mouseTheme.smallRadius},
-      {"outerThickness", mouseTheme.outerThickness},
-      {"sensitivity", mouseTheme.sensitivity},
-      {"decayRate", mouseTheme.decayRate},
-      {"imagesDisplay", mouseTheme.imagesDisplay},
-      {"imageOpacity", mouseTheme.imageOpacity},
-      {"imageScale", mouseTheme.imageScale},
-      {"fadeTime", mouseTheme.fadeTime},
-      {"rounding", mouseTheme.rounding},
-      {"trail", mouseTheme.trail},
-      {"highlightM1", mouseTheme.highlightM1},
-      {"highlightColor", mouseTheme.highlightColor},
-      {"highlightScale", mouseTheme.higlightScale},
+  j = {{"enabled", mouseTheme.enabled},
+       {"style", mouseTheme.style},
+       {"inner", mouseTheme.inner},
+       {"outer", mouseTheme.outer},
+       {"fill", mouseTheme.fill},
+       {"lerpColor", mouseTheme.lerpColor},
+       {"smallRadius", mouseTheme.smallRadius},
+       {"outerThickness", mouseTheme.outerThickness},
+       {"sensitivity", mouseTheme.sensitivity},
+       {"decayRate", mouseTheme.decayRate},
+       {"imagesDisplay", mouseTheme.imagesDisplay},
+       {"imageOpacity", mouseTheme.imageOpacity},
+       {"imageScale", mouseTheme.imageScale},
+       {"fadeTime", mouseTheme.fadeTime},
+       {"rounding", mouseTheme.rounding},
+       {"trail", mouseTheme.trail},
+       {"highlightM1", mouseTheme.highlightM1},
+       {"highlightColor", mouseTheme.highlightColor},
+       {"highlightScale", mouseTheme.higlightScale},
+       {"scrollCounter", mouseTheme.scrollCounter}
+
   };
 }
 
@@ -243,7 +244,7 @@ void to_json(json &j, const Settings &settings) {
        {"selectedLayout", settings.selectedLayout},
        {"soundPack", settings.soundPack},
        {"binds", settings.binds},
-       {"overlayPos", settings.overlay},
+       {"overlay", settings.overlay},
        {"font", settings.font},
        {"misc", settings.misc},
        {"configName", settings.configName},
@@ -266,8 +267,8 @@ void from_json(const json &j, Settings &settings) {
   if (j.contains("binds"))
     j.at("binds").get_to(settings.binds);
 
-  if (j.contains("overlayPos"))
-    j.at("overlayPos").get_to(settings.overlay);
+  if (j.contains("overlay"))
+    j.at("overlay").get_to(settings.overlay);
 
   if (j.contains("font"))
     j.at("font").get_to(settings.font);
@@ -299,7 +300,7 @@ void from_json(const json &j, Misc &misc) {
 }
 
 void to_json(json &j, const Overlay &overlay) {
-  j = {{"x", overlay.x}, {"y", overlay.y}};
+  j = {{"x", overlay.x}, {"y", overlay.y}, {"scale", overlay.scale}};
 }
 
 void from_json(const json &j, Overlay &overlay) {
@@ -307,6 +308,8 @@ void from_json(const json &j, Overlay &overlay) {
     j.at("x").get_to(overlay.x);
   if (j.contains("y"))
     j.at("y").get_to(overlay.y);
+  if (j.contains("scale"))
+    j.at("scale").get_to(overlay.scale);
 }
 
 } // namespace Config
@@ -400,18 +403,18 @@ void from_json(const json &j, TrailStyle &trailStyle) {
 
 namespace Layouts {
 void to_json(nlohmann::json &j, const Key &key) {
-  j = {{"keyCode", key.keyCode},
-       {"label", key.label},
-       {"shiftLabel", key.shiftLabel},
-       {"x", key.x},
-       {"y", key.y},
-       {"w", key.w},
-       {"h", key.h}};
+  j = {{"type", key.type},   {"keyCode", key.code},
+       {"label", key.label}, {"shiftLabel", key.shiftLabel},
+       {"x", key.x},         {"y", key.y},
+       {"w", key.w},         {"h", key.h}};
 }
 
 void from_json(const nlohmann::json &j, Key &key) {
+  if (j.contains("type"))
+    j.at("type").get_to(key.type);
+
   if (j.contains("keyCode"))
-    j.at("keyCode").get_to(key.keyCode);
+    j.at("keyCode").get_to(key.code);
 
   if (j.contains("label"))
     j.at("label").get_to(key.label);

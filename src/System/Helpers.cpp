@@ -8,6 +8,7 @@
 #include <cstdlib>
 #include <exception>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -242,4 +243,3 @@ std::string VkToName(int vk) {
 }
 
 } // namespace Helper
-

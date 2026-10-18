@@ -3,7 +3,9 @@
 #include <d3d11.h>
 #include <windows.h>
 
-// gonna move it to another file ig
+namespace Config {
+  struct Overlay;
+}
 
 namespace MainWindow {
 
@@ -25,4 +27,7 @@ void setClearColor(const ImVec4 &clearColor);
 void SetDragMode(HWND hWnd, bool enabled);
 void SetResizeMode(HWND hWnd, bool enabled);
 void SetObsMode(HWND hWnd, bool enabled);
+
+
+bool overlayChanged(Config::Overlay &outPrevOv, const Config::Overlay &curOv);
 } // namespace MainWindow

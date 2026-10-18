@@ -388,9 +388,9 @@ ImU32 applyFade(const Config::ColorRGBA &initColor, const float fade) {
   return Helper::ToImU32(Helper::toConfigColor(initColorImVec));
 }
 
-void updateM1Highlight(const std::array<bool, 256> &currentFullKeysDown) {
+void updateM1Highlight(bool m1Pressed) {
   const auto &mouse{Config::activeConfig.theme.mouse};
-  s_m1Highlighted = mouse.highlightM1 && currentFullKeysDown[VK_LBUTTON];
+  s_m1Highlighted = mouse.highlightM1 && m1Pressed;
 }
 
 static float highlightScale() {

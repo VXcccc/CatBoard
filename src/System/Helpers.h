@@ -4,11 +4,10 @@
 // #include "Config/Config.h"
 #include "imgui.h"
 #include <array>
-#include <concepts>
 #include <exception>
+#include <functional>
 #include <filesystem>
 #include <string>
-#include <type_traits>
 #include <vector>
 
 namespace Config {
@@ -126,19 +125,15 @@ std::vector<T> arrToVec(const std::array<T, size> &arr) {
   return vec;
 }
 
-}; // namespace Helper
-
-namespace ImGui {
-
 // P.S. i overloaded this function for enums
-template <typename T> bool RadioButton(const char *label, T *v, T v_button) {
-  const bool pressed = RadioButton(label, *v == v_button);
+template <typename T> bool RadioEnum(const char *label, T *v, T v_button) {
+  const bool pressed = ImGui::RadioButton(label, *v == v_button);
   if (pressed)
     *v = v_button;
   return pressed;
 }
 
-} // namespace ImGui
+}; // namespace Helper
 
 inline bool operator==(const ImVec2 &a, const ImVec2 &b) {
   return a.x == b.x && a.y == b.y;

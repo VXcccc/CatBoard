@@ -1,13 +1,11 @@
 #include "Media/Fonts.h"
 #include "Config/Config.h"
 #include "Config/Constants.h"
+#include "Input/Keyboard.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "imgui.h"
-#include "imgui_impl_dx11.h"
-#include <cctype>
 #include <string>
-#include <unordered_map>
 #include <vector>
 #include <windows.h>
 #include <winuser.h>
@@ -79,7 +77,7 @@ bool installDefaultFonts() {
 }
 
 // bool isLetterKey(const Layouts::Key &key) {
-//   return (key.keyCode >= 'A' && key.keyCode <= 'Z');
+//   return (key.code >= 'A' && key.code <= 'Z');
 // }
 
 bool isLetterKey(int vkCode) {
@@ -146,19 +144,19 @@ std::string applyLetterCase(const std::string &label, Font &font) {
   }
 }
 
-std::string handleCapsLock(const std::array<bool, 256> &currentFullKeysDown,
+std::string handleCapsLock(const Keyboard::KeyBitSet &currentFullKeysDown,
                            Font &font, const Layouts::Key &key,
                            const bool capsLockDown) {
   font.letterCase.upper = !font.letterCase.upper;
   if (capsLockDown) {
-    if (isLetterKey(key.keyCode)) {
+    if (isLetterKey(key.code)) {
       return changeStringCase(key.label, font.letterCase.upper);
     }
   }
   return applyLetterCase(key.label, font);
 }
 
-std::string handleShift(const std::array<bool, 256> &currentFullKeysDown,
+std::string handleShift(const Keyboard::KeyBitSet &currentFullKeysDown,
                         Font &font, const Layouts::Key &key,
                         const bool shiftDown) {
 
@@ -175,7 +173,7 @@ std::string handleShift(const std::array<bool, 256> &currentFullKeysDown,
     }
 
     if (font.letterCase.options.capsSensitiveKeys) {
-      if (isLetterKey(key.keyCode)) {
+      if (isLetterKey(key.code)) {
         return changeStringCase(key.label, font.letterCase.upper);
       }
     }
@@ -184,7 +182,7 @@ std::string handleShift(const std::array<bool, 256> &currentFullKeysDown,
   return applyLetterCase(key.label, font);
 }
 
-std::string handleLetterCase(const std::array<bool, 256> &currentFullKeysDown,
+std::string handleLetterCase(const Keyboard::KeyBitSet &currentFullKeysDown,
                              Font &font, const Layouts::Key &key) {
   bool capsLockDown{(GetKeyState(VK_CAPITAL) & 1) != 0};
   bool shiftDown{currentFullKeysDown[VK_LSHIFT] ||

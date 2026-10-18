@@ -6,6 +6,10 @@
 #include <windows.h>
 #include <winuser.h>
 
+namespace Keyboard {
+struct State;
+}
+
 namespace Binds {
 // binds
 enum class BindType {
@@ -35,10 +39,9 @@ extern bool g_bindJustRecorded;
 
 bool recordBind(Bind &outBind);
 
-void handleBinds(const std::array<bool, 256> &prevKeyState,
-                 const std::array<bool, 256> &currentKeysDown, HWND hWnd);
+void handleBinds(const Keyboard::State &state, HWND hWnd);
 
-void syncBindsOrder(BindsVector& outBinds);
+void syncBindsOrder(BindsVector &outBinds);
 } // namespace Binds
 
 #endif // !INPUTHANDLE_H

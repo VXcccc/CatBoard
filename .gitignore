@@ -4,3 +4,4 @@ Legacy/
 todo.txt
 CMakePresets.json
 .clangd
+compile_commands.json

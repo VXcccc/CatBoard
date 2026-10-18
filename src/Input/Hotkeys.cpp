@@ -1,5 +1,6 @@
 #include "Input/Hotkeys.h"
 #include "Config/Config.h"
+#include "Input/Keyboard.h"
 #include "System/Helpers.h"
 #include "System/Tray.h"
 #include "UI/MainWindow.h"
@@ -21,7 +22,7 @@ const BindsArray defaultBinds{
 
 static_assert(defaultBinds.size() ==
                   static_cast<std::size_t>(BindType::max_bindTypes),
-              "default binds array out of sync with bynd type enum");
+              "default binds array out of sync with bind type enum");
 
 void handleBindType(const BindType type, HWND hWnd) {
   switch (type) {
@@ -52,11 +53,10 @@ void handleBindType(const BindType type, HWND hWnd) {
   }
 }
 
-void handleBinds(const std::array<bool, 256> &prevKeyState,
-                 const std::array<bool, 256> &currentKeysDown, HWND hWnd) {
+//todo check this function for errors
+void handleBinds(const Keyboard::State &kb, HWND hWnd) {
   for (const auto &bind : Config::activeConfig.binds) {
-    bool down{currentKeysDown[bind.vkCode]};
-    if (down && !prevKeyState[bind.vkCode]) {
+    if (kb.pressed(bind.vkCode)) {
       handleBindType(bind.type, hWnd);
     }
   }
@@ -118,7 +118,7 @@ bool recordBind(Bind &outBind) {
   return false;
 }
 
-// add for compability with old configs if new bind added
+// add for compatibility with old configs if new bind added
 void syncBindsOrder(BindsVector &outBinds) {
   const auto previousBinds{outBinds};
 

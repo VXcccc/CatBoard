@@ -1,47 +1,61 @@
 #pragma once
-#include <array>
+#include "Config/Constants.h"
+#include "imgui.h"
+#include <bitset>
+#include <vector>
 
 // forward declarations
 namespace Layouts {
 struct Layout;
 }
-namespace Render {
-struct KeyColors;
+namespace Mouse {
+class MouseState;
 }
 
 namespace Keyboard {
-bool detectAnyKeyChanged(const Layouts::Layout &layout,
-                         const std::array<bool, 256> &prevKeyState,
-                         std::array<bool, 256> &outCurrentDown);
+using KeyBitSet = std::bitset<Consts::VK_COUNT>;
+struct KeyColors {
+  ImVec4 fill{};
+  ImVec4 text{};
+  ImVec4 outline{};
+};
 
-bool detectAnyMouseKeyChanged(const std::array<bool, 256> &prevKeyState,
-                              std::array<bool, 256> &outCurrentDown);
+struct KeyVisual {
+  bool active{false};
+  float scale{1.0f};
+  KeyColors colors{};
+};
 
-void commitKeyState(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown,
-                    std::array<bool, 256> &outPrevKeyState);
+struct State {
+  KeyBitSet down{};
+  KeyBitSet prevDown{};
+  std::vector<KeyVisual> visuals{};
+
+  void pollFullKeyboard();
+  bool anyChanged() const { return (down ^ prevDown).any(); }
+  bool pressed(int vk) const { return down[vk] && !prevDown[vk]; }
+  bool released(int vk) const { return !down[vk] && prevDown[vk]; }
+
+  // visuals vector is synced with layout indicies
+  void resyncVisuals(const Layouts::Layout &layout);
+};
+
+// bool detectAnyMouseKeyChanged(Keyboard::State &state);
 
 void handleKeySound(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &prevKeyState,
-                    const std::array<bool, 256> &currentDown);
+                    const Keyboard::State &state);
 
-void handleKeySoundFull(const std::array<bool, 256> &prevKeyState,
-                        const std::array<bool, 256> &currentKeysDown);
+void handleKeySoundFull(const Keyboard::State &state);
 
-void pollFullKeyboard(std::array<bool, 256> &outCurrentKeysDown);
+void updateActive(const Layouts::Layout &layout, Keyboard::State &state,
+                  const Mouse::MouseState &mouse);
 
-bool updateKeyColors(const Layouts::Layout &layout,
-                     const std::array<bool, 256> &currentKeysDown,
-                     std::array<Render::KeyColors, 256> &outColors,
+bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &state,
                      float deltaTime);
 
-bool updateAnimations(const Layouts::Layout &layout,
-                      const std::array<bool, 256> &currentKeysDown,
-                      std::array<float, 256> &outKeysScale, float deltaTime);
+bool updateScale(const Layouts::Layout &layout, Keyboard::State &state,
+                 float deltaTime);
 
 void renderKeyboard(const Layouts::Layout &layout,
-                    const std::array<bool, 256> &currentKeysDown,
-                    const std::array<bool, 256> &currentFullKeysDown,
-                    const std::array<float, 256> &keysScale,
-                    const std::array<Render::KeyColors, 256> &keysColors);
+                    const Keyboard::State &state);
 } // namespace Keyboard

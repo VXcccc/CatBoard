@@ -13,6 +13,7 @@
 //
 // See LICENSE for the full license text.
 
+#include <minwindef.h>
 #ifndef DEBUG_CATBOARD
 // #define DEBUG_CATBOARD
 #endif
@@ -28,13 +29,12 @@
 #include "System/Tray.h"
 #include "UI/Layouts.h"
 #include "UI/MainWindow.h"
-#include "UI/Render.h"
 #include "UI/SettingsWindow.h"
+#include "UI/States.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include <algorithm>
-#include <array>
 #include <chrono>
 #include <cmath>
 #include <conio.h>
@@ -117,20 +117,29 @@ void Hide() {
 bool IsVisible() { return s_visible; }
 
 void ApplyOverlayPosition() {
-  int windowWidth{(int)(Layouts::activeLayout.windowWidth * g_main_scale)};
-  int windowHeight{(int)(Layouts::activeLayout.windowHeight * g_main_scale)};
+  if (g_dragMode) {
+    return;
+  }
+
+  const auto &ovScale{Config::activeConfig.overlay.scale};
+  int windowWidth{
+      (int)((Layouts::activeLayout.windowWidth * g_main_scale) * ovScale)};
+  int windowHeight{
+      (int)((Layouts::activeLayout.windowHeight * g_main_scale) * ovScale)};
   POINT pos = getOverlayPosition(windowWidth, windowHeight);
   SetWindowPos(s_hwnd, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
 
 void ApplyOverlaySize() {
   bool obsMode{Config::activeConfig.misc.obsMode};
-  int windowWidth{
-      static_cast<int>(Layouts::activeLayout.windowWidth * g_main_scale)};
+  const auto &ovScale{Config::activeConfig.overlay.scale};
+  int windowWidth{static_cast<int>(
+      (Layouts::activeLayout.windowWidth * g_main_scale) * ovScale)};
 
   int windowHeight{static_cast<int>(
-      obsMode ? Layouts::activeLayout.windowHeight + 40.0f * g_main_scale
-              : Layouts::activeLayout.windowHeight * g_main_scale)};
+      obsMode ? ((Layouts::activeLayout.windowHeight + 40.0f) * g_main_scale) *
+                    ovScale
+              : (Layouts::activeLayout.windowHeight * g_main_scale) * ovScale)};
 
   SetWindowPos(s_hwnd, nullptr, 0, 0, windowWidth, windowHeight,
                SWP_NOMOVE | SWP_NOZORDER);
@@ -299,18 +308,8 @@ int main(int, char **) {
   // prevKeyState holding previous frame state
   //
   // arrays only for layouts keys
-  static std::array<bool, 256> prevKeyState{};
-  static std::array<bool, 256> currentKeysDown{};
-  static std::array<float, 256> keysScale = [] {
-    std::array<float, 256> scales{};
-    scales.fill(1.0f);
-    return scales;
-  }();
-  std::array<Render::KeyColors, 256> keysColors{};
 
   // arrays for full keyboard
-  static std::array<bool, 256> prevFullKeyState{};
-  static std::array<bool, 256> currentFullKeysDown{};
   static bool firstFrame = true;
 
   // deltaTime
@@ -318,6 +317,8 @@ int main(int, char **) {
   LARGE_INTEGER lastDeltaTime;
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&lastDeltaTime);
+
+  static Config::Overlay prevOverlay{};
 
   // debug
   SettingsWindow::Show();
@@ -362,19 +363,10 @@ int main(int, char **) {
 
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
 
-    bool anyKeyChanged{Keyboard::detectAnyKeyChanged(
-        Layouts::activeLayout, prevKeyState, currentKeysDown)};
-    bool anyMouseKeyChanged{Keyboard::detectAnyMouseKeyChanged(
-        prevFullKeyState, currentFullKeysDown)};
+    bool overlayPropertiesChanged{
+        MainWindow::overlayChanged(prevOverlay, Config::activeConfig.overlay)};
 
-    bool scaleAnimating{Keyboard::updateAnimations(
-        Layouts::activeLayout, currentKeysDown, keysScale, deltaTime)};
-    bool colorAnimating{Keyboard::updateKeyColors(
-        Layouts::activeLayout, currentKeysDown, keysColors, deltaTime)};
-
-    bool animationActive{scaleAnimating || colorAnimating};
-
-    Keyboard::pollFullKeyboard(currentFullKeysDown);
+    States::keyboard.pollFullKeyboard();
 
     // mouse poll
     Mouse::g_mouseState.consumePendingDelta();
@@ -391,29 +383,34 @@ int main(int, char **) {
     }
 
     if (Config::activeConfig.theme.mouse.highlightM1)
-      Mouse::updateM1Highlight(currentFullKeysDown);
+      Mouse::updateM1Highlight(States::keyboard.pressed(VK_LBUTTON));
 
     Mouse::g_mouseState.updateScroll(deltaTime);
     Mouse::g_mouseState.updateTrail(
         deltaTime, Config::activeConfig.theme.mouse.trail.style.type);
 
-    if (Binds::g_bindJustRecorded) {
-      prevFullKeyState = currentFullKeysDown;
-      Binds::g_bindJustRecorded = false;
-    } else {
-      Binds::handleBinds(prevFullKeyState, currentFullKeysDown, s_hwnd);
-    }
+    bool anyKeyChanged{States::keyboard.anyChanged()};
+
+    Keyboard::updateActive(Layouts::activeLayout, States::keyboard,
+                           Mouse::g_mouseState);
+
+    bool scaleAnimating{Keyboard::updateScale(Layouts::activeLayout,
+                                              States::keyboard, deltaTime)};
+
+    bool colorAnimating{Keyboard::updateKeyColors(Layouts::activeLayout,
+                                                  States::keyboard, deltaTime)};
+
+    bool animationActive{scaleAnimating || colorAnimating};
+
+    Binds::handleBinds(States::keyboard, s_hwnd);
 
     if (Config::activeConfig.soundPack.enable) {
       if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
-        Keyboard::handleKeySound(Layouts::activeLayout, prevKeyState,
-                                 currentKeysDown);
+        Keyboard::handleKeySound(Layouts::activeLayout, States::keyboard);
       } else {
-        Keyboard::handleKeySoundFull(prevFullKeyState, currentFullKeysDown);
+        Keyboard::handleKeySoundFull(States::keyboard);
       }
     }
-
-    prevFullKeyState = currentFullKeysDown;
 
     static int prevScrollState;
     int currentScrollState{Mouse::g_mouseState.getScrollDownTimes() +
@@ -427,8 +424,8 @@ int main(int, char **) {
                                   Mouse::g_mouseState.getSensivity() ||
                               scrollActive};
 
-    bool needsRender{anyKeyChanged || anyMouseKeyChanged || firstFrame ||
-                     mouseIndicatorActive || animationActive ||
+    bool needsRender{anyKeyChanged || firstFrame || mouseIndicatorActive ||
+                     animationActive || overlayPropertiesChanged ||
                      (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
                      SettingsWindow::IsVisible()};
 
@@ -439,17 +436,13 @@ int main(int, char **) {
     }
     firstFrame = false;
 
-    Keyboard::commitKeyState(Layouts::activeLayout, currentKeysDown,
-                             prevKeyState);
-
     // Start the Dear ImGui frame
     ImGui_ImplDX11_NewFrame();
     ImGui_ImplWin32_NewFrame();
 
     ImGui::NewFrame();
 
-    Keyboard::renderKeyboard(Layouts::activeLayout, currentKeysDown,
-                             currentFullKeysDown, keysScale, keysColors);
+    Keyboard::renderKeyboard(Layouts::activeLayout, States::keyboard);
 
     const auto &ovScale{Config::activeConfig.overlay.scale};
     ImVec2 mouseCenter(Layouts::activeLayout.mouse.centerX * ovScale,
@@ -460,7 +453,7 @@ int main(int, char **) {
     }
     if (Config::activeConfig.theme.mouse.imagesDisplay) {
       Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                              currentFullKeysDown);
+                              States::keyboard.down);
     }
 
     // debug
@@ -806,10 +799,10 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     }
     break;
   case WM_EXITSIZEMOVE: {
-    RECT rect;
-    GetWindowRect(hWnd, &rect);
-    Config::activeConfig.overlay.x = rect.left;
-    Config::activeConfig.overlay.y = rect.top;
+    // RECT rect;
+    // GetWindowRect(hWnd, &rect);
+    // Config::activeConfig.overlay.x = rect.left;
+    // Config::activeConfig.overlay.y = rect.top;
     Config::Apply(Config::activeConfig);
     return 0;
   }

@@ -34,6 +34,8 @@ constexpr std::string BLANK_LABEL{"BLANK_LABEL"};
 constexpr float EDITOR_MINZOOM{1.0f};
 constexpr float EDITOR_MAXZOOM{100.0f};
 
+constexpr int VK_COUNT{256};
+
 } // namespace Consts
 
 #endif // !CONSTANTS_H

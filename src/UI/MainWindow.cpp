@@ -81,4 +81,16 @@ void SetObsMode(HWND hWnd, bool enabled) {
                SWP_NOMOVE | SWP_FRAMECHANGED);
 }
 
+bool overlayChanged(Config::Overlay &outPrevOv, const Config::Overlay &curOv) {
+  const bool changed { outPrevOv != curOv};
+
+  if (changed) {
+    MainWindow::ApplyOverlaySize();
+    MainWindow::ApplyOverlayPosition();
+  }
+
+  outPrevOv = curOv;
+  return changed;
+}
+
 }; // namespace MainWindow
