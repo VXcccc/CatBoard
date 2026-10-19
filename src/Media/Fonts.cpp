@@ -1,7 +1,8 @@
-#include "Media/Fonts.h"
+
 #include "Config/Config.h"
 #include "Config/Constants.h"
 #include "Input/Keyboard.h"
+#include "Resource/PreInstalledFonts.h"
 #include "System/Helpers.h"
 #include "System/Paths.h"
 #include "imgui.h"
@@ -13,49 +14,41 @@
 namespace Fonts {
 std::vector<std::string> fonts{};
 ImFont *overlayFont{nullptr};
+ImFont *iconFont{nullptr};
 const std::string defaultFontName{"courbd"};
 const float defaultPixelsSize{20.0f};
 
-bool loadFont(const Font &font, ImFont *&activeFont) {
+bool loadIconFont(float overlayFontSize) {
   ImGuiIO &io{ImGui::GetIO()};
 
-  const auto path{Paths::getFontPath(font.name)};
+  ImFontConfig cfg;
+  cfg.PixelSnapH = true;
+  cfg.FontDataOwnedByAtlas = false;
+  iconFont = io.Fonts->AddFontFromMemoryTTF(_dripIcons, _dripIconsSize,
+                                            overlayFontSize, &cfg);
 
-  if (!std::filesystem::exists(path)) {
+  if (!iconFont)
     return false;
-  }
-
-  io.Fonts->ClearFonts();
-
-  activeFont =
-      io.Fonts->AddFontFromFileTTF(path.string().c_str(), font.sizePixels);
-
-  if (!activeFont) {
-    return false;
-  }
-
-  // io.Fonts->Build();
-  //
-  // ImGui_ImplDX11_InvalidateDeviceObjects();
-  // ImGui_ImplDX11_CreateDeviceObjects();
 
   return true;
 }
 
-void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
-                float explicitSize) {
-  const auto &f{Config::activeConfig.font};
-  Font font{f};
-  font.sizePixels = explicitSize;
+bool loadFont(const Font &font, ImFont *&activeFont) {
+  ImGuiIO &io{ImGui::GetIO()};
+  const auto path{Paths::getFontPath(font.name)};
+  if (!std::filesystem::exists(path))
+    return false;
 
-  if (f.name != outLastAppliedFont.name ||
-      font.sizePixels != outLastAppliedFont.sizePixels) {
-    if (Fonts::loadFont(font, activeFont)) {
-      outLastAppliedFont = font;
-    } else {
-      Fonts::loadFont(Fonts::Font{}, activeFont);
-    }
-  }
+  io.Fonts->ClearFonts();
+  activeFont =
+      io.Fonts->AddFontFromFileTTF(path.string().c_str(), font.sizePixels);
+  if (!activeFont)
+    return false;
+
+  if (!loadIconFont(font.sizePixels))
+    return false;
+
+  return true;
 }
 
 void updateFont(Font &outLastAppliedFont, ImFont *&activeFont) {
@@ -63,10 +56,10 @@ void updateFont(Font &outLastAppliedFont, ImFont *&activeFont) {
 
   if (font.name != outLastAppliedFont.name ||
       font.sizePixels != outLastAppliedFont.sizePixels) {
-    if (Fonts::loadFont(font, activeFont)) {
+    if (loadFont(font, activeFont)) {
       outLastAppliedFont = font;
     } else {
-      Fonts::loadFont(Fonts::Font{}, activeFont);
+      loadFont(Fonts::Font{}, activeFont);
     }
   }
 }
@@ -182,24 +175,23 @@ std::string handleShift(const Keyboard::KeyBitSet &currentFullKeysDown,
   return applyLetterCase(key.label, font);
 }
 
-std::string handleLetterCase(const Keyboard::KeyBitSet &currentFullKeysDown,
-                             Font &font, const Layouts::Key &key) {
+std::string handleLetterCase(const Keyboard::KeyBitSet &keysDown, Font &font,
+                             const Layouts::Key &key) {
   bool capsLockDown{(GetKeyState(VK_CAPITAL) & 1) != 0};
-  bool shiftDown{currentFullKeysDown[VK_LSHIFT] ||
-                 currentFullKeysDown[VK_RSHIFT]};
+  bool shiftDown{keysDown[VK_LSHIFT] || keysDown[VK_RSHIFT]};
 
   std::string result{applyLetterCase(key.label, font)};
 
   if (font.letterCase.options.capsLockDisplay) {
     if (capsLockDown) {
-      result = handleCapsLock(currentFullKeysDown, font, key, capsLockDown);
+      result = handleCapsLock(keysDown, font, key, capsLockDown);
     }
   }
 
   if (font.letterCase.options.capsInsensitiveKeys ||
       font.letterCase.options.capsSensitiveKeys) {
     if (shiftDown) {
-      result = handleShift(currentFullKeysDown, font, key, shiftDown);
+      result = handleShift(keysDown, font, key, shiftDown);
     }
   }
 

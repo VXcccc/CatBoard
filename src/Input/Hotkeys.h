@@ -35,8 +35,6 @@ using BindsVector = std::vector<Bind>;
 
 extern const BindsArray defaultBinds;
 
-extern bool g_bindJustRecorded;
-
 bool recordBind(Bind &outBind);
 
 void handleBinds(const Keyboard::State &state, HWND hWnd);

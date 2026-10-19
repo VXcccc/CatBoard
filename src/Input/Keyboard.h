@@ -35,6 +35,7 @@ struct State {
   bool anyChanged() const { return (down ^ prevDown).any(); }
   bool pressed(int vk) const { return down[vk] && !prevDown[vk]; }
   bool released(int vk) const { return !down[vk] && prevDown[vk]; }
+  bool inRange(int vk) const { return vk > 0 && vk < Consts::VK_COUNT; }
 
   // visuals vector is synced with layout indicies
   void resyncVisuals(const Layouts::Layout &layout);
@@ -42,10 +43,13 @@ struct State {
 
 // bool detectAnyMouseKeyChanged(Keyboard::State &state);
 
-void handleKeySound(const Layouts::Layout &layout,
-                    const Keyboard::State &state);
+// void handleKeySound(const Layouts::Layout &layout,
+//                     const Keyboard::State &state);
+//
+// void handleKeySoundFull(const Keyboard::State &state);
 
-void handleKeySoundFull(const Keyboard::State &state);
+void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
+                    const Layouts::Layout &layout);
 
 void updateActive(const Layouts::Layout &layout, Keyboard::State &state,
                   const Mouse::MouseState &mouse);

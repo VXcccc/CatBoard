@@ -311,13 +311,6 @@ void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
                      const Keyboard::KeyBitSet &keysDown) {
   const Mouse &mouse{activePack.mouse};
   const auto &mouseState{::Mouse::g_mouseState};
-  bool scrollUpActive{mouseState.isScrollUpActive()};
-  bool scrollDownActive{mouseState.isScrollDownActive()};
-  if (mouseState.isUpTimerBigger() && scrollDownActive) {
-    scrollDownActive = false;
-  } else if (!mouseState.isUpTimerBigger() && scrollUpActive) {
-    scrollUpActive = false;
-  }
 
   drawMousePart(draw, center, mouse.left, keysDown[VK_LBUTTON]);
   drawMousePart(draw, center, mouse.right, keysDown[VK_RBUTTON]);
@@ -328,7 +321,7 @@ void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
 
   drawMousePart(draw, center, mouse.middle, keysDown[VK_MBUTTON]);
 
-  drawMousePart(draw, center, mouse.scrollUp, scrollUpActive);
-  drawMousePart(draw, center, mouse.scrollDown, scrollDownActive);
+  drawMousePart(draw, center, mouse.scrollUp, mouseState.isScrollingUp());
+  drawMousePart(draw, center, mouse.scrollDown, mouseState.isScrollingDown());
 }
 } // namespace Images

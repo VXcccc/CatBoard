@@ -405,11 +405,9 @@ int main(int, char **) {
     Binds::handleBinds(States::keyboard, s_hwnd);
 
     if (Config::activeConfig.soundPack.enable) {
-      if (Config::activeConfig.soundPack.layoutKeysOnlySound) {
-        Keyboard::handleKeySound(Layouts::activeLayout, States::keyboard);
-      } else {
-        Keyboard::handleKeySoundFull(States::keyboard);
-      }
+      Keyboard::hadnleKeySounds(
+          States::keyboard, Config::activeConfig.soundPack.layoutKeysOnlySound,
+          Layouts::activeLayout);
     }
 
     static int prevScrollState;

@@ -14,11 +14,17 @@ namespace Keyboard {
 using KeyBitSet = std::bitset<Consts::VK_COUNT>;
 }
 
+namespace Icons{
+	constexpr char arrowUp{'n'};
+	constexpr char arrowDown{'k'};
+}
+
 namespace Fonts {
 extern const std::string defaultFontName;
 extern const float defaultPixelsSize;
 
 extern ImFont *overlayFont;
+extern ImFont *iconFont;
 
 extern std::vector<std::string> fonts;
 
@@ -43,9 +49,9 @@ struct Font {
 };
 
 bool loadFont(const Font &font, ImFont *&activeFont);
-bool loadFont(const Font &font, ImFont *&activeFont, bool editor);
-void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
-                float explicitSize);
+
+// void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
+//                 float explicitSize);
 void updateFont(Font &outLastAppliedFont, ImFont *&activeFont);
 
 bool installDefaultFonts();

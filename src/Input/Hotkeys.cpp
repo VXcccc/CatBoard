@@ -12,7 +12,7 @@ using json = nlohmann::json;
 
 namespace Binds {
 
-bool g_bindJustRecorded{false};
+static bool s_bindJustRecorded{false};
 
 const BindsArray defaultBinds{
     Bind{"Drag mode", VK_F4, "F4", BindType::dragMode},
@@ -53,10 +53,13 @@ void handleBindType(const BindType type, HWND hWnd) {
   }
 }
 
-//todo check this function for errors
 void handleBinds(const Keyboard::State &kb, HWND hWnd) {
+  if (s_bindJustRecorded) {
+    s_bindJustRecorded = false;
+    return;
+  }
   for (const auto &bind : Config::activeConfig.binds) {
-    if (kb.pressed(bind.vkCode)) {
+    if (kb.inRange(bind.vkCode) && kb.pressed(bind.vkCode)) {
       handleBindType(bind.type, hWnd);
     }
   }
@@ -100,7 +103,7 @@ bool recordBind(Bind &outBind) {
       if (down) {
         if (Helper::VkToName(vk) == "Unknown" || !isBindFree(vk)) {
           outBind = prevBindState;
-          g_bindJustRecorded = true;
+          s_bindJustRecorded = true;
 
           return false;
         }
@@ -108,7 +111,7 @@ bool recordBind(Bind &outBind) {
         outBind.vkCode = vk;
         outBind.keyName = Helper::VkToName(vk);
 
-        g_bindJustRecorded = true;
+        s_bindJustRecorded = true;
 
         return true;
       }

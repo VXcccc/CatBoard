@@ -1,11 +1,14 @@
 #include "Keyboard.h"
 #include "Config/Config.h"
 #include "Input/Mouse.h"
+#include "Media/Fonts.h"
 #include "Media/Sound.h"
 #include "System/Helpers.h"
 #include "UI/Layouts.h"
 #include "imgui.h"
 #include <cmath>
+#include <cstdio>
+#include <string>
 #include <utility>
 #include <windows.h>
 
@@ -28,23 +31,17 @@ void Keyboard::State::resyncVisuals(const Layouts::Layout &layout) {
   }
 }
 
-static std::pair<ImVec2, ImVec2>
-getCenterAndHalfSize(const Layouts::Key &key, float scale,
-                     Config::AnimType animType) {
-  switch (animType) {
-  case Config::AnimType::Lift:
-    return {{key.x + key.w * 0.5f, key.y + (key.h * scale) * 0.5f},
-            {key.w * 0.5f, key.h * 0.5f}};
-  default:
-    return {{key.x + key.w * 0.5f, key.y + key.h * 0.5f},
-            {key.w * scale * 0.5f, key.h * scale * 0.5f}};
-  }
-}
-
 bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
               const Mouse::MouseState &m) {
+  const bool &capsDisplay{
+      Config::activeConfig.font.letterCase.options.capsLockDisplay};
+
   switch (key.type) {
   case Layouts::KeyType::Keyboard:
+    // caps handle
+    if (key.code == VK_CAPITAL && capsDisplay)
+      return GetAsyncKeyState(VK_CAPITAL) & 1;
+    // other keys
     return kb.down[key.code];
   case Layouts::KeyType::Wheel:
     return (kb.down[VK_MBUTTON] || m.isScrollDownActive() ||
@@ -69,10 +66,112 @@ void updateActive(const Layouts::Layout &layout, Keyboard::State &kb,
     kb.visuals[i].active = isActive(layout.keys[i], kb, mouse);
 }
 
+static std::pair<ImVec2, ImVec2>
+getCenterAndHalfSize(const Layouts::Key &key, float scale,
+                     Config::AnimType animType) {
+  switch (animType) {
+  case Config::AnimType::Lift:
+    return {{key.x + key.w * 0.5f, key.y + (key.h * scale) * 0.5f},
+            {key.w * 0.5f, key.h * 0.5f}};
+  default:
+    return {{key.x + key.w * 0.5f, key.y + key.h * 0.5f},
+            {key.w * scale * 0.5f, key.h * scale * 0.5f}};
+  }
+}
+
+static std::string getScrollLabel(Mouse::MouseState::ScrollDir dir,
+                                  const Layouts::Key &key) {
+  using type = Mouse::MouseState::ScrollDir;
+  using kType = Layouts::KeyType;
+
+  switch (dir) {
+  case type::None:
+    return key.label;
+  case type::Up:
+    if (key.type == kType::ScrollDown)
+      return key.label;
+    return std::to_string(Mouse::g_mouseState.getScrollUpTimes());
+  case type::Down:
+    if (key.type == kType::ScrollUp)
+      return key.label;
+    return std::to_string(Mouse::g_mouseState.getScrollDownTimes());
+  }
+  return key.label;
+}
+
+static std::string getScrollIcon(Mouse::MouseState::ScrollDir dir,
+                                 const Layouts::Key &key) {
+  using type = Mouse::MouseState::ScrollDir;
+  using kType = Layouts::KeyType;
+
+  switch (dir) {
+  case type::Up:
+    if (key.type == kType::ScrollDown)
+      return {""};
+    return std::string{Icons::arrowUp};
+  case type::Down:
+    if (key.type == kType::ScrollUp)
+      return {""};
+    return std::string{Icons::arrowDown};
+  default:
+    return {""};
+  }
+}
+
+static std::string getDisplayLabel(const Layouts::Key &key,
+                                   const Keyboard::State &kb,
+                                   Fonts::Font &font) {
+
+  if (key.type == Layouts::KeyType::Keyboard) {
+    return Fonts::handleLetterCase(kb.down, font, key);
+  } else {
+    return getScrollLabel(Mouse::g_mouseState.dominantScroll(), key);
+  }
+}
+
+static void drawText(ImDrawList *draw, const Layouts::Key &key,
+                     const Keyboard::State &kb, const KeyVisual &v,
+                     ImVec2 center) {
+  ImGui::PushFont(Fonts::overlayFont);
+
+  using ScrollDir = Mouse::MouseState::ScrollDir;
+
+  const ImU32 textColor{Helper::ToImU32(Helper::toConfigColor(v.colors.text))};
+  const float &ovScale{Config::activeConfig.overlay.scale};
+
+  std::string displayLabel{getDisplayLabel(key, kb, Config::activeConfig.font)};
+
+  ImVec2 textSize{ImGui::CalcTextSize(displayLabel.c_str())};
+  ImVec2 textPos{(center.x * ovScale) - (textSize.x * 0.5f),
+                 (center.y * ovScale) - (textSize.y * 0.5f)};
+
+  draw->AddText(textPos, textColor, displayLabel.c_str());
+  ImGui::PopFont();
+
+  // draw icons for special keys
+  if (!(key.type == Layouts::KeyType::Keyboard)) {
+    const auto curDir(Mouse::g_mouseState.dominantScroll());
+
+    if (!(curDir == ScrollDir::None)) {
+      ImGui::PushFont(Fonts::iconFont);
+      const std::string curIcon{getScrollIcon(curDir, key)};
+      const ImVec2 iconSize{ImGui::CalcTextSize(curIcon.c_str())};
+      printf("%s iconSize: x: %.2f, y: %.2f ", curIcon.c_str(), textSize.x,
+             iconSize.y);
+      printf("textPos: x: %.2f, y: %.2f\n", textPos.x, textPos.y);
+      const ImVec2 iconPos{(curDir == ScrollDir::Up ? (textPos.x + textSize.x)
+                                                    : (textPos.x - iconSize.x)),
+                           (center.y - (iconSize.y * 0.5f))};
+
+      draw->AddText(iconPos, textColor, curIcon.c_str());
+      ImGui::PopFont();
+    }
+  }
+}
+
 void renderKeyboard(const Layouts::Layout &layout, const Keyboard::State &kb) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   const auto &theme{Config::activeConfig.theme};
-  ImGui::PushFont(Fonts::overlayFont);
 
   if (theme.keysImagesDisplay) {
     Images::drawKeyboardImages(draw, kb);
@@ -82,15 +181,6 @@ void renderKeyboard(const Layouts::Layout &layout, const Keyboard::State &kb) {
     const auto &v{kb.visuals[i]};
     const auto &key{layout.keys[i]};
     bool down{v.active};
-
-    // i did first if statement for peoples who have caps binded to smth, you
-    // can remove this if statement if you wanna show caps lock toogle kb
-    // without changing buttons labels
-    if (Config::activeConfig.font.letterCase.options.capsLockDisplay) {
-      if (key.code == VK_CAPITAL) {
-        down = (GetKeyState(VK_CAPITAL) & 1) != 0;
-      }
-    }
 
     const float scale{v.scale};
     std::pair<ImVec2, ImVec2> keyCenterHalfSize{
@@ -107,8 +197,6 @@ void renderKeyboard(const Layouts::Layout &layout, const Keyboard::State &kb) {
 
     ImU32 fill{Helper::ToImU32(Helper::toConfigColor(v.colors.fill))};
 
-    ImU32 textColor{Helper::ToImU32(Helper::toConfigColor(v.colors.text))};
-
     float rounding{theme.keyRounding};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
@@ -119,34 +207,13 @@ void renderKeyboard(const Layouts::Layout &layout, const Keyboard::State &kb) {
       float thickness{theme.keyOutline.thickness};
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
-
-    std::string displayLabel{
-        Fonts::handleLetterCase(kb.down, Config::activeConfig.font, key)};
-
-    ImVec2 textSize{ImGui::CalcTextSize(key.label.c_str())};
-    ImVec2 textPos{(center.x * ovScale) - (textSize.x * 0.5f),
-                   (center.y * ovScale) - (textSize.y * 0.5f)};
-    draw->AddText(textPos, textColor, displayLabel.c_str());
+    drawText(draw, key, kb, v, center);
   }
-  ImGui::PopFont();
 }
 
-// bool detectAnyMouseKeyChanged(Keyboard::State &kb) {
-//   constexpr std::array<int, 5> mouseKeys = {VK_LBUTTON, VK_RBUTTON,
-//   VK_MBUTTON,
-//                                             VK_XBUTTON1, VK_XBUTTON2};
-//   bool anyKeyChanged{false};
-//   for (int keyCode : mouseKeys) {
-//     bool down{kb.down[keyCode]};
-//     if (down != kb.prevDown[keyCode]) {
-//       anyKeyChanged = true;
-//     }
-//   }
-//   return anyKeyChanged;
-// }
-
 // sound functions
-void handleKeySound(const Layouts::Layout &layout, const Keyboard::State &kb) {
+static void handleKeySoundLayout(const Layouts::Layout &layout,
+                                 const Keyboard::State &kb) {
   for (const auto &key : layout.keys) {
     bool down{kb.down[key.code]};
     if (down != kb.prevDown[key.code]) {
@@ -155,12 +222,25 @@ void handleKeySound(const Layouts::Layout &layout, const Keyboard::State &kb) {
   }
 }
 
-void handleKeySoundFull(const Keyboard::State &kb) {
-  for (const auto &[vk, def] : Sound::activePack.KeyDefByVK) {
+static void handleKeySoundFull(const Keyboard::State &kb) {
+  for (const auto &key : Sound::activePack.KeyDefByVK) {
+    const auto &vk = key.first;
     bool down{kb.down[vk]};
     if (down != kb.prevDown[vk]) {
       Sound::playKey(vk, down);
     }
+  }
+}
+
+void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
+                     const Layouts::Layout &layout = Layouts::activeLayout) {
+  if (!kb.anyChanged())
+    return;
+
+  if (layoutKeysOnly) {
+    handleKeySoundLayout(layout, kb);
+  } else {
+    handleKeySoundFull(kb);
   }
 }
 

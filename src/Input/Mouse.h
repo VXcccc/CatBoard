@@ -102,6 +102,17 @@ public:
 
   bool isUpTimerBigger() const { return (m_scrollUpTimer > m_scrollDownTimer); }
 
+  enum class ScrollDir { None, Up, Down };
+
+  ScrollDir dominantScroll() const {
+    if (m_scrollUpTimer <= 0.0f && m_scrollDownTimer <= 0.0f)
+      return ScrollDir::None;
+    return (m_scrollUpTimer > m_scrollDownTimer) ? ScrollDir::Up
+                                                 : ScrollDir::Down;
+  }
+  bool isScrollingUp() const { return dominantScroll() == ScrollDir::Up; }
+  bool isScrollingDown() const { return dominantScroll() == ScrollDir::Down; }
+
 private:
   void updateCatmullTrail(float deltaTime);
   void updateCircleTrail(float deltaTime);
