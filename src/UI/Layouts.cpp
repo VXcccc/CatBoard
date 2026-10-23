@@ -14,8 +14,13 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <cstddef>
+#include <cstdio>
 #include <filesystem>
 #include <fstream>
+#include <iterator>
+#include <optional>
+#include <ostream>
 #include <string>
 #include <string_view>
 #include <synchapi.h>
@@ -23,6 +28,8 @@
 #include <winscard.h>
 #include <winuser.h>
 using json = nlohmann::json;
+
+#include <iostream>
 
 namespace Layouts {
 std::vector<std::string> layouts{};
@@ -176,6 +183,76 @@ void redo(LayoutEditState &state) {
   state.mouseCenterSelected = false;
 }
 
+// debug
+// static void printKeysMatrix(std::vector<Key *> &vec, std::string_view str) {
+//   std::cout << str;
+//   for (const auto &key : vec) {
+//     std::cout << key->label << ", ";
+//   }
+//   std::cout << '\n';
+// }
+
+using KeysMatrix = std::vector<std::vector<Key *>>;
+static KeysMatrix getKeysMatrix(LayoutEditState &state) {
+  constexpr float eps = 0.01f;
+  std::vector<Key *> keys;
+  KeysMatrix keysMatrix;
+  void *it = nullptr;
+  ImGuiID id;
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    if (id < state.layout.keys.size())
+      keys.push_back(&state.layout.keys[id]);
+  }
+
+  if (keys.empty())
+    return {};
+
+  std::sort(keys.begin(), keys.end(), [](const Key *a, const Key *b) {
+    if (a->y != b->y)
+      return a->y < b->y;
+    return a->x < b->x;
+  });
+
+  int startIdx{0};
+  for (std::size_t i{1}; i < keys.size(); ++i) {
+    if (std::abs(keys[i - 1]->y - keys[i]->y) >
+        eps) { // y1 != y2 but with float
+      keysMatrix.emplace_back(keys.begin() + startIdx, keys.begin() + i);
+      startIdx = i;
+    }
+  }
+  keysMatrix.emplace_back(keys.begin() + startIdx, keys.end());
+
+  return keysMatrix;
+}
+
+// returning nullopt if gaps are not eqaul or every row < 2
+std::optional<float> getGap(LayoutEditState &state) {
+  // constexpr float eps = 0.01f;
+  const KeysMatrix keysMatrix{getKeysMatrix(state)};
+
+  std::optional<float> common;
+  for (const auto &vec : keysMatrix) {
+    for (std::size_t i = 0; i + 1 < vec.size(); ++i) {
+      const float gap{vec[i + 1]->x - (vec[i]->x + vec[i]->w)};
+      if (!common)
+        common = gap;
+      // else if (std::abs(gap - *common) > eps)
+      else if (gap != common)
+        return std::nullopt;
+    }
+  }
+  return common; 
+}
+
+void setGap(LayoutEditState &state, float gap) {
+  const auto keysMatrix{getKeysMatrix(state)};
+  for (const auto &vec : keysMatrix) {
+    for (std::size_t i{1}; i < vec.size(); ++i)
+      vec[i]->x = vec[i - 1]->x + vec[i - 1]->w + gap;
+  }
+}
+
 void setKeyProperty(Key &key, KeyProp prop, float value) {
   switch (prop) {
   case KeyProp::X:
@@ -195,6 +272,7 @@ void setKeyProperty(Key &key, KeyProp prop, float value) {
   }
 }
 
+// for gaps use getGap
 float getKeyProperty(const Key &key, KeyProp prop) {
   switch (prop) {
   case KeyProp::X:
@@ -244,6 +322,10 @@ void setSelectedKeysProperty(LayoutEditState &state, KeyProp prop,
   if (!state.selection.GetNextSelectedItem(&it, &id))
     return;
 
+  if (prop == KeyProp::gapX) {
+    setGap(state, value);
+  }
+
   const int firstIdx{static_cast<int>(id)};
   Key &firstKey{state.layout.keys[firstIdx]};
 
@@ -277,7 +359,11 @@ void setSelectedKeysProperty(LayoutEditState &state, KeyProp prop,
 
 void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
                           float sliderWidth = 150.0f) {
-  if (!isKeysPropsEqual(state, prop))
+  const bool isGap{prop == KeyProp::gapY || prop == KeyProp::gapX};
+
+  if (isGap && state.selection.Size < 2)
+    return;
+  if (prop != KeyProp::gapX && !isKeysPropsEqual(state, prop))
     return;
 
   void *it{nullptr};
@@ -286,7 +372,19 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
   if (!state.selection.GetNextSelectedItem(&it, &id))
     return;
 
-  float value{getKeyProperty(state.layout.keys[static_cast<int>(id)], prop)};
+  float value{};
+  bool displayGapHelper{false};
+  if (isGap) {
+    const auto gap = getGap(state);
+    if (!gap) {
+      displayGapHelper = true;
+    }
+    value = gap.value_or(0.0f);
+  } else {
+    if (id >= state.layout.keys.size())
+      return;
+    value = getKeyProperty(state.layout.keys[static_cast<int>(id)], prop);
+  }
 
   float min{0.0f};
   float max{0.0f};
@@ -297,9 +395,14 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
   }
 
   ImGui::SetNextItemWidth(sliderWidth);
-  const bool changed{
-      ImGui::DragFloat(KeyPropName[static_cast<int>(prop)].c_str(), &value,
-                       state.step, min, max)};
+
+  const char *label{KeyPropName[static_cast<int>(prop)].c_str()};
+  const bool changed{ImGui::DragFloat(label, &value, state.step, min, max)};
+
+  if (displayGapHelper) {
+    ImGui::SameLine();
+    Helper::HelpMarker("Gap diff, so the value is set to 0.0f");
+  }
 
   if (ImGui::IsItemActivated())
     saveUndoClearRedo(state);
@@ -308,8 +411,8 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
     setSelectedKeysProperty(state, prop, value);
 }
 
-float mostFreqWH(const std::vector<Key> &keys, KeyProp prop) {
-
+static float mostFreqWH(LayoutEditState &state, KeyProp prop) {
+  const std::vector<Key> &keys{state.layout.keys};
   int maxCount{0};
   float result{0.0f};
 
@@ -1045,6 +1148,7 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   drawMultiKeyProperty(state, KeyProp::Y, sliderWidth);
   drawMultiKeyProperty(state, KeyProp::W, sliderWidth);
   drawMultiKeyProperty(state, KeyProp::H, sliderWidth);
+  drawMultiKeyProperty(state, KeyProp::gapX, sliderWidth);
 
   if (ImGui::Button("UPPER")) {
     changeSelectedLetterCase(state, true);
@@ -1094,8 +1198,8 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
     state.resetViewOffset();
     state.mouseCenterSelected = false;
     state.layoutNameInput = Config::activeConfig.selectedLayout;
-    state.defaultKeyHeight = mostFreqWH(state.layout.keys, KeyProp::H);
-    state.defaultKeyWidth = mostFreqWH(state.layout.keys, KeyProp::W);
+    state.defaultKeyHeight = mostFreqWH(state, KeyProp::H);
+    state.defaultKeyWidth = mostFreqWH(state, KeyProp::W);
   }
 
   ImGui::SameLine();

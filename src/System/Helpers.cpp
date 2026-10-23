@@ -159,7 +159,7 @@ bool installDefault(const std::filesystem::path &source,
   return !ec;
 }
 
-bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
+bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol, 
                ImGuiColorEditFlags flags) {
   ImVec4 ImVecCol{fromConfigColor(outCol)};
   if (ImGui::ColorEdit4(label.c_str(), &ImVecCol.x, flags)) {

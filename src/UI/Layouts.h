@@ -7,9 +7,11 @@
 
 namespace Layouts {
 
-enum class KeyProp { X, Y, W, H, maxProps };
+enum class KeyProp { X, Y, W, H, gapX, gapY, maxProps };
 constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::maxProps)>
-    KeyPropName{"X", "Y", "W", "H"};
+    KeyPropName{"X", "Y", "W", "H", "gapX", "gapY"};
+static_assert(KeyPropName.size() == static_cast<std::size_t>(KeyProp::maxProps),
+              "Key prop array is out of sync with enum");
 
 enum class KeyType { Keyboard, Wheel, ScrollUpDown, ScrollUp, ScrollDown, Max };
 

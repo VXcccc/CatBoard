@@ -21,6 +21,7 @@
 #include "misc/cpp/imgui_stdlib.h"
 #include <algorithm>
 #include <array>
+#include <cfloat>
 #include <cmath>
 #include <dwmapi.h>
 #include <dxgi.h>
@@ -90,6 +91,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam,
       handled = true;
       break;
     case WM_DESTROY:
+      handled = true;
+      break;
+    case WM_GETMINMAXINFO:
+      MINMAXINFO *mmi = reinterpret_cast<MINMAXINFO *>(lParam);
+      mmi->ptMinTrackSize.x = 600;
+      mmi->ptMinTrackSize.y = 300;
       handled = true;
       break;
     }
@@ -544,8 +551,11 @@ void drawThemeCombo(SettingsEditState &state) {
 // Draw sections functions
 void drawKeyboardColors(SettingsEditState &state) {
   Helper::ColorEdit("Idle fill color", state.theme.idleFill);
+  ImGui::SameLine();
   Helper::ColorEdit("Active fill color", state.theme.activeFill);
+
   Helper::ColorEdit("Idle text color", state.theme.idleText);
+  ImGui::SameLine();
   Helper::ColorEdit("Active text color", state.theme.activeText);
 }
 
@@ -554,8 +564,8 @@ void drawKeyboardSection(SettingsEditState &state) {
 
   drawKeyboardColors(state);
 
-  ImGui::SliderFloat("Rounding", &state.theme.keyRounding, 0.0f, 20.0f, "%.2f");
-  state.theme.keyRounding = std::clamp(state.theme.keyRounding, 0.0f, 1000.0f);
+  Helper::SliderFloat("Rounding", state.theme.keyRounding, 0.0f, 20.0f, 0.0f,
+                      1000.0f);
 
   ImGui::Checkbox("Animations", &state.theme.animation);
   if (state.theme.animation) {
@@ -572,31 +582,30 @@ void drawKeyboardSection(SettingsEditState &state) {
 
     switch (state.theme.animType) {
     case Config::AnimType::Scale:
-      ImGui::SliderFloat("Press scale", &state.theme.pressScale, 0.0f, 3.0f,
-                         "%.2f");
+      Helper::SliderFloat("Press scale", state.theme.pressScale, 0.0f, 3.0f,
+                          "%.2f");
       break;
     case Config::AnimType::Lift:
-      ImGui::SliderFloat("Press scale", &state.theme.pressScale, -2.0f, 4.0f,
-                         "%.2f");
+      Helper::SliderFloat("Press scale", state.theme.pressScale, -2.0f, 4.0f,
+                          "%.2f");
       break;
     default:
       break;
     }
 
-    ImGui::SliderInt("Animation speed", &state.theme.animationSpeed, 0, 1000);
+    Helper::SliderInt("Animation speed", state.theme.animationSpeed, 0, 1000);
   }
 
   ImGui::Checkbox("Enable Outline", &state.theme.keyOutline.enable);
   if (state.theme.keyOutline.enable) {
     Helper::ColorEdit("Idle outline color", state.theme.keyOutline.idleColor);
+    ImGui::SameLine();
     Helper::ColorEdit("Active outline color",
                       state.theme.keyOutline.activeColor);
 
-    ImGui::SliderFloat("Thickness", &state.theme.keyOutline.thickness, 0.0f,
-                       20.0f, "%.2f");
-    // you can change this value if you want more thickness lol
-    state.theme.keyOutline.thickness =
-        std::clamp(state.theme.keyOutline.thickness, 0.0f, 20.0f);
+    // you can change clamp value if you want more thickness lol
+    Helper::SliderFloat("Thickness", state.theme.keyOutline.thickness, 0.0f,
+                        20.0f);
   }
 }
 
@@ -614,63 +623,64 @@ void drawMouseSection(SettingsEditState &state) {
     drawMouseStyleCommbo(state, Helper::extractNames(Mouse::mouseStyles));
 
     Helper::ColorEdit("Outer color", mouse.outer);
+    ImGui::SameLine();
     Helper::ColorEdit("Inner color", mouse.inner);
+    ImGui::SameLine();
     Helper::ColorEdit("Fill color", mouse.fill);
 
     ImGui::Checkbox("Invert indicator color", &state.theme.mouse.lerpColor);
 
     ImGui::Checkbox("Highlight m1", &mouse.highlightM1);
     if (mouse.highlightM1) {
+      ImGui::SameLine();
       Helper::ColorEdit("Highlight color", mouse.highlightColor);
 
-      ImGui::SliderFloat("Highlight scale", &mouse.higlightScale, 0.0f, 3.0f);
-      mouse.higlightScale = std::clamp(mouse.higlightScale, 0.0f, 10.0f);
+      Helper::SliderFloat("Highlight scale", mouse.higlightScale, 0.0f, 3.0f,
+                          0.0f, 10.0f);
     }
 
-    ImGui::SliderFloat("Indicator radius", &state.theme.mouse.smallRadius, 0.0f,
-                       100.0f, "%.2f");
+    Helper::SliderFloat("Indicator radius", state.theme.mouse.smallRadius, 0.0f,
+                        100.0f, "%.2f");
 
-    ImGui::SliderFloat("Outer thickness", &state.theme.mouse.outerThickness,
-                       0.0f, 100.0f, "%.2f");
+    Helper::SliderFloat("Outer thickness", state.theme.mouse.outerThickness,
+                        0.0f, 100.0f, "%.2f");
 
-    ImGui::SliderFloat("Sensitivity", &state.theme.mouse.sensitivity, 0.0f,
-                       10.0f, "%.2f");
+    Helper::SliderFloat("Sensitivity", state.theme.mouse.sensitivity, 0.0f,
+                        10.0f, "%.2f");
     if (circleType)
-      ImGui::SliderFloat("Decay rate", &state.theme.mouse.decayRate, 0.0f,
-                         100.0f, "%.2f");
+      Helper::SliderFloat("Decay rate", state.theme.mouse.decayRate, 0.0f,
+                          100.0f, "%.2f");
 
-    ImGui::SliderFloat("Fade time", &state.theme.mouse.fadeTime, 0.0f, 3.0f);
+    Helper::SliderFloat("Fade time", state.theme.mouse.fadeTime, 0.0f, 3.0f);
 
     if (rectType)
-      ImGui::SliderFloat("Outline rounding", &state.theme.mouse.rounding, 0.0f,
-                         20.0f, "%.2f");
-    state.theme.mouse.rounding =
-        std::clamp(state.theme.mouse.rounding, 0.0f, 1000.0f);
+      Helper::SliderFloat("Outline rounding", state.theme.mouse.rounding, 0.0f,
+                          20.0f, 0.0f, 1000.0f);
 
     // wip
     ImGui::Checkbox("Trail", &state.theme.mouse.trail.enable);
     if (state.theme.mouse.trail.enable) {
+      ImGui::SameLine();
+      Helper::ColorEdit("Trail color", trail.color);
+
       drawTrailStyleCombo(state, Helper::extractNames(Mouse::trailStyles));
 
       if (mouse.trail.style.type == Mouse::TrailType::Circle) {
-        ImGui::SliderFloat("Trail duration", &state.theme.mouse.trail.duration,
-                           0.0f, 3.0f);
+        Helper::SliderFloat("Trail duration", state.theme.mouse.trail.duration,
+                            0.0f, 3.0f);
       }
 
-      ImGui::SliderFloat("Min width", &mouse.trail.minWidth, 0.0f, 10.0f,
-                         "%.2f");
-      ImGui::SliderFloat("Max width", &mouse.trail.maxWidth, 0.0f, 30.0f,
-                         "%.2f");
+      Helper::SliderFloat("Min width", mouse.trail.minWidth, 0.0f, 10.0f,
+                          "%.2f");
+      Helper::SliderFloat("Max width", mouse.trail.maxWidth, 0.0f, 30.0f,
+                          "%.2f");
 
       if (mouse.trail.style.type == Mouse::TrailType::Catmull) {
-        ImGui::SliderFloat("Max length", &mouse.trail.maxLength, 0.0f, 1000.0f,
-                           "%.2f");
-        ImGui::SliderInt("Subdivisions", &mouse.trail.subdivisions, 1.0f,
-                         30.0f);
-        mouse.trail.subdivisions = std::clamp(mouse.trail.subdivisions, 1, 100);
+        Helper::SliderFloat("Max length", mouse.trail.maxLength, 0.0f, 1000.0f,
+                            "%.2f");
+        Helper::SliderInt("Subdivisions", mouse.trail.subdivisions, 1.0f, 30.0f,
+                          1, 100);
       }
-
-      Helper::ColorEdit("Trail color", trail.color);
     }
   }
 }
@@ -693,6 +703,9 @@ void drawImageSection(SettingsEditState &state) {
   ImGui::Checkbox("Mouse display", &state.theme.mouse.imagesDisplay);
   auto &mouse{state.theme.mouse};
   if (state.theme.mouse.imagesDisplay) {
+		ImGui::SameLine();
+    Helper::ColorEdit("Scroll text color", state.theme.mouse.scrollCounter);
+
     Helper::SliderInt("Mouse opacity", mouse.imageOpacity, 0, 255);
     Helper::SliderFloat("Mouse scale", mouse.imageScale, 0.0f, 3.0f, 0.0f,
                         10.0f);
@@ -700,7 +713,6 @@ void drawImageSection(SettingsEditState &state) {
     ImGui::DragFloat("Offset X", &state.theme.mouse.imageOffsetX);
     ImGui::DragFloat("Offset Y", &state.theme.mouse.imageOffsetY);
 
-    Helper::ColorEdit("Scroll counter", state.theme.mouse.scrollCounter);
   }
 
   static int prevIdleAlpha{};
@@ -722,9 +734,7 @@ void drawImageSection(SettingsEditState &state) {
   }
 
   if (state.theme.keysImagesDisplay) {
-    ImGui::SliderInt("Keys opacity", &state.theme.keysImageOpacity, 0, 255);
-    state.theme.keysImageOpacity =
-        std::clamp(state.theme.keysImageOpacity, 0, 255);
+    Helper::SliderInt("Keys opacity", state.theme.keysImageOpacity, 0, 255);
   }
 }
 
@@ -828,8 +838,7 @@ void drawMiscTab(SettingsEditState &state) {
     Helper::ColorEdit("Background Color", state.theme.obsBackground);
   }
 
-  ImGui::SliderInt("FPS", &state.misc.fps, 5, 360);
-  state.misc.fps = std::clamp(state.misc.fps, 5, 2000);
+  Helper::SliderInt("FPS", state.misc.fps, 5, 360, 5, 2000);
 
   drawThemeCombo(state);
 
@@ -872,10 +881,9 @@ void drawSoundsTab(SettingsEditState &state) {
     ImGui::Checkbox("Sounds only for keys in layout",
                     &state.soundPack.layoutKeysOnlySound);
 
-    if (ImGui::SliderInt("Volume", &state.volumePercent, 0, 100)) {
+    if (Helper::SliderInt("Volume", state.volumePercent, 0, 100)) {
       Sound::setMasterVolume(static_cast<float>(state.volumePercent / 100.0f));
     }
-    state.volumePercent = std::clamp(state.volumePercent, 0, 100);
 
     drawSoundCombo(state);
 
@@ -1086,6 +1094,7 @@ void RenderFrame() {
 
   handleUndoRedoInput(editState, lastCommitted, currentTab);
 
+  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.6);
   switch (currentTab) {
   case SettingsTab::Visuals:
     drawVisualsTab(editState);
@@ -1108,6 +1117,7 @@ void RenderFrame() {
   default:
     break;
   }
+  ImGui::PopItemWidth();
 
   Config::Settings newSettings = buildSettings(editState);
   // Passing new settings but dont saving them

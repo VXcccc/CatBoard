@@ -159,6 +159,7 @@ int main(int, char **) {
 #ifdef DEBUG_CATBOARD
   initDebugConsole();
 #endif
+	initDebugConsole();
 
   Config::LoadActiveConfig();
 

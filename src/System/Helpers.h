@@ -5,8 +5,8 @@
 #include "imgui.h"
 #include <array>
 #include <exception>
-#include <functional>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -63,7 +63,7 @@ bool installDefault(const std::filesystem::path &source,
                     const std::filesystem::path &destination);
 
 bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
-               ImGuiColorEditFlags flags = 0);
+                ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoInputs);
 
 // c_min, c_max = clamp min, clamp max
 bool SliderInt(const std::string &label, int &v, int v_min, int v_max,
