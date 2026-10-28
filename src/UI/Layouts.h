@@ -93,7 +93,7 @@ struct LayoutEditState {
 };
 
 extern std::vector<std::string> layouts;
-extern Layout activeLayout;
+extern Layouts::Layout activeLayout;
 extern std::string defaultLayoutName;
 
 bool installDefaultLayouts();

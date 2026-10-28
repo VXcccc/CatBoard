@@ -1,6 +1,6 @@
-
-#include "Input/Keyboard.h"
+#include "UI/States.h"
 
 namespace States {
 Keyboard::State keyboard{};
+Layouts::Layout activeLayout{};
 }
