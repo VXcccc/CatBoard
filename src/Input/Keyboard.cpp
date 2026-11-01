@@ -1,10 +1,10 @@
 #include "Keyboard.h"
-#include "Config/Config.h"
-#include "Input/Mouse.h"
-#include "Media/Fonts.h"
-#include "Media/Sound.h"
-#include "System/Helpers.h"
-#include "UI/Layouts.h"
+#include "Config.h"
+#include "Mouse.h"
+#include "Fonts.h"
+#include "Sound.h"
+#include "Helpers.h"
+#include "Layouts.h"
 #include "imgui.h"
 #include <cmath>
 #include <cstdio>

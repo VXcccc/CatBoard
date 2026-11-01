@@ -1,19 +1,20 @@
-#include "UI/SettingsWindow.h"
-#include "Config/Config.h"
-#include "Config/Constants.h"
-#include "Config/JsonParser.h"
-#include "Input/Hotkeys.h"
-#include "Input/Mouse.h"
-#include "Media/Fonts.h"
-#include "Media/Images.h"
-#include "Media/Sound.h"
+#include "SettingsWindow.h"
+#include "AppState.h"
+#include "Config.h"
+#include "Constants.h"
+#include "Fonts.h"
+#include "Helpers.h"
+#include "Hotkeys.h"
+#include "Images.h"
+#include "JsonParser.h"
+#include "Layouts.h"
+#include "MainWindow.h"
+#include "Mouse.h"
+#include "Paths.h"
 #include "Resource/ResourceConstants.h"
-#include "System/Helpers.h"
-#include "System/Paths.h"
-#include "System/Tray.h"
-#include "UI/Layouts.h"
-#include "UI/MainWindow.h"
-#include "UI/Themes.h"
+#include "Sound.h"
+#include "Themes.h"
+#include "Tray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -25,6 +26,7 @@
 #include <cmath>
 #include <dwmapi.h>
 #include <dxgi.h>
+#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <type_traits>
@@ -467,24 +469,24 @@ void drawGenericCombo(
   }
 }
 
-void drawLayoutCombo(SettingsEditState &state) {
+void drawLayoutCombo(SettingsEditState &state, AppState &app) {
   drawGenericCombo("Layout", Layouts::layouts, "No layouts",
                    state.currentLayout,
-                   [&state](std::size_t i, const std::string &name) {
-                     if (Layouts::loadLayout(name)) {
+                   [&state, &app](std::size_t i, const std::string &name) {
+                     if (Layouts::loadLayout(name, app.layout, app.keyboard)) {
                        state.currentLayout = i;
                        state.selectedLayout = name;
                      }
                    });
 }
 
-void drawImagePackCombo(SettingsEditState &state) {
+void drawImagePackCombo(SettingsEditState &state, const Images::Pack &activePack) {
   drawGenericCombo("Image Pack", Images::packs, "No image packs",
                    state.currentImagePack,
-                   [&state](std::size_t i, const std::string &name) {
+                   [&state, &activePack](std::size_t i, const std::string &name) {
                      if (Images::Load(name)) {
                        state.currentImagePack = i;
-                       state.imagePack = Images::activePack;
+                       state.imagePack = activePack;
                      }
                    });
 }
@@ -703,7 +705,7 @@ void drawImageSection(SettingsEditState &state) {
   ImGui::Checkbox("Mouse display", &state.theme.mouse.imagesDisplay);
   auto &mouse{state.theme.mouse};
   if (state.theme.mouse.imagesDisplay) {
-		ImGui::SameLine();
+    ImGui::SameLine();
     Helper::ColorEdit("Scroll text color", state.theme.mouse.scrollCounter);
 
     Helper::SliderInt("Mouse opacity", mouse.imageOpacity, 0, 255);
@@ -712,7 +714,6 @@ void drawImageSection(SettingsEditState &state) {
 
     ImGui::DragFloat("Offset X", &state.theme.mouse.imageOffsetX);
     ImGui::DragFloat("Offset Y", &state.theme.mouse.imageOffsetY);
-
   }
 
   static int prevIdleAlpha{};
@@ -760,11 +761,11 @@ void drawFontSection(SettingsEditState &state) {
   ImGui::Text("Capitalization of keys: ");
 
   ImGui::RadioButton("Show all buttons defaulted", &state.letterCaseMode,
-                     static_cast<int>(Fonts::LetterCaseMode::defaultMode));
+                     static_cast<int>(Fonts::LetterCaseMode::DefaultMode));
   ImGui::RadioButton("Show all buttons capitalized", &state.letterCaseMode,
-                     static_cast<int>(Fonts::LetterCaseMode::allCapital));
+                     static_cast<int>(Fonts::LetterCaseMode::AllCapital));
   ImGui::RadioButton("Show all buttons lower-case", &state.letterCaseMode,
-                     static_cast<int>(Fonts::LetterCaseMode::allLower));
+                     static_cast<int>(Fonts::LetterCaseMode::AllLower));
   state.font.letterCase.mode =
       static_cast<Fonts::LetterCaseMode>(state.letterCaseMode);
 
@@ -789,9 +790,8 @@ void drawVisualsTab(SettingsEditState &state) {
 }
 
 void drawLayoutsTab(SettingsEditState &state,
-                    Layouts::LayoutEditState &layoutEditState) {
+                    Layouts::LayoutEditState &layoutEditState, AppState &app) {
   drawLayoutCombo(state);
-
   if (ImGui::Button("Open layout folder")) {
     Paths::openLayoutDirectory();
   }
@@ -850,14 +850,15 @@ void drawMiscTab(SettingsEditState &state) {
 
   if (ImGui::DragInt("OverlayX", &state.overlay.x))
     MainWindow::ApplyOverlayPosition();
+
   if (ImGui::DragInt("OverlayY", &state.overlay.y))
     MainWindow::ApplyOverlayPosition();
 
   if (!state.misc.obsMode) {
     if (Helper::SliderFloat("Overlay Scale", state.overlay.scale, 0.0f, 3.0f,
-                            0.0f, 10.0f)) {
+                            0.0f, 10.0f))
       MainWindow::ApplyOverlaySize();
-    }
+
   } else {
     state.overlay.scale = 1.0f;
   }
@@ -1018,7 +1019,7 @@ void drawSettingsTabs(SettingsTab &outCurrentTab) {
   }
 }
 
-void RenderFrame() {
+void RenderFrame(AppState &app) {
   if (!s_visible)
     return;
 

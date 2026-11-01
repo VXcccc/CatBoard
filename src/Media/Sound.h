@@ -2,9 +2,7 @@
 #ifndef SOUND_H
 #define SOUND_H
 
-#include "nlohmann/detail/macro_scope.hpp"
 #include <array>
-#include "miniaudio.h"
 #include "nlohmann/json.hpp"
 #include <string>
 #include <unordered_map>
@@ -53,7 +51,6 @@ std::optional<PackVK> Load(const std::filesystem::path &path);
 const std::unordered_map<std::string, int> &CodeToVK();
 
 extern std::vector<std::string> sounds;
-extern PackVK activePack;
 extern std::string defaultSoundPack;
 } // namespace Sound
 

@@ -1,10 +1,10 @@
-#include "Input/Hotkeys.h"
-#include "Config/Config.h"
-#include "Input/Keyboard.h"
-#include "System/Helpers.h"
-#include "System/Tray.h"
-#include "UI/MainWindow.h"
-#include "UI/SettingsWindow.h"
+#include "Hotkeys.h"
+#include "Config.h"
+#include "Keyboard.h"
+#include "Helpers.h"
+#include "Tray.h"
+#include "MainWindow.h"
+#include "SettingsWindow.h"
 #include <array>
 #include <nlohmann/json.hpp>
 #include <windows.h>

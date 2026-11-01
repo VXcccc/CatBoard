@@ -1,9 +1,10 @@
 // MainWindow namespace also used in Main.cpp (check main for more information)
 
-#include "UI/MainWindow.h"
-#include "Config/Config.h"
-#include "System/Helpers.h"
-#include "UI/Layouts.h"
+#include "MainWindow.h"
+#include "Config.h"
+#include "Helpers.h"
+#include "Layouts.h"
+#include "SettingsWindow.h"
 #include <windows.h>
 #include <winuser.h>
 
@@ -82,11 +83,16 @@ void SetObsMode(HWND hWnd, bool enabled) {
 }
 
 bool overlayChanged(Config::Overlay &outPrevOv, const Config::Overlay &curOv) {
-  const bool changed { outPrevOv != curOv};
+  const bool changed{outPrevOv != curOv};
 
   if (changed) {
     MainWindow::ApplyOverlaySize();
     MainWindow::ApplyOverlayPosition();
+    // ik the title bar is flashing when you changing the size or pos in
+    // settings, but idk how to deal with unfocus other way
+    if (SettingsWindow::IsVisible()) {
+      SettingsWindow::ForceForeground(SettingsWindow::GetHWND());
+    }
   }
 
   outPrevOv = curOv;

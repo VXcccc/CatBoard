@@ -19,8 +19,8 @@ add_executable(${PROJECT_NAME} WIN32
     src/System/Paths.cpp
     src/System/Helpers.cpp
 
-    src/Config/Config.cpp
-    src/Config/JsonParser.cpp
+    src/Configs/Config.cpp
+    src/Configs/JsonParser.cpp
 
     src/Input/Hotkeys.cpp
     src/Input/Mouse.cpp
@@ -34,7 +34,7 @@ add_executable(${PROJECT_NAME} WIN32
     src/UI/MainWindow.cpp
     src/UI/Layouts.cpp
     src/UI/Render.cpp
-		src/UI/States.cpp
+		src/UI/AppState.cpp
 
     Resource/app.rc
 
@@ -61,6 +61,11 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}
     ${CMAKE_SOURCE_DIR}/ThirdParty
     ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/Configs
+    ${CMAKE_SOURCE_DIR}/src/Input
+    ${CMAKE_SOURCE_DIR}/src/Media
+    ${CMAKE_SOURCE_DIR}/src/System
+    ${CMAKE_SOURCE_DIR}/src/UI
     ${CMAKE_SOURCE_DIR}/Assets
 
     ${imgui_SOURCE_DIR}

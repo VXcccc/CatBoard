@@ -1,5 +1,5 @@
-#include "System/Paths.h"
-#include "Config/Constants.h"
+#include "Paths.h"
+#include "Constants.h"
 #include <filesystem>
 #include <shlobj.h>
 #include <string_view>
@@ -44,16 +44,23 @@ std::filesystem::path getAppDataDir() {
 }
 
 std::filesystem::path getExecutableDir() {
-  return std::filesystem::current_path();
+  static const std::filesystem::path dir = [] {
+    wchar_t buf[32768]{};
+    const DWORD n{
+        GetModuleFileNameW(nullptr, buf, static_cast<DWORD>(std::size(buf)))};
+
+    return n ? std::filesystem::path{buf}.parent_path()
+             : std::filesystem::current_path();
+  }();
+
+  return dir;
 }
 
 std::filesystem::path getActiveConfigPath() {
   return getAppDataDir() / "ActiveConfig.json";
 }
 
-std::filesystem::path getUIJsonPath() {
-  return getAppDataDir() / "UI.json";
-}
+std::filesystem::path getUIJsonPath() { return getAppDataDir() / "UI.json"; }
 
 std::filesystem::path configDirectory() { return categoryDirectory("Configs"); }
 std::filesystem::path layoutDirectory() { return categoryDirectory("Layouts"); }
@@ -85,7 +92,7 @@ std::filesystem::path getImagePackPath(std::string_view name) {
   return imagesDirectory() / std::string{name};
 }
 
-std::filesystem::path getImagePackJson(std::string_view name){
+std::filesystem::path getImagePackJson(std::string_view name) {
   return getImagePackPath(name) / "config.json";
 }
 

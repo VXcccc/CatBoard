@@ -1,8 +1,7 @@
-#include "Config/Config.h"
-#include "Config/JsonParser.h"
-#include "System/Helpers.h"
-#include "System/Paths.h"
-#include "imgui.h"
+#include "Config.h"
+#include "JsonParser.h"
+#include "Helpers.h"
+#include "Paths.h"
 #include <combaseapi.h>
 #include <exception>
 #include <filesystem>
@@ -15,8 +14,6 @@
 #include <windows.h>
 
 namespace Config {
-// current config
-Settings activeConfig{};
 static const Settings defaultConfig{};
 std::vector<std::string> configs{};
 
@@ -24,7 +21,7 @@ void refreshConfigs() {
   Helper::refresh(configs, Paths::configDirectory(), ".json");
 }
 
-void LoadActiveConfig() {
+void LoadActiveConfig(Settings& activeConfig) {
   const auto path{Paths::getActiveConfigPath()};
 
   // first load

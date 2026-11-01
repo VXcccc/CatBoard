@@ -5,6 +5,11 @@
 
 namespace Config {
   struct Overlay;
+	struct Settings;
+}
+
+namespace Layouts {
+	struct Layout;
 }
 
 namespace MainWindow {
@@ -15,7 +20,8 @@ extern bool g_resizeMode;
 void Show();
 void Hide();
 bool IsVisible();
-void ApplyOverlayPosition();
+void ApplyOverlayPosition(const Config::Settings &config,
+                          const Layouts::Layout &layout);
 void ApplyOverlaySize();
 
 HWND getHWND();

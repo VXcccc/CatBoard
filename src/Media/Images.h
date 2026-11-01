@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Config/Constants.h"
+#include "Constants.h"
 #include "imgui.h"
 #include <bitset>
 #include <d3d11.h>
@@ -74,7 +74,6 @@ void refreshImagePacks();
 
 void drawSizeOfImages(const Pack &pack);
 
-extern Images::Pack activePack;
 extern Images::Pack defaultPack;
 extern std::vector<std::string> packs;
 }; // namespace Images

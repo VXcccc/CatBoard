@@ -1,10 +1,10 @@
 
-#include "Config/Config.h"
-#include "Config/Constants.h"
-#include "Input/Keyboard.h"
+#include "Config.h"
+#include "Constants.h"
+#include "Keyboard.h"
 #include "Resource/PreInstalledFonts.h"
-#include "System/Helpers.h"
-#include "System/Paths.h"
+#include "Helpers.h"
+#include "Paths.h"
 #include "imgui.h"
 #include <string>
 #include <vector>
@@ -120,15 +120,15 @@ std::string changeStringCase(std::string_view label, bool upper) {
 std::string applyLetterCase(const std::string &label, Font &font) {
 
   switch (font.letterCase.mode) {
-  case LetterCaseMode::allCapital: {
+  case LetterCaseMode::AllCapital: {
     font.letterCase.upper = true;
     return changeStringCase(label, font.letterCase.upper);
   }
-  case LetterCaseMode::allLower: {
+  case LetterCaseMode::AllLower: {
     font.letterCase.upper = false;
     return changeStringCase(label, font.letterCase.upper);
   }
-  case LetterCaseMode::defaultMode: {
+  case LetterCaseMode::DefaultMode: {
     font.letterCase.upper = false;
     return label;
   }

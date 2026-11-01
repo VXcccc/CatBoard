@@ -1,13 +1,14 @@
-#include "UI/Layouts.h"
-#include "Config/Config.h"
-#include "Config/Constants.h"
-#include "Config/JsonParser.h"
-#include "Input/Mouse.h"
-#include "Media/Fonts.h"
-#include "System/Helpers.h"
-#include "System/Paths.h"
-#include "UI/MainWindow.h"
-#include "UI/States.h"
+#include "Layouts.h"
+#include "AppState.h"
+#include "Config.h"
+#include "Constants.h"
+#include "Fonts.h"
+#include "Helpers.h"
+#include "JsonParser.h"
+#include "Keyboard.h"
+#include "MainWindow.h"
+#include "Mouse.h"
+#include "Paths.h"
 
 #include "imgui.h"
 #include "misc/cpp/imgui_stdlib.h"
@@ -32,7 +33,6 @@ using json = nlohmann::json;
 
 namespace Layouts {
 std::vector<std::string> layouts{};
-Layouts::Layout activeLayout{};
 std::string defaultLayoutName{"layout7t"};
 
 void refreshLayouts() {
@@ -44,7 +44,7 @@ bool installDefaultLayouts() {
                                 Paths::layoutDirectory());
 }
 
-bool loadLayoutFile(std::string_view name) {
+bool loadLayoutFile(std::string_view name, Layout &activeLayout) {
   try {
     std::ifstream file{Paths::getLayoutPath(name)};
     if (!file)
@@ -58,13 +58,14 @@ bool loadLayoutFile(std::string_view name) {
   }
 }
 
-bool loadLayout(std::string_view name) {
-  if (loadLayoutFile(name)) {
-    States::keyboard.resyncVisuals(activeLayout);
+bool loadLayout(std::string_view name, Layout &activeLayout,
+                Keyboard::State &keyboard) {
+  if (loadLayoutFile(name, activeLayout)) {
+
+    keyboard.resyncVisuals(activeLayout);
     return true;
   } else if (name != defaultLayoutName)
-    if (loadLayoutFile(defaultLayoutName)) {
-      States::keyboard.resyncVisuals(activeLayout);
+    if (loadLayoutFile(defaultLayoutName, activeLayout)) {
       return true;
     }
 
@@ -1361,7 +1362,7 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
   ImGui::EndChild();
 }
 
-void drawLayoutEditorTab(LayoutEditState &state) {
+void drawLayoutEditorTab(LayoutEditState &state, AppState& app) {
   ImDrawList *draw{ImGui::GetWindowDrawList()};
 
   drawLayoutEditorOptions(state);

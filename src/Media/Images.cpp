@@ -1,13 +1,13 @@
-#include "Media/Images.h"
-#include "Config/Config.h"
-#include "Config/JsonParser.h"
-#include "Input/Keyboard.h"
-#include "Input/Mouse.h"
-#include "Media/Fonts.h"
-#include "System/Helpers.h"
-#include "System/Paths.h"
-#include "UI/Layouts.h"
-#include "UI/MainWindow.h"
+#include "Images.h"
+#include "Config.h"
+#include "JsonParser.h"
+#include "Keyboard.h"
+#include "Mouse.h"
+#include "Fonts.h"
+#include "Helpers.h"
+#include "Paths.h"
+#include "Layouts.h"
+#include "MainWindow.h"
 #include "imgui.h"
 #include <algorithm>
 #include <array>
@@ -42,7 +42,6 @@
 namespace Images {
 // extern
 Images::Pack defaultPack{};
-Images::Pack activePack{};
 std::vector<std::string> packs{};
 
 // static

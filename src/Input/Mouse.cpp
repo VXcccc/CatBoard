@@ -1,9 +1,9 @@
 #define _USE_MATH_DEFINES
 
-#include "Input/Mouse.h"
-#include "Config/Config.h"
-#include "System/Helpers.h"
-#include "UI/Layouts.h"
+#include "Mouse.h"
+#include "Config.h"
+#include "Helpers.h"
+#include "Layouts.h"
 #include "imgui.h"
 #include <algorithm>
 #include <cmath>

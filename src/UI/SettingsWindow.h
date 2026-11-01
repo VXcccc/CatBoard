@@ -1,6 +1,7 @@
 #ifndef SETTINGSWINDOW_H
 #define SETTINGSWINDOW_H
 
+#include "AppState.h"
 #include <windows.h>
 #include <d3d11.h>
 
@@ -12,11 +13,12 @@ void Show();
 void Hide();
 bool IsVisible();
 
-void RenderFrame();
+void RenderFrame( AppState &app);
 
 void Shutdown();
 
 HWND GetHWND();
+void ForceForeground(HWND hwnd);
 
 } // namespace SettingsWindow
 

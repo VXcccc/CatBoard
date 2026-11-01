@@ -1,5 +1,5 @@
-#include "Config/JsonParser.h"
-#include "Config/Config.h"
+#include "JsonParser.h"
+#include "Config.h"
 #include <nlohmann/json.hpp>
 
 namespace Config {

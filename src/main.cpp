@@ -18,19 +18,19 @@
 // #define DEBUG_CATBOARD
 #endif
 
-#include "Config/Config.h"
-#include "Config/Constants.h"
-#include "Input/Keyboard.h"
-#include "Input/Mouse.h"
-#include "Media/Fonts.h"
-#include "Media/Images.h"
-#include "Media/Sound.h"
-#include "System/Helpers.h"
-#include "System/Tray.h"
-#include "UI/Layouts.h"
-#include "UI/MainWindow.h"
-#include "UI/SettingsWindow.h"
-#include "UI/States.h"
+#include "AppState.h"
+#include "Config.h"
+#include "Constants.h"
+#include "Fonts.h"
+#include "Helpers.h"
+#include "Images.h"
+#include "Keyboard.h"
+#include "Layouts.h"
+#include "MainWindow.h"
+#include "Mouse.h"
+#include "SettingsWindow.h"
+#include "Sound.h"
+#include "Tray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -83,19 +83,21 @@ static float g_main_scale{};
 static HANDLE g_fpsTimer = nullptr;
 
 // Forward declarations of helper functions
-bool CreateDeviceD3D(HWND hWnd);
+bool CreateDeviceD3D(HWND hWnd, const Layouts::Layout &layout);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
 // user helper functions
-POINT getOverlayPosition(int windowWidth, int windowHeight);
+POINT getOverlayPosition(int windowWidth, int windowHeight,
+                         const Config::Settings &config);
 bool RegisterRawMouseInput(HWND hwnd);
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
 void fpsLimitter(
-    const std::chrono::time_point<std::chrono::steady_clock> &frameStart);
-void handleObsMode();
+    const std::chrono::time_point<std::chrono::steady_clock> &frameStart,
+    const Config::Settings &config);
+void handleObsMode(const Config::Settings &config);
 void initDebugConsole();
 
 namespace MainWindow {
@@ -116,30 +118,29 @@ void Hide() {
 
 bool IsVisible() { return s_visible; }
 
-void ApplyOverlayPosition() {
+void ApplyOverlayPosition(const Config::Settings &config,
+                          const Layouts::Layout &layout) {
   if (g_dragMode) {
     return;
   }
 
-  const auto &ovScale{Config::activeConfig.overlay.scale};
-  int windowWidth{
-      (int)((Layouts::activeLayout.windowWidth * g_main_scale) * ovScale)};
-  int windowHeight{
-      (int)((Layouts::activeLayout.windowHeight * g_main_scale) * ovScale)};
-  POINT pos = getOverlayPosition(windowWidth, windowHeight);
+  const auto &ovScale{config.overlay.scale};
+  int windowWidth{(int)((layout.windowWidth * g_main_scale) * ovScale)};
+  int windowHeight{(int)((layout.windowHeight * g_main_scale) * ovScale)};
+  POINT pos{getOverlayPosition(windowWidth, windowHeight, config)};
   SetWindowPos(s_hwnd, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
 
-void ApplyOverlaySize() {
-  bool obsMode{Config::activeConfig.misc.obsMode};
-  const auto &ovScale{Config::activeConfig.overlay.scale};
-  int windowWidth{static_cast<int>(
-      (Layouts::activeLayout.windowWidth * g_main_scale) * ovScale)};
+void ApplyOverlaySize(const Config::Settings &config,
+                      const Layouts::Layout &layout) {
+  bool obsMode{config.misc.obsMode};
+  const auto &ovScale{config.overlay.scale};
+  int windowWidth{
+      static_cast<int>((layout.windowWidth * g_main_scale) * ovScale)};
 
   int windowHeight{static_cast<int>(
-      obsMode ? ((Layouts::activeLayout.windowHeight + 40.0f) * g_main_scale) *
-                    ovScale
-              : (Layouts::activeLayout.windowHeight * g_main_scale) * ovScale)};
+      obsMode ? ((layout.windowHeight + 40.0f) * g_main_scale) * ovScale
+              : (layout.windowHeight * g_main_scale) * ovScale)};
 
   SetWindowPos(s_hwnd, nullptr, 0, 0, windowWidth, windowHeight,
                SWP_NOMOVE | SWP_NOZORDER);
@@ -159,9 +160,12 @@ int main(int, char **) {
 #ifdef DEBUG_CATBOARD
   initDebugConsole();
 #endif
-	initDebugConsole();
+  initDebugConsole();
 
-  Config::LoadActiveConfig();
+  // the state holding all active variables;
+  AppState app;
+
+  Config::LoadActiveConfig(app.config);
 
   if (!(Layouts::installDefaultLayouts())) {
     Helper::fatalError(L"Failed to install default layouts");
@@ -169,7 +173,7 @@ int main(int, char **) {
 
   Layouts::refreshLayouts();
 
-  if (!(Layouts::loadLayout(Config::activeConfig.selectedLayout))) {
+  if (!(Layouts::loadLayout(app.config.selectedLayout, app.layout, app.keyboard))) {
     Helper::fatalError(L"Failed to load keyboard layout");
   }
 
@@ -184,7 +188,7 @@ int main(int, char **) {
                        L"libvorbis --triplet x64-mingw-dynamic");
   }
 
-  if (!(Sound::loadSoundPack(Config::activeConfig.soundPack.name))) {
+  if (!(Sound::loadSoundPack(app.config.soundPack.name))) {
     Helper::fatalError(L"Failed to load sound pack");
   }
 
@@ -192,7 +196,7 @@ int main(int, char **) {
     Helper::fatalError(L"Failed to install default image packs");
   }
 
-  if (!(Images::Load(Config::activeConfig.imagePack.name))) {
+  if (!(Images::Load(app.config.imagePack.name))) {
     if (!(Images::Load(Images::defaultPack.name)))
       Helper::fatalError(L"Failed to load image pack");
   }
@@ -218,10 +222,10 @@ int main(int, char **) {
                     nullptr};
   ::RegisterClassExW(&wc);
 
-  int windowWidth{(int)(Layouts::activeLayout.windowWidth * g_main_scale)};
-  int windowHeight{(int)(Layouts::activeLayout.windowHeight * g_main_scale)};
+  int windowWidth{(int)(app.layout.windowWidth * g_main_scale)};
+  int windowHeight{(int)(app.layout.windowHeight * g_main_scale)};
 
-  POINT pos = getOverlayPosition(windowWidth, windowHeight);
+  POINT pos = getOverlayPosition(windowWidth, windowHeight, app.config);
 
   s_hwnd = ::CreateWindowExW(
       WS_EX_NOREDIRECTIONBITMAP | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
@@ -235,7 +239,7 @@ int main(int, char **) {
   }
 
   // Initialize Direct3D
-  if (!CreateDeviceD3D(s_hwnd)) {
+  if (!CreateDeviceD3D(s_hwnd, app.layout)) {
     CleanupDeviceD3D();
     ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
     return 1;
@@ -278,7 +282,7 @@ int main(int, char **) {
     Helper::fatalError(L"Failed to install default fonts");
   }
   Fonts::refreshFonts();
-  if (!(Fonts::loadFont(Config::activeConfig.font, Fonts::overlayFont))) {
+  if (!(Fonts::loadFont(app.config.font, Fonts::overlayFont))) {
     if (!(Fonts::loadFont(Fonts::Font{}, Fonts::overlayFont))) {
       Helper::fatalError(L"Failed to load font");
     }
@@ -297,7 +301,7 @@ int main(int, char **) {
   // creating tray icon
   Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
 
-  MainWindow::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
+  MainWindow::SetObsMode(s_hwnd, app.config.misc.obsMode);
 
   // Our state
   bool show_demo_window = true;
@@ -333,7 +337,7 @@ int main(int, char **) {
     static Fonts::Font lastAppliedFont{};
     Fonts::updateFont(lastAppliedFont, Fonts::overlayFont);
 
-    handleObsMode();
+    handleObsMode(app.config);
 
     MSG msg;
     while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
@@ -365,50 +369,47 @@ int main(int, char **) {
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
 
     bool overlayPropertiesChanged{
-        MainWindow::overlayChanged(prevOverlay, Config::activeConfig.overlay)};
+        MainWindow::overlayChanged(prevOverlay, app.config.overlay)};
 
-    States::keyboard.pollFullKeyboard();
+    app.keyboard.pollFullKeyboard();
 
     // mouse poll
     Mouse::g_mouseState.consumePendingDelta();
 
-    const Mouse::Type &curType{Config::activeConfig.theme.mouse.style.type};
+    const Mouse::Type &curType{app.config.theme.mouse.style.type};
 
     if (Mouse::isTypeCircle(curType)) {
-      Mouse::g_mouseState.updateMouseState(deltaTime,
-                                           Layouts::activeLayout.mouse.radius);
+      Mouse::g_mouseState.updateMouseState(deltaTime, app.layout.mouse.radius);
     } else if (Mouse::isTypeRect(curType)) {
-      Mouse::g_mouseState.updateMouseState(
-          deltaTime, (Layouts::activeLayout.mouse.width / 2),
-          (Layouts::activeLayout.mouse.height / 2));
+      Mouse::g_mouseState.updateMouseState(deltaTime,
+                                           (app.layout.mouse.width / 2),
+                                           (app.layout.mouse.height / 2));
     }
 
-    if (Config::activeConfig.theme.mouse.highlightM1)
-      Mouse::updateM1Highlight(States::keyboard.pressed(VK_LBUTTON));
+    if (app.config.theme.mouse.highlightM1)
+      Mouse::updateM1Highlight(app.keyboard.pressed(VK_LBUTTON));
 
     Mouse::g_mouseState.updateScroll(deltaTime);
-    Mouse::g_mouseState.updateTrail(
-        deltaTime, Config::activeConfig.theme.mouse.trail.style.type);
+    Mouse::g_mouseState.updateTrail(deltaTime,
+                                    app.config.theme.mouse.trail.style.type);
 
-    bool anyKeyChanged{States::keyboard.anyChanged()};
+    bool anyKeyChanged{app.keyboard.anyChanged()};
 
-    Keyboard::updateActive(Layouts::activeLayout, States::keyboard,
-                           Mouse::g_mouseState);
+    Keyboard::updateActive(app.layout, app.keyboard, Mouse::g_mouseState);
 
-    bool scaleAnimating{Keyboard::updateScale(Layouts::activeLayout,
-                                              States::keyboard, deltaTime)};
+    bool scaleAnimating{
+        Keyboard::updateScale(app.layout, app.keyboard, deltaTime)};
 
-    bool colorAnimating{Keyboard::updateKeyColors(Layouts::activeLayout,
-                                                  States::keyboard, deltaTime)};
+    bool colorAnimating{
+        Keyboard::updateKeyColors(app.layout, app.keyboard, deltaTime)};
 
     bool animationActive{scaleAnimating || colorAnimating};
 
-    Binds::handleBinds(States::keyboard, s_hwnd);
+    Binds::handleBinds(app.keyboard, s_hwnd);
 
-    if (Config::activeConfig.soundPack.enable) {
+    if (app.config.soundPack.enable) {
       Keyboard::hadnleKeySounds(
-          States::keyboard, Config::activeConfig.soundPack.layoutKeysOnlySound,
-          Layouts::activeLayout);
+          app.keyboard, app.config.soundPack.layoutKeysOnlySound, app.layout);
     }
 
     static int prevScrollState;
@@ -429,8 +430,8 @@ int main(int, char **) {
                      SettingsWindow::IsVisible()};
 
     if (!needsRender) {
-      SettingsWindow::RenderFrame();
-      fpsLimitter(frameStart);
+      SettingsWindow::RenderFrame(app);
+      fpsLimitter(frameStart, app.config);
       continue;
     }
     firstFrame = false;
@@ -441,18 +442,18 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    Keyboard::renderKeyboard(Layouts::activeLayout, States::keyboard);
+    Keyboard::renderKeyboard(app.layout, app.keyboard);
 
-    const auto &ovScale{Config::activeConfig.overlay.scale};
-    ImVec2 mouseCenter(Layouts::activeLayout.mouse.centerX * ovScale,
-                       Layouts::activeLayout.mouse.centerY * ovScale);
-    if (Config::activeConfig.theme.mouse.enabled) {
+    const auto &ovScale{app.config.overlay.scale};
+    ImVec2 mouseCenter(app.layout.mouse.centerX * ovScale,
+                       app.layout.mouse.centerY * ovScale);
+    if (app.config.theme.mouse.enabled) {
       Mouse::renderMouseIndicator(mouseCenter,
-                                  Config::activeConfig.theme.mouse.style.type);
+                                  app.config.theme.mouse.style.type);
     }
-    if (Config::activeConfig.theme.mouse.imagesDisplay) {
+    if (app.config.theme.mouse.imagesDisplay) {
       Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                              States::keyboard.down);
+                              app.keyboard.down);
     }
 
     // debug
@@ -482,16 +483,15 @@ int main(int, char **) {
     // Present
     // HRESULT hr = g_pSwapChain->Present(1, 0); // Present with vsync
     // HRESULT hr = g_pSwapChain->Present(0, 0); // Present without vsync
-    HRESULT hr = g_pSwapChain->Present(
-        static_cast<UINT>(Config::activeConfig.misc.vsync),
-        0); // dynamic vsync choice
+    HRESULT hr = g_pSwapChain->Present(static_cast<UINT>(app.config.misc.vsync),
+                                       0); // dynamic vsync choice
 
-    SettingsWindow::RenderFrame();
+    SettingsWindow::RenderFrame(app);
     g_SwapChainOccluded = (hr == DXGI_STATUS_OCCLUDED);
 
     // todo move it to seperate function
     //  fps limiter
-    fpsLimitter(frameStart);
+    fpsLimitter(frameStart, app.config);
   }
 
   // Cleanup
@@ -508,7 +508,7 @@ int main(int, char **) {
   Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
 
   // applying config before quit
-  Config::Apply(Config::activeConfig);
+  Config::Apply(app.config);
 
   if (g_fpsTimer) {
     CloseHandle(g_fpsTimer);
@@ -522,16 +522,16 @@ int main(int, char **) {
 
 // to do make it by toogle
 
-void handleObsMode() {
-  static bool lastObsModeCondition{Config::activeConfig.misc.obsMode};
-  if (Config::activeConfig.misc.obsMode != lastObsModeCondition) {
-    MainWindow::SetObsMode(s_hwnd, Config::activeConfig.misc.obsMode);
-    lastObsModeCondition = Config::activeConfig.misc.obsMode;
+void handleObsMode(const Config::Settings &config) {
+  static bool lastObsModeCondition{config.misc.obsMode};
+  if (config.misc.obsMode != lastObsModeCondition) {
+    MainWindow::SetObsMode(s_hwnd, config.misc.obsMode);
+    lastObsModeCondition = config.misc.obsMode;
   }
 
-  if (Config::activeConfig.misc.obsMode) {
+  if (config.misc.obsMode) {
     MainWindow::setClearColor(
-        Helper::fromConfigColor(Config::activeConfig.theme.obsBackground));
+        Helper::fromConfigColor(config.theme.obsBackground));
   } else {
     MainWindow::setClearColor(Consts::defaultClearColor);
   }
@@ -560,12 +560,13 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
 
 // used clancker for this maybe not the best practice idk
 void fpsLimitter(
-    const std::chrono::time_point<std::chrono::steady_clock> &frameStart) {
+    const std::chrono::time_point<std::chrono::steady_clock> &frameStart,
+    const Config::Settings &config) {
   using Clock = std::chrono::steady_clock;
   using HundredNanoseconds =
       std::chrono::duration<long long, std::ratio<1, 10000000>>;
 
-  const double fps{static_cast<double>(Config::activeConfig.misc.fps)};
+  const double fps{static_cast<double>(config.misc.fps)};
 
   if (fps <= 0.0 || g_fpsTimer == nullptr) {
     return;
@@ -600,9 +601,9 @@ void fpsLimitter(
   WaitForSingleObject(g_fpsTimer, INFINITE);
 }
 
-POINT getOverlayPosition(int windowWidth, int windowHeight) {
-  POINT savedPos{Config::activeConfig.overlay.x,
-                 Config::activeConfig.overlay.y};
+POINT getOverlayPosition(int windowWidth, int windowHeight,
+                         const Config::Settings &config) {
+  POINT savedPos{config.overlay.x, config.overlay.y};
 
   // todo maybe rework this shi
   int centerX{savedPos.x + windowWidth / 2};
@@ -646,7 +647,7 @@ void initDebugConsole() {
   std::fflush(stdout);
 }
 
-bool CreateDeviceD3D(HWND hWnd) {
+bool CreateDeviceD3D(HWND hWnd, const Layouts::Layout &layout) {
   D3D_FEATURE_LEVEL featureLevel;
   const D3D_FEATURE_LEVEL featureLevelArray[2]{D3D_FEATURE_LEVEL_11_0,
                                                D3D_FEATURE_LEVEL_10_0};
@@ -664,10 +665,8 @@ bool CreateDeviceD3D(HWND hWnd) {
   dxgiAdapter->GetParent(IID_PPV_ARGS(&dxgiFactory));
 
   DXGI_SWAP_CHAIN_DESC1 sd{};
-  sd.Width =
-      static_cast<UINT>(Layouts::activeLayout.windowWidth * g_main_scale);
-  sd.Height =
-      static_cast<UINT>(Layouts::activeLayout.windowHeight * g_main_scale);
+  sd.Width = static_cast<UINT>(layout.windowWidth * g_main_scale);
+  sd.Height = static_cast<UINT>(layout.windowHeight * g_main_scale);
   sd.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
 
   sd.BufferCount = 2;
@@ -800,9 +799,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
   case WM_EXITSIZEMOVE: {
     // RECT rect;
     // GetWindowRect(hWnd, &rect);
-    // Config::activeConfig.overlay.x = rect.left;
-    // Config::activeConfig.overlay.y = rect.top;
-    Config::Apply(Config::activeConfig);
+    // app.config.overlay.x = rect.left;
+    // app.config.overlay.y = rect.top;
+    Config::Apply(app.config);
     return 0;
   }
   case WM_DESTROY:

@@ -5,6 +5,10 @@
 #include <nlohmann/json.hpp>
 #include <string>
 
+namespace Keyboard{
+	struct State;
+}
+
 namespace Layouts {
 
 enum class KeyProp { X, Y, W, H, gapX, gapY, maxProps };
@@ -93,12 +97,12 @@ struct LayoutEditState {
 };
 
 extern std::vector<std::string> layouts;
-extern Layouts::Layout activeLayout;
 extern std::string defaultLayoutName;
 
 bool installDefaultLayouts();
 void refreshLayouts();
-bool loadLayout(std::string_view name);
+bool loadLayout(std::string_view name, Layout &activeLayout,
+                Keyboard::State &keyboard);
 bool deleteLayout(std::string_view name);
 
 void drawLayoutEditorTab(LayoutEditState &state);

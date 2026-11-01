@@ -3,22 +3,19 @@
 
 // maybe goona change location of this variable later
 
-#include "Config/Constants.h"
-#include "Input/Hotkeys.h"
-#include "Input/Mouse.h"
-#include "Media/Fonts.h"
-#include "Media/Images.h"
-#include "Media/Sound.h"
-#include "System/Helpers.h"
-#include "UI/Layouts.h"
-#include "imgui.h"
+#include "Constants.h"
+#include "Hotkeys.h"
+#include "Mouse.h"
+#include "Fonts.h"
+#include "Images.h"
+#include "Sound.h"
+#include "Helpers.h"
+#include "Layouts.h"
 #include <array>
-#include <nlohmann/json.hpp>
 #include <string>
 #include <string_view>
 #include <vector>
 #include <winuser.h>
-using json = nlohmann::json;
 
 namespace Helper {
 enum class FileCreateResult;
@@ -145,7 +142,6 @@ struct Settings {
 };
 
 // current config
-extern Settings activeConfig;
 extern std::vector<std::string> configs;
 
 bool Load(std::string_view name);
@@ -154,7 +150,7 @@ bool Delete(std::string_view name);
 Helper::FileCreateResult Create(std::string_view name);
 void refreshConfigs();
 
-void LoadActiveConfig();
+void LoadActiveConfig(Settings &activeConfig);
 bool Apply(const Settings &settings);
 } // namespace Config
 

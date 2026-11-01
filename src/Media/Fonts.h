@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Config/Constants.h"
-#include "UI/Layouts.h"
+#include "Constants.h"
+#include "Layouts.h"
 #include "imgui.h"
 #include <bitset>
 #include <nlohmann/json.hpp>
@@ -28,7 +28,7 @@ extern ImFont *iconFont;
 
 extern std::vector<std::string> fonts;
 
-enum class LetterCaseMode { defaultMode, allCapital, allLower, maxLetterCase };
+enum class LetterCaseMode { DefaultMode, AllCapital, AllLower, maxLetterCase };
 
 struct LetterCaseOptions {
   bool capsInsensitiveKeys{false};
@@ -37,7 +37,7 @@ struct LetterCaseOptions {
 };
 
 struct LetterCase {
-  LetterCaseMode mode{LetterCaseMode::defaultMode};
+  LetterCaseMode mode{LetterCaseMode::DefaultMode};
   LetterCaseOptions options{};
   bool upper{false};
 };

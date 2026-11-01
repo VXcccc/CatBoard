@@ -1,9 +1,9 @@
-#include "System/Helpers.h"
-#include "System/Paths.h"
+#include "Helpers.h"
+#include "Paths.h"
 
-#include "Config/Config.h"
-#include "Config/Constants.h"
-#include "Media/Sound.h"
+#include "Config.h"
+#include "Constants.h"
+#include "Sound.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
 #include "miniaudio.h"
 #include <fstream>
@@ -15,7 +15,6 @@
 
 namespace Sound {
 std::vector<std::string> sounds;
-PackVK activePack;
 std::string defaultSoundPack{"cherrymx-red-abs"};
 
 static ma_resource_manager g_resourceManager;
