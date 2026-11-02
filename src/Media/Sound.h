@@ -3,6 +3,9 @@
 #define SOUND_H
 
 #include <array>
+#include <filesystem>
+#include <optional>
+#include <string_view>
 #include "nlohmann/json.hpp"
 #include <string>
 #include <unordered_map>
@@ -37,21 +40,21 @@ struct PackVK {
 };
 
 void refreshSounds();
-bool loadSoundPack(std::string_view name);
+bool loadSoundPack(std::string_view name, PackVK &outPack);
 bool installDefaultSoundPacks();
 
 bool initAudio();
 void ShutdownAudio();
 
 
-void playKey(int keyCode, bool is_down);
+void playKey(int keyCode, bool is_down, const PackVK &pack);
 void setMasterVolume(float volume);
 
 std::optional<PackVK> Load(const std::filesystem::path &path);
 const std::unordered_map<std::string, int> &CodeToVK();
 
 extern std::vector<std::string> sounds;
-extern std::string defaultSoundPack;
+extern const std::string defaultSoundPack;
 } // namespace Sound
 
 #endif // !SOUND_H

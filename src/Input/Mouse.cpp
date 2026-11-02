@@ -1,6 +1,7 @@
 #define _USE_MATH_DEFINES
 
 #include "Mouse.h"
+#include "AppState.h"
 #include "Config.h"
 #include "Helpers.h"
 #include "Layouts.h"
@@ -35,21 +36,16 @@ struct RectBounds {
 
 } // namespace
 
-static bool s_m1Highlighted{false};
-
-std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
+const std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
     mouseStyles{{{"Cat Board", Type::CatBoard},
                  {"Noh Board", Type::NohBoard},
                  {"Wrap", Type::Wrap},
                  {"Pan", Type::Pan}}};
 
-std::array<TrailStyle, static_cast<std::size_t>(TrailType::maxTrailStyles)>
+const std::array<TrailStyle,
+                 static_cast<std::size_t>(TrailType::maxTrailStyles)>
     trailStyles{
         {{"Circle", TrailType::Circle}, {"Catmull", TrailType::Catmull}}};
-
-MouseState g_mouseState{Config::activeConfig.theme.mouse.sensitivity,
-                        Config::activeConfig.theme.mouse.decayRate,
-                        Config::activeConfig.theme.mouse.fadeTime};
 
 bool isTypeCircle(Mouse::Type type) {
   return (type == Type::CatBoard || type == Type::NohBoard);
@@ -169,16 +165,16 @@ static void clampToRadius(float radius, float &offsetX, float &offsetY) {
   }
 }
 
-float MouseState::getDistance() const {
+float Mouse::State::getDistance() const {
   return std::sqrt(m_offsetX * m_offsetX + m_offsetY * m_offsetY);
 }
 
-void MouseState::addRawDelta(int dx, int dy) {
+void Mouse::State::addRawDelta(int dx, int dy) {
   m_pendingDeltaX += dx;
   m_pendingDeltaY += dy;
 }
 
-void MouseState::consumePendingDelta() {
+void Mouse::State::consumePendingDelta() {
   m_deltaX = m_pendingDeltaX;
   m_deltaY = m_pendingDeltaY;
   m_pendingDeltaX = 0;
@@ -186,9 +182,11 @@ void MouseState::consumePendingDelta() {
 }
 
 // round
-void MouseState::updateMouseState(float deltaTime, float radius) {
-  m_sensitivity = Config::activeConfig.theme.mouse.sensitivity;
-  m_decayRate = Config::activeConfig.theme.mouse.decayRate;
+void Mouse::State::updateMouseState(float deltaTime, float radius,
+                                    const Config::MouseTheme &mouse) {
+  m_sensitivity = mouse.sensitivity;
+  m_decayRate = mouse.decayRate;
+  m_fadeTime = mouse.fadeTime;
 
   m_offsetX += m_deltaX * m_sensitivity;
   m_offsetY += m_deltaY * m_sensitivity;
@@ -201,9 +199,9 @@ void MouseState::updateMouseState(float deltaTime, float radius) {
 }
 
 // rect
-void MouseState::updateMouseState(float deltaTime, float halfWidth,
-                                  float halfHeight) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
+void Mouse::State::updateMouseState(float deltaTime, float halfWidth,
+                                    float halfHeight,
+                                    const Config::MouseTheme &mouse) {
   m_sensitivity = mouse.sensitivity;
   m_fadeTime = mouse.fadeTime;
   m_shape = RoundedRect::make(halfWidth, halfHeight, mouse.rounding);
@@ -237,22 +235,23 @@ void MouseState::updateMouseState(float deltaTime, float halfWidth,
   m_wrapExit = offsetBeforeWrap;
 }
 
-void MouseState::updateTrail(float deltaTime, TrailType type) {
-  switch (type) {
+void Mouse::State::updateTrail(float deltaTime,
+                               const Config::MouseTheme &mouse) {
+  switch (mouse.trail.style.type) {
   case TrailType::Circle:
-    updateCircleTrail(deltaTime);
+    updateCircleTrail(deltaTime, mouse);
     break;
   case TrailType::Catmull:
-    updateCatmullTrail(deltaTime);
+    updateCatmullTrail(deltaTime, mouse);
     break;
   default:
     break;
   }
+  if (mouse.trail.style.type == TrailType::Catmull)
+    trimTrailToMaxLength(mouse.trail.maxLength);
 }
 
-void MouseState::ageTrail(float deltaTime) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
-
+void Mouse::State::ageTrail(float deltaTime, const Config::MouseTheme &mouse) {
   // The Catmull trail uses fadeTime as maxAge to avoid an unnecessary
   // redundacy.(cuz lifetime already controlled by maxLength)
   // If you want to control its lifetime independently of fadeTime,
@@ -272,15 +271,15 @@ void MouseState::ageTrail(float deltaTime) {
     m_trailTotalDist = 0.0f;
 }
 
-void MouseState::appendTrailPoint(const ImVec2 &pos, bool breakLine) {
+void Mouse::State::appendTrailPoint(const ImVec2 &pos, bool breakLine) {
   if (!m_trail.empty() && !breakLine)
     m_trailTotalDist += distance(m_trail.back().pos, pos);
 
   m_trail.emplace_back(
-      TrailPoint{pos, 0.0f, m_trailTotalDist, breakLine, s_m1Highlighted});
+      TrailPoint{pos, 0.0f, m_trailTotalDist, breakLine, m_m1Highlighted});
 }
 
-void MouseState::appendWrapSegment(const ImVec2 &current) {
+void Mouse::State::appendWrapSegment(const ImVec2 &current) {
   const ImVec2 previous{m_trail.back().pos};
   const float stepLength{distance(m_wrapExit, previous)};
 
@@ -303,14 +302,15 @@ void MouseState::appendWrapSegment(const ImVec2 &current) {
   appendTrailPoint(entryPoint, true);
 }
 
-void MouseState::trimTrailToMaxLength(float maxLength) {
+void Mouse::State::trimTrailToMaxLength(float maxLength) {
   while (m_trail.size() > 1 &&
          m_trail.back().distance - m_trail.front().distance > maxLength)
     m_trail.pop_front();
 }
 
-void MouseState::updateCatmullTrail(float deltaTime) {
-  ageTrail(deltaTime);
+void Mouse::State::updateCatmullTrail(float deltaTime,
+                                      const Config::MouseTheme &mouse) {
+  ageTrail(deltaTime, mouse);
 
   if (m_deltaX == 0 && m_deltaY == 0)
     return;
@@ -322,25 +322,24 @@ void MouseState::updateCatmullTrail(float deltaTime) {
 
   appendTrailPoint(current, false);
   m_justWrapped = false;
-
-  trimTrailToMaxLength(Config::activeConfig.theme.mouse.trail.maxLength);
 }
 
 // todo update this func
-void MouseState::updateCircleTrail(float deltaTime) {
-  ageTrail(deltaTime);
+void Mouse::State::updateCircleTrail(float deltaTime,
+                                     const Config::MouseTheme &mouse) {
+  ageTrail(deltaTime, mouse);
   m_justWrapped = false;
 
   if (m_deltaX != 0 || m_deltaY != 0)
     m_trail.emplace_back(
-        TrailPoint{trailPos(), 0.0f, 0.0f, false, s_m1Highlighted});
+        TrailPoint{trailPos(), 0.0f, 0.0f, false, m_m1Highlighted});
 }
 
-void MouseState::registerScroll(int wheelDelta) {
+void Mouse::State::registerScroll(int wheelDelta) {
   m_pendingScroll += wheelDelta;
 }
 
-void MouseState::updateScroll(float dt) {
+void Mouse::State::updateScroll(float dt) {
   constexpr float holdTime{0.15f};
 
   const int delta{m_pendingScroll};
@@ -375,10 +374,11 @@ static ImU32 lerpColor(ImU32 colorA, ImU32 colorB, float t) {
   return ImGui::ColorConvertFloat4ToU32(result);
 }
 
-float getFade() {
-  return std::clamp(
-      (1.0f - g_mouseState.getIdleTime() / g_mouseState.getFadeDur()), 0.0f,
-      1.0f);
+float getFade(const Mouse::State &mouseState) {
+  const float fadeDuration{mouseState.getFadeDur()};
+  if (fadeDuration <= 0.0f)
+    return 0.0f;
+  return std::clamp(1.0f - mouseState.getIdleTime() / fadeDuration, 0.0f, 1.0f);
 }
 
 ImU32 applyFade(const Config::ColorRGBA &initColor, const float fade) {
@@ -388,19 +388,14 @@ ImU32 applyFade(const Config::ColorRGBA &initColor, const float fade) {
   return Helper::ToImU32(Helper::toConfigColor(initColorImVec));
 }
 
-void updateM1Highlight(bool m1Pressed) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
-  s_m1Highlighted = mouse.highlightM1 && m1Pressed;
+static float highlightScale(const Config::MouseTheme &mouse,
+                            const Mouse::State &mouseState) {
+  return mouseState.isM1Highlighted() ? mouse.higlightScale : 1.0f;
 }
 
-static float highlightScale() {
-  return s_m1Highlighted ? Config::activeConfig.theme.mouse.higlightScale
-                         : 1.0f;
-}
-
-static const Config::ColorRGBA &inner() {
-  const auto &mouse{Config::activeConfig.theme.mouse};
-  return s_m1Highlighted ? mouse.highlightColor : mouse.inner;
+static const Config::ColorRGBA &inner(const Config::MouseTheme &mouse,
+                                      const Mouse::State &mouseState) {
+  return mouseState.isM1Highlighted() ? mouse.highlightColor : mouse.inner;
 }
 
 static bool isVisible(const TrailClip *clip, const ImVec2 &trailPoint) {
@@ -449,13 +444,14 @@ static Run smoothRun(const Run &run, std::size_t subdivisions) {
 }
 
 static void renderCatmullTrail(const ImVec2 &center,
+                               const Config::MouseTheme &mouse,
+                               const Mouse::State &mouseState,
                                const TrailClip *clip = nullptr) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
-  const auto &mouse{Config::activeConfig.theme.mouse};
   const auto &trail{mouse.trail};
-  const auto &points{g_mouseState.getTrailPoints()};
+  const auto &points{mouseState.getTrailPoints()};
 
-  const float fade{getFade()};
+  const float fade{getFade(mouseState)};
   if (points.empty() || 0.0f >= fade)
     return;
 
@@ -492,17 +488,18 @@ static void renderCatmullTrail(const ImVec2 &center,
 }
 
 static void renderCircleTrail(const ImVec2 &center,
+                              const Config::MouseTheme &mouse,
+                              const Mouse::State &mouseState,
                               const TrailClip *clip = nullptr) {
   ImDrawList *draw = ImGui::GetBackgroundDrawList();
-  const auto &mouse{Config::activeConfig.theme.mouse};
-  const auto &trail{Config::activeConfig.theme.mouse.trail};
+  const auto &trail{mouse.trail};
 
-  const auto &trailPts{g_mouseState.getTrailPoints()};
+  const auto &trailPts{mouseState.getTrailPoints()};
 
   if (trailPts.empty())
     return;
 
-  float fade{getFade()};
+  float fade{getFade(mouseState)};
   if (fade <= 0.0f)
     return;
 
@@ -530,73 +527,72 @@ static void renderCircleTrail(const ImVec2 &center,
 }
 
 static void renderTrail(const ImVec2 &center, TrailType type,
+                        const Config::MouseTheme &mouse,
+                        const Mouse::State &mouseState,
                         const TrailClip *clip = nullptr) {
-  if (!Config::activeConfig.theme.mouse.trail.enable) {
+  if (!mouse.trail.enable) {
     return;
   }
   switch (type) {
   case TrailType::Circle:
-    renderCircleTrail(center, clip);
+    renderCircleTrail(center, mouse, mouseState, clip);
     break;
   case TrailType::Catmull:
-    renderCatmullTrail(center, clip);
+    renderCatmullTrail(center, mouse, mouseState, clip);
     break;
   default:
     break;
   }
 }
 
-static RectBounds rectBoundsAround(const ImVec2 &center) {
-  const auto &size{Layouts::activeLayout.mouse};
+static RectBounds rectBoundsAround(const ImVec2 &center,
+                                   const Layouts::Mouse &size,
+                                   float overlayScale) {
   const float halfWidth{size.width / 2.0f};
   const float halfHeight{size.height / 2.0f};
 
-  const auto &ovScale{Config::activeConfig.overlay.scale};
-  return {
-      halfWidth,
-      halfHeight,
-      {center.x - (halfWidth * ovScale), center.y - (halfHeight * ovScale)},
-      {center.x + (halfWidth * ovScale), center.y + (halfHeight * ovScale)}};
+  return {halfWidth,
+          halfHeight,
+          {center.x - (halfWidth * overlayScale),
+           center.y - (halfHeight * overlayScale)},
+          {center.x + (halfWidth * overlayScale),
+           center.y + (halfHeight * overlayScale)}};
 }
 
-static void drawRectFill(ImDrawList *draw, const RectBounds &bounds) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
+static void drawRectFill(ImDrawList *draw, const RectBounds &bounds,
+                         const Config::MouseTheme &mouse) {
   draw->AddRectFilled(bounds.topLeft, bounds.bottomRight,
                       Helper::ToImU32(mouse.fill), mouse.rounding);
 }
 
-static void drawRectOutline(ImDrawList *draw, const RectBounds &bounds) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
+static void drawRectOutline(ImDrawList *draw, const RectBounds &bounds,
+                            const Config::MouseTheme &mouse) {
   draw->AddRect(bounds.topLeft, bounds.bottomRight,
                 Helper::ToImU32(mouse.outer), mouse.rounding, 0,
                 mouse.outerThickness);
 }
 
-void renderNohBoardMouseIndicator(const ImVec2 &center) {
+static void renderNohBoardIndicator(const ImVec2 &center,
+                                    const Config::MouseTheme &mouse,
+                                    const Layouts::Mouse &layoutMouse,
+                                    const Mouse::State &mouseState) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
-  const auto &mouse{Config::activeConfig.theme.mouse};
 
-  const ImU32 innerColor{Helper::ToImU32(inner())};
+  const ImU32 innerColor{Helper::ToImU32(inner(mouse, mouseState))};
   const ImU32 outerColor{Helper::ToImU32(mouse.outer)};
-  float radius{Layouts::activeLayout.mouse.radius};
+  const float radius{layoutMouse.radius};
 
-  // outer circle
   draw->AddCircleFilled(center, radius, Helper::ToImU32(mouse.fill));
   draw->AddCircle(center, radius, outerColor, 64, mouse.outerThickness);
 
-  const float offsetX{g_mouseState.getOffsetX()};
-  const float offsetY{g_mouseState.getOffsetY()};
-
-  const float indicatorLength{(std::min)(g_mouseState.getDistance(), radius)};
+  const float offsetX{mouseState.getOffsetX()};
+  const float offsetY{mouseState.getOffsetY()};
+  const float indicatorLength{(std::min)(mouseState.getDistance(), radius)};
 
   if (indicatorLength > 1.0f) {
     const float angle{std::atan2(offsetY, offsetX)};
-
-    // 0 = center 1 = edge
-
     const float colorMultiplier{
         std::clamp(indicatorLength / radius, 0.0f, 1.0f)};
-
     const ImU32 indicatorColor{
         mouse.lerpColor ? lerpColor(innerColor, outerColor, colorMultiplier)
                         : innerColor};
@@ -609,42 +605,37 @@ void renderNohBoardMouseIndicator(const ImVec2 &center) {
 
     ImVector<ImVec2> points;
     points.reserve(segments + 2);
-
     points.push_back(center);
-
     for (int i = 0; i <= segments; ++i) {
       const float t{static_cast<float>(i) / segments};
-      // lerp
       const float currentAngle{startAngle + (endAngle - startAngle) * t};
-
       points.push_back({center.x + std::cos(currentAngle) * indicatorLength,
                         center.y + std::sin(currentAngle) * indicatorLength});
     }
 
     draw->AddConvexPolyFilled(points.Data, points.Size, indicatorColor);
 
-    const float smallRadius{mouse.smallRadius * highlightScale()};
-
-    ImVec2 directionEdge{center.x + std::cos(angle) * radius,
-                         center.y + std::sin(angle) * radius};
-
+    const float smallRadius{mouse.smallRadius *
+                            highlightScale(mouse, mouseState)};
+    const ImVec2 directionEdge{center.x + std::cos(angle) * radius,
+                               center.y + std::sin(angle) * radius};
     draw->AddCircleFilled(directionEdge, smallRadius, indicatorColor);
   }
 
-  // not applying highlight scale here, u can if u want
   draw->AddCircleFilled(center, mouse.smallRadius, innerColor);
 }
 
-void renderDefaultMouseIndicator(const ImVec2 &center) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
-  float radius{Layouts::activeLayout.mouse.radius};
-  ImDrawList *draw = ImGui::GetBackgroundDrawList();
+static void renderDefaultIndicator(const ImVec2 &center,
+                                   const Config::MouseTheme &mouse,
+                                   const Layouts::Mouse &layoutMouse,
+                                   const Mouse::State &mouseState) {
+  const float radius{layoutMouse.radius};
+  ImDrawList *draw{ImGui::GetBackgroundDrawList()};
 
-  const ImU32 innerColor{Helper::ToImU32(inner())};
+  const ImU32 innerColor{Helper::ToImU32(inner(mouse, mouseState))};
   const ImU32 outerColor{Helper::ToImU32(mouse.outer)};
-  const float indicatorLength{(std::min)(g_mouseState.getDistance(), radius)};
+  const float indicatorLength{(std::min)(mouseState.getDistance(), radius)};
   const float colorMultiplier{std::clamp(indicatorLength / radius, 0.0f, 1.0f)};
-
   const ImU32 indicatorColor{
       mouse.lerpColor ? lerpColor(innerColor, outerColor, colorMultiplier)
                       : innerColor};
@@ -652,87 +643,95 @@ void renderDefaultMouseIndicator(const ImVec2 &center) {
   draw->AddCircleFilled(center, radius, Helper::ToImU32(mouse.fill));
   draw->AddCircle(center, radius, outerColor, 64, mouse.outerThickness);
 
-  renderTrail(center, mouse.trail.style.type);
-  ImVec2 dotPos{center.x + g_mouseState.getOffsetX(),
-                center.y + g_mouseState.getOffsetY()};
-
-  draw->AddCircleFilled(dotPos, mouse.smallRadius * highlightScale(),
+  renderTrail(center, mouse.trail.style.type, mouse, mouseState);
+  const ImVec2 dotPos{center.x + mouseState.getOffsetX(),
+                      center.y + mouseState.getOffsetY()};
+  draw->AddCircleFilled(dotPos,
+                        mouse.smallRadius * highlightScale(mouse, mouseState),
                         indicatorColor);
 }
 
-void renderWrapIndicator(const ImVec2 &center) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
-  const RectBounds bounds{rectBoundsAround(center)};
+static void renderWrapIndicator(const ImVec2 &center,
+                                const Config::MouseTheme &mouse,
+                                const Layouts::Mouse &layoutMouse,
+                                float overlayScale,
+                                const Mouse::State &mouseState) {
+  const RectBounds bounds{rectBoundsAround(center, layoutMouse, overlayScale)};
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
 
-  const float fade{getFade()};
-  const ImU32 innerColor{applyFade(inner(), fade)};
+  const float fade{getFade(mouseState)};
+  const ImU32 innerColor{applyFade(inner(mouse, mouseState), fade)};
   const ImU32 outerColor{applyFade(mouse.outer, fade)};
-
   const float colorMultiplier{std::clamp(
-      (std::max)(std::abs(g_mouseState.getOffsetX()) / bounds.halfWidth,
-                 std::abs(g_mouseState.getOffsetY()) / bounds.halfHeight),
+      (std::max)(std::abs(mouseState.getOffsetX()) / bounds.halfWidth,
+                 std::abs(mouseState.getOffsetY()) / bounds.halfHeight),
       0.0f, 1.0f)};
-
   const ImU32 indicatorColor{
       mouse.lerpColor ? lerpColor(innerColor, outerColor, colorMultiplier)
                       : innerColor};
 
-  const ImVec2 dotPos{center.x + g_mouseState.getOffsetX(),
-                      center.y + g_mouseState.getOffsetY()};
+  const ImVec2 dotPos{center.x + mouseState.getOffsetX(),
+                      center.y + mouseState.getOffsetY()};
   const TrailClip clip{
       RoundedRect::make(bounds.halfWidth, bounds.halfHeight, mouse.rounding)};
 
-  drawRectFill(draw, bounds);
-
+  drawRectFill(draw, bounds, mouse);
   draw->PushClipRect(bounds.topLeft, bounds.bottomRight, true);
-  renderTrail(center, mouse.trail.style.type, &clip);
-  draw->AddCircleFilled(dotPos, mouse.smallRadius * highlightScale(),
+  renderTrail(center, mouse.trail.style.type, mouse, mouseState, &clip);
+  draw->AddCircleFilled(dotPos,
+                        mouse.smallRadius * highlightScale(mouse, mouseState),
                         indicatorColor);
   draw->PopClipRect();
-
-  drawRectOutline(draw, bounds);
+  drawRectOutline(draw, bounds, mouse);
 }
 
-void renderPanIndicator(const ImVec2 &center) {
-  const auto &mouse{Config::activeConfig.theme.mouse};
-  const RectBounds bounds{rectBoundsAround(center)};
+static void renderPanIndicator(const ImVec2 &center,
+                               const Config::MouseTheme &mouse,
+                               const Layouts::Mouse &layoutMouse,
+                               float overlayScale,
+                               const Mouse::State &mouseState) {
+  const RectBounds bounds{rectBoundsAround(center, layoutMouse, overlayScale)};
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
+  const ImU32 innerColor{
+      applyFade(inner(mouse, mouseState), getFade(mouseState))};
 
-  const ImU32 innerColor{applyFade(inner(), getFade())};
-
-  const ImVec2 trailOrigin{center.x - g_mouseState.getOffsetX(),
-                           center.y - g_mouseState.getOffsetY()};
+  const ImVec2 trailOrigin{center.x - mouseState.getOffsetX(),
+                           center.y - mouseState.getOffsetY()};
   const TrailClip clip{
       RoundedRect::make(bounds.halfWidth, bounds.halfHeight, mouse.rounding),
-      {-g_mouseState.getOffsetX(), -g_mouseState.getOffsetY()}};
+      {-mouseState.getOffsetX(), -mouseState.getOffsetY()}};
 
-  drawRectFill(draw, bounds);
-
+  drawRectFill(draw, bounds, mouse);
   draw->PushClipRect(bounds.topLeft, bounds.bottomRight, true);
-  renderTrail(trailOrigin, mouse.trail.style.type, &clip);
+  renderTrail(trailOrigin, mouse.trail.style.type, mouse, mouseState, &clip);
   draw->PopClipRect();
 
-  draw->AddCircleFilled(center, mouse.smallRadius * highlightScale(),
+  draw->AddCircleFilled(center,
+                        mouse.smallRadius * highlightScale(mouse, mouseState),
                         innerColor);
-
-  drawRectOutline(draw, bounds);
+  drawRectOutline(draw, bounds, mouse);
 }
 
 void renderMouseIndicator(const ImVec2 &center,
-                          const Mouse::Type mouseStyleType) {
+                          const Mouse::Type mouseStyleType,
+                          const AppState &app) {
+  const auto &mouse{app.config.theme.mouse};
+  const auto &layoutMouse{app.layout.mouse};
+  const auto &mouseState{app.mouse};
+  const float overlayScale{app.config.overlay.scale};
+
   switch (mouseStyleType) {
   case Type::CatBoard:
-    renderDefaultMouseIndicator(center);
+    renderDefaultIndicator(center, mouse, layoutMouse, mouseState);
     break;
   case Type::NohBoard:
-    renderNohBoardMouseIndicator(center);
+    renderNohBoardIndicator(center, mouse, layoutMouse, mouseState);
     break;
   case Type::Wrap:
-    renderWrapIndicator(center);
+    renderWrapIndicator(center, mouse, layoutMouse, overlayScale, mouseState);
     break;
   case Type::Pan:
-    renderPanIndicator(center);
+    renderPanIndicator(center, mouse, layoutMouse, overlayScale, mouseState);
     break;
   default:
     break;

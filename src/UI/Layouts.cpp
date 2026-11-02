@@ -33,7 +33,7 @@ using json = nlohmann::json;
 
 namespace Layouts {
 std::vector<std::string> layouts{};
-std::string defaultLayoutName{"layout7t"};
+const std::string defaultLayoutName{"layout7t"};
 
 void refreshLayouts() {
   Helper::refresh(layouts, Paths::layoutDirectory(), ".json");
@@ -44,28 +44,27 @@ bool installDefaultLayouts() {
                                 Paths::layoutDirectory());
 }
 
-bool loadLayoutFile(std::string_view name, Layout &activeLayout) {
+bool loadLayoutFile(std::string_view name, AppState &app) {
   try {
     std::ifstream file{Paths::getLayoutPath(name)};
     if (!file)
       return false;
 
-    activeLayout = json::parse(file).get<Layout>();
-    MainWindow::ApplyOverlaySize();
+    app.layout = json::parse(file).get<Layout>();
+    // MainWindow::ApplyOverlaySize(app);
     return true;
   } catch (const std::exception &) {
     return false;
   }
 }
 
-bool loadLayout(std::string_view name, Layout &activeLayout,
-                Keyboard::State &keyboard) {
-  if (loadLayoutFile(name, activeLayout)) {
-
-    keyboard.resyncVisuals(activeLayout);
+bool loadLayout(std::string_view name, AppState &app) {
+  if (loadLayoutFile(name, app)) {
+    app.keyboard.resyncVisuals(app.layout, app.config.theme);
     return true;
   } else if (name != defaultLayoutName)
-    if (loadLayoutFile(defaultLayoutName, activeLayout)) {
+    if (loadLayoutFile(defaultLayoutName, app)) {
+      app.keyboard.resyncVisuals(app.layout, app.config.theme);
       return true;
     }
 
@@ -928,7 +927,7 @@ static void drawResizeHandles(LayoutEditState &state, ImDrawList *draw,
   ImGui::PopID();
 }
 
-void drawLayoutEditorCanvas(LayoutEditState &state) {
+void drawLayoutEditorCanvas(LayoutEditState &state, const AppState &app) {
   handleEditorShortcuts(state);
   ImGui::PushStyleColor(ImGuiCol_NavHighlight, ImVec4(0, 0, 0, 0));
   const float zoom{state.zoom};
@@ -953,7 +952,7 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
 
   // mouse center
   {
-    const auto &mouse{Config::activeConfig.theme.mouse};
+    const auto &mouse{app.config.theme.mouse};
 
     const ImVec2 mouseCenter{origin.x + state.layout.mouse.centerX * zoom,
                              origin.y + state.layout.mouse.centerY * zoom};
@@ -1002,7 +1001,7 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
     ImGui::PopID();
   }
   if (state.mouseCenterSelected &&
-      ::Mouse::isTypeRect(Config::activeConfig.theme.mouse.style.type)) {
+      ::Mouse::isTypeRect(app.config.theme.mouse.style.type)) {
     drawMouseRectResizeHandles(state, draw,
                                {origin.x + state.layout.mouse.centerX * zoom,
                                 origin.y + state.layout.mouse.centerY * zoom});
@@ -1054,7 +1053,7 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
 
     const ImU32 fill{isSelected ? IM_COL32(80, 140, 255, 180)
                                 : IM_COL32(60, 60, 60, 180)};
-    const float rounding{Config::activeConfig.theme.keyRounding * zoom};
+    const float rounding{app.config.theme.keyRounding * zoom};
 
     draw->AddRectFilled(keyPos, keyPosMax, fill, rounding);
     draw->AddRect(keyPos, keyPosMax, whiteCol32, rounding);
@@ -1071,7 +1070,6 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
   state.selection.ApplyRequests(msIo);
 
   // const ::Mouse::Type
-  // &curType{Config::activeConfig.theme.mouse.style.type};
   if (state.selection.Size == 1 && !state.mouseCenterSelected) {
     void *it{nullptr};
     ImGuiID id{};
@@ -1087,12 +1085,12 @@ void drawLayoutEditorCanvas(LayoutEditState &state) {
   ImGui::PopFont();
 }
 
-void drawLayoutEditorProperties(LayoutEditState &state) {
+void drawLayoutEditorProperties(LayoutEditState &state, const AppState &app) {
   constexpr float sliderWidth{150.0f};
 
   if (state.mouseCenterSelected) {
     ImGui::Text("Mouse center");
-    const auto &mouseStyle{Config::activeConfig.theme.mouse.style};
+    const auto &mouseStyle{app.config.theme.mouse.style};
 
     ImGui::SetNextItemWidth(sliderWidth);
     ImGui::DragFloat("X", &state.layout.mouse.centerX, state.step);
@@ -1217,7 +1215,7 @@ void drawLayoutEditorProperties(LayoutEditState &state) {
   }
 }
 
-void drawLayoutPropertiesOverlay(LayoutEditState &state) {
+void drawLayoutPropertiesOverlay(LayoutEditState &state, AppState &app) {
   const ImVec2 display{ImGui::GetIO().DisplaySize};
   constexpr float pad{30.0f};
   constexpr float dockHeight{240.0f};
@@ -1232,21 +1230,21 @@ void drawLayoutPropertiesOverlay(LayoutEditState &state) {
       ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_AlwaysAutoResize |
       ImGuiWindowFlags_NoFocusOnAppearing};
   ImGui::Begin("Properties##overlay", nullptr, flags);
-  drawLayoutEditorProperties(state);
+  drawLayoutEditorProperties(state, app);
   ImGui::End();
 }
 
-void drawLayoutEditorOptions(LayoutEditState &state) {
+void drawLayoutEditorOptions(LayoutEditState &state, AppState &app) {
   ImGui::BeginChild("Options", ImVec2(410, 120), true);
 
   if (ImGui::Button("Edit current layout")) {
     saveUndoClearRedo(state);
     state.layout.keys.clear();
-    state.layout = activeLayout;
+    state.layout = app.layout;
     state.selection.Clear();
     state.resetViewOffset();
     state.mouseCenterSelected = false;
-    state.layoutNameInput = Config::activeConfig.selectedLayout;
+    state.layoutNameInput = app.config.selectedLayout;
     state.defaultKeyHeight = mostFreqWH(state, KeyProp::H);
     state.defaultKeyWidth = mostFreqWH(state, KeyProp::W);
   }
@@ -1299,8 +1297,8 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
       if (state.layoutNameError.empty()) {
         refreshLayouts();
 
-        if (state.layoutNameInput == Config::activeConfig.selectedLayout) {
-          loadLayout(state.layoutNameInput);
+        if (state.layoutNameInput == app.config.selectedLayout) {
+          loadLayout(state.layoutNameInput, app);
         }
       }
 
@@ -1362,10 +1360,10 @@ void drawLayoutEditorOptions(LayoutEditState &state) {
   ImGui::EndChild();
 }
 
-void drawLayoutEditorTab(LayoutEditState &state, AppState& app) {
+void drawLayoutEditorTab(LayoutEditState &state, AppState &app) {
   ImDrawList *draw{ImGui::GetWindowDrawList()};
 
-  drawLayoutEditorOptions(state);
+  drawLayoutEditorOptions(state, app);
 
   ImGui::SeparatorText("");
 
@@ -1373,7 +1371,7 @@ void drawLayoutEditorTab(LayoutEditState &state, AppState& app) {
                     ImVec2(state.layout.windowWidth * state.zoom + 20,
                            state.layout.windowHeight * state.zoom + 20),
                     true, ImGuiWindowFlags_HorizontalScrollbar);
-  drawLayoutEditorCanvas(state);
+  drawLayoutEditorCanvas(state, app);
   ImGui::EndChild();
 
   // ImGui::SameLine();

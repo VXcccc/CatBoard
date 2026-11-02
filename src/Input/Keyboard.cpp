@@ -1,10 +1,11 @@
 #include "Keyboard.h"
+#include "AppState.h"
 #include "Config.h"
-#include "Mouse.h"
 #include "Fonts.h"
-#include "Sound.h"
 #include "Helpers.h"
 #include "Layouts.h"
+#include "Mouse.h"
+#include "Sound.h"
 #include "imgui.h"
 #include <cmath>
 #include <cstdio>
@@ -21,8 +22,8 @@ void Keyboard::State::pollFullKeyboard() {
   }
 }
 
-void Keyboard::State::resyncVisuals(const Layouts::Layout &layout) {
-  const auto &theme{Config::activeConfig.theme};
+void Keyboard::State::resyncVisuals(const Layouts::Layout &layout,
+                                    const Config::Theme &theme) {
   visuals.assign(layout.keys.size(), KeyVisual{});
   for (auto &v : visuals) {
     v.colors.fill = Helper::fromConfigColor(theme.idleFill);
@@ -32,9 +33,8 @@ void Keyboard::State::resyncVisuals(const Layouts::Layout &layout) {
 }
 
 bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
-              const Mouse::MouseState &m) {
-  const bool &capsDisplay{
-      Config::activeConfig.font.letterCase.options.capsLockDisplay};
+              const Mouse::State &m, const Config::Settings &config) {
+  const bool capsDisplay{config.font.letterCase.options.capsLockDisplay};
 
   switch (key.type) {
   case Layouts::KeyType::Keyboard:
@@ -59,11 +59,12 @@ bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
 }
 
 void updateActive(const Layouts::Layout &layout, Keyboard::State &kb,
-                  const Mouse::MouseState &mouse) {
+                  const Mouse::State &mouse,
+                  const Config::Settings &settings) {
   if (kb.visuals.size() != layout.keys.size())
-    kb.resyncVisuals(layout);
+    kb.resyncVisuals(layout, settings.theme);
   for (std::size_t i = 0; i < layout.keys.size(); ++i)
-    kb.visuals[i].active = isActive(layout.keys[i], kb, mouse);
+    kb.visuals[i].active = isActive(layout.keys[i], kb, mouse, settings);
 }
 
 static std::pair<ImVec2, ImVec2>
@@ -79,9 +80,10 @@ getCenterAndHalfSize(const Layouts::Key &key, float scale,
   }
 }
 
-static std::string getScrollLabel(Mouse::MouseState::ScrollDir dir,
-                                  const Layouts::Key &key) {
-  using type = Mouse::MouseState::ScrollDir;
+static std::string getScrollLabel(Mouse::State::ScrollDir dir,
+                                  const Layouts::Key &key,
+                                  const Mouse::State &mouse) {
+  using type = Mouse::State::ScrollDir;
   using kType = Layouts::KeyType;
 
   switch (dir) {
@@ -90,18 +92,18 @@ static std::string getScrollLabel(Mouse::MouseState::ScrollDir dir,
   case type::Up:
     if (key.type == kType::ScrollDown)
       return key.label;
-    return std::to_string(Mouse::g_mouseState.getScrollUpTimes());
+    return std::to_string(mouse.getScrollUpTimes());
   case type::Down:
     if (key.type == kType::ScrollUp)
       return key.label;
-    return std::to_string(Mouse::g_mouseState.getScrollDownTimes());
+    return std::to_string(mouse.getScrollDownTimes());
   }
   return key.label;
 }
 
-static std::string getScrollIcon(Mouse::MouseState::ScrollDir dir,
+static std::string getScrollIcon(Mouse::State::ScrollDir dir,
                                  const Layouts::Key &key) {
-  using type = Mouse::MouseState::ScrollDir;
+  using type = Mouse::State::ScrollDir;
   using kType = Layouts::KeyType;
 
   switch (dir) {
@@ -119,27 +121,28 @@ static std::string getScrollIcon(Mouse::MouseState::ScrollDir dir,
 }
 
 static std::string getDisplayLabel(const Layouts::Key &key,
-                                   const Keyboard::State &kb,
-                                   Fonts::Font &font) {
+                                   const Keyboard::State &kb, Fonts::Font &font,
+                                   const Mouse::State &mouse) {
 
   if (key.type == Layouts::KeyType::Keyboard) {
     return Fonts::handleLetterCase(kb.down, font, key);
   } else {
-    return getScrollLabel(Mouse::g_mouseState.dominantScroll(), key);
+    return getScrollLabel(mouse.dominantScroll(), key, mouse);
   }
 }
 
 static void drawText(ImDrawList *draw, const Layouts::Key &key,
                      const Keyboard::State &kb, const KeyVisual &v,
-                     ImVec2 center) {
+                     ImVec2 center, Config::Settings &settings,
+                     const Mouse::State &mouse) {
   ImGui::PushFont(Fonts::overlayFont);
 
-  using ScrollDir = Mouse::MouseState::ScrollDir;
+  using ScrollDir = Mouse::State::ScrollDir;
 
   const ImU32 textColor{Helper::ToImU32(Helper::toConfigColor(v.colors.text))};
-  const float &ovScale{Config::activeConfig.overlay.scale};
+  const float &ovScale{settings.overlay.scale};
 
-  std::string displayLabel{getDisplayLabel(key, kb, Config::activeConfig.font)};
+  std::string displayLabel{getDisplayLabel(key, kb, settings.font, mouse)};
 
   ImVec2 textSize{ImGui::CalcTextSize(displayLabel.c_str())};
   ImVec2 textPos{(center.x * ovScale) - (textSize.x * 0.5f),
@@ -150,7 +153,7 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
 
   // draw icons for special keys
   if (!(key.type == Layouts::KeyType::Keyboard)) {
-    const auto curDir(Mouse::g_mouseState.dominantScroll());
+    const auto curDir(mouse.dominantScroll());
 
     if (!(curDir == ScrollDir::None)) {
       ImGui::PushFont(Fonts::iconFont);
@@ -169,12 +172,14 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
   }
 }
 
-void renderKeyboard(const Layouts::Layout &layout, const Keyboard::State &kb) {
+void renderKeyboard( AppState &app) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
-  const auto &theme{Config::activeConfig.theme};
+  const auto &layout{app.layout};
+  const auto &kb{app.keyboard};
+  const auto &theme{app.config.theme};
 
   if (theme.keysImagesDisplay) {
-    Images::drawKeyboardImages(draw, kb);
+    Images::drawKeyboardImages(draw, app);
   }
 
   for (std::size_t i{0}; i < layout.keys.size(); ++i) {
@@ -189,7 +194,7 @@ void renderKeyboard(const Layouts::Layout &layout, const Keyboard::State &kb) {
     const ImVec2 center{keyCenterHalfSize.first};
     const ImVec2 halfSize{keyCenterHalfSize.second};
 
-    const auto &ovScale{Config::activeConfig.overlay.scale};
+    const auto &ovScale{app.config.overlay.scale};
     ImVec2 topLeft((center.x - halfSize.x) * ovScale,
                    (center.y - halfSize.y) * ovScale);
     ImVec2 bottomRight((center.x + halfSize.x) * ovScale,
@@ -207,40 +212,43 @@ void renderKeyboard(const Layouts::Layout &layout, const Keyboard::State &kb) {
       float thickness{theme.keyOutline.thickness};
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
-    drawText(draw, key, kb, v, center);
+    drawText(draw, key, kb, v, center, app.config, app.mouse);
   }
 }
 
 // sound functions
 static void handleKeySoundLayout(const Layouts::Layout &layout,
-                                 const Keyboard::State &kb) {
+                                 const Keyboard::State &kb,
+                                 const Sound::PackVK &soundPack) {
   for (const auto &key : layout.keys) {
     bool down{kb.down[key.code]};
     if (down != kb.prevDown[key.code]) {
-      Sound::playKey(key.code, down);
+      Sound::playKey(key.code, down, soundPack);
     }
   }
 }
 
-static void handleKeySoundFull(const Keyboard::State &kb) {
-  for (const auto &key : Sound::activePack.KeyDefByVK) {
+static void handleKeySoundFull(const Keyboard::State &kb,
+                               const Sound::PackVK &soundPack) {
+  for (const auto &key : soundPack.KeyDefByVK) {
     const auto &vk = key.first;
     bool down{kb.down[vk]};
     if (down != kb.prevDown[vk]) {
-      Sound::playKey(vk, down);
+      Sound::playKey(vk, down, soundPack);
     }
   }
 }
 
 void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
-                     const Layouts::Layout &layout = Layouts::activeLayout) {
+                     const Layouts::Layout &layout,
+                     const Sound::PackVK &soundPack) {
   if (!kb.anyChanged())
     return;
 
   if (layoutKeysOnly) {
-    handleKeySoundLayout(layout, kb);
+    handleKeySoundLayout(layout, kb, soundPack);
   } else {
-    handleKeySoundFull(kb);
+    handleKeySoundFull(kb, soundPack);
   }
 }
 
@@ -267,8 +275,7 @@ static bool animateColor(ImVec4 &cur, const ImVec4 &target, float t) {
 }
 
 bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &kb,
-                     float deltaTime) {
-  const auto &theme{Config::activeConfig.theme};
+                     float deltaTime, const Config::Theme &theme) {
   const bool animEnabled{theme.animateColors && theme.animation &&
                          theme.animationSpeed > 0};
   const float speed{static_cast<float>(theme.animationSpeed) / 10.0f};
@@ -301,8 +308,7 @@ bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &kb,
 }
 
 bool updateScale(const Layouts::Layout &layout, Keyboard::State &kb,
-                 float deltaTime) {
-  const auto &theme{Config::activeConfig.theme};
+                 float deltaTime, const Config::Theme &theme) {
   const bool animEnabled{theme.animation && theme.animationSpeed > 0};
   const float speed{static_cast<float>(theme.animationSpeed) / 10.0f};
   float t{1.0f - std::exp(-speed * deltaTime)};

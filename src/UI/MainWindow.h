@@ -4,36 +4,29 @@
 #include <windows.h>
 
 namespace Config {
-  struct Overlay;
-	struct Settings;
-}
+struct Overlay;
+} // namespace Config
 
-namespace Layouts {
-	struct Layout;
-}
+struct AppState;
 
 namespace MainWindow {
-
-extern bool g_dragMode;
-extern bool g_resizeMode;
 
 void Show();
 void Hide();
 bool IsVisible();
-void ApplyOverlayPosition(const Config::Settings &config,
-                          const Layouts::Layout &layout);
-void ApplyOverlaySize();
+void toogleOverlay();
+
+void ApplyOverlayPosition(const AppState &app);
+void ApplyOverlaySize(const AppState &app);
+void SetObsMode(HWND hWnd, bool enabled, const AppState &app);
 
 HWND getHWND();
 float getG_MainScale();
 ID3D11Device *get_g_pd3dDevice();
 
-void setClearColor(const ImVec4 &clearColor);
-
 void SetDragMode(HWND hWnd, bool enabled);
 void SetResizeMode(HWND hWnd, bool enabled);
-void SetObsMode(HWND hWnd, bool enabled);
 
-
-bool overlayChanged(Config::Overlay &outPrevOv, const Config::Overlay &curOv);
+bool overlayChanged(Config::Overlay &outPrevOv, const AppState &app);
+ImVec4 getClearColor(const AppState &app);
 } // namespace MainWindow

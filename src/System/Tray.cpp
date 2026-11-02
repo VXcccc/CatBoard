@@ -1,7 +1,8 @@
 #include "Tray.h"
-#include "Resource/ResourceConstants.h"
+#include "AppState.h"
 #include "Constants.h"
 #include "MainWindow.h"
+#include "Resource/ResourceConstants.h"
 #include "SettingsWindow.h"
 #include <basetsd.h>
 #include <minwindef.h>
@@ -12,7 +13,6 @@
 
 namespace Tray {
 NOTIFYICONDATA g_nid{};
-bool g_showSettings{false};
 // static int g_interactiveRequests{0};
 
 class TrayMenu {
@@ -60,12 +60,12 @@ NOTIFYICONDATA init(HWND hwnd, HINSTANCE hInstance) {
   return nid;
 }
 
-VOID APIENTRY DisplayContextMenu(HWND hWnd) {
+VOID APIENTRY DisplayContextMenu(HWND hWnd, const AppState &app) {
   POINT pt{};
   GetCursorPos(&pt);
 
   TrayMenu menu;
-  menu.addItem(Consts::ID_DRAGMODE, L"Drag mode", true, MainWindow::g_dragMode);
+  menu.addItem(Consts::ID_DRAGMODE, L"Drag mode", true, app.dragMode);
   menu.addItem(Consts::ID_SETTINGS, L"Settings");
   menu.addItem(Consts::ID_EXIT, L"Exit");
   menu.showAt(hWnd, pt);
@@ -74,7 +74,8 @@ VOID APIENTRY DisplayContextMenu(HWND hWnd) {
 // On_MYWM_NOTIFYICON - processes callback messages for taskbar icons.
 // wParam - first message parameter of the callback message.
 // lParam - second message parameter of the callback message.
-void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd) {
+void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd,
+                          AppState &app) {
   // UINT uID;
   UINT uMouseMsg;
 
@@ -82,29 +83,28 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd) {
   uMouseMsg = (UINT)lParam;
 
   switch (uMouseMsg) {
-  case WM_LBUTTONDBLCLK:
-    SettingsWindow::Show();
+  case WM_LBUTTONUP:
+    MainWindow::toogleOverlay();
     return;
   case WM_RBUTTONUP:
-    DisplayContextMenu(hWnd);
+    DisplayContextMenu(hWnd, app);
     return;
   }
 
   return;
 }
 
-// to do move this functions to mainWindow.h
 
-void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd) {
+void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
   UINT uId{static_cast<UINT>(LOWORD(wParam))};
 
   switch (uId) {
   case Consts::ID_SETTINGS:
-    SettingsWindow::Show();
+    SettingsWindow::toggleWindow();
     return;
   case Consts::ID_DRAGMODE:
-    MainWindow::g_dragMode = !MainWindow::g_dragMode;
-    MainWindow::SetDragMode(hWnd, MainWindow::g_dragMode);
+    app.dragMode = !app.dragMode;
+    MainWindow::SetDragMode(hWnd, app.dragMode);
     return;
   case Consts::ID_EXIT:
     Shell_NotifyIcon(NIM_DELETE, &g_nid);

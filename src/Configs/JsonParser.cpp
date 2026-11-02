@@ -598,6 +598,7 @@ void to_json(json &j, const Bind &bind) {
   j = {{"name", bind.name},
        {"vkCode", bind.vkCode},
        {"keyName", bind.keyName},
+			 {"empty", bind.empty},
        {"type", static_cast<int>(bind.type)}};
 }
 
@@ -610,6 +611,9 @@ void from_json(const json &j, Bind &bind) {
 
   if (j.contains("keyName"))
     j.at("keyName").get_to(bind.keyName);
+
+  if (j.contains("empty"))
+    j.at("empty").get_to(bind.empty);
 
   if (j.contains("type"))
     bind.type = static_cast<BindType>(j.at("type").get<int>());

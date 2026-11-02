@@ -6,6 +6,11 @@
 #include <string>
 #include <windows.h>
 
+struct AppState;
+namespace Config {
+struct MouseTheme;
+}
+
 namespace Config {
 
 using ColorRGBA = std::array<int, 4>;
@@ -20,7 +25,7 @@ struct MouseStyle {
   Type type{Type::CatBoard};
 };
 
-extern std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
+extern const std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
     mouseStyles;
 
 enum class TrailType { Circle, Catmull, maxTrailStyles };
@@ -30,8 +35,8 @@ struct TrailStyle {
   TrailType type{TrailType::Catmull};
 };
 
-extern std::array<TrailStyle,
-                  static_cast<std::size_t>(TrailType::maxTrailStyles)>
+extern const std::array<TrailStyle,
+                        static_cast<std::size_t>(TrailType::maxTrailStyles)>
     trailStyles;
 
 struct TrailPoint {
@@ -63,9 +68,11 @@ struct TrailClip {
   }
 };
 
-class MouseState {
+class State {
 public:
-  MouseState(float sensitivity, float decayRate, float fadeTime)
+	State() = default;
+
+  State(float sensitivity, float decayRate, float fadeTime)
       : m_sensitivity(sensitivity), m_decayRate(decayRate),
         m_fadeTime(fadeTime) {}
 
@@ -77,9 +84,14 @@ public:
 
   void setDecayRate(float decayRate) { m_decayRate = decayRate; }
   float getDecayRate() const { return m_decayRate; }
+  void setFadeTime(float fadeTime) { m_fadeTime = fadeTime; }
+  void setM1Highlighted(bool highlighted) { m_m1Highlighted = highlighted; }
+  bool isM1Highlighted() const { return m_m1Highlighted; }
 
-  void updateMouseState(float deltaTime, float radius);
-  void updateMouseState(float deltaTime, float halfWidth, float halfHeight);
+  void updateMouseState(float deltaTime, float radius,
+                        const Config::MouseTheme &mouse);
+  void updateMouseState(float deltaTime, float halfWidth, float halfHeight,
+                        const Config::MouseTheme &mouse);
 
   float getDistance() const;
 
@@ -89,7 +101,7 @@ public:
   void addRawDelta(int dx, int dy);
   void consumePendingDelta();
 
-  void updateTrail(float deltaTime, TrailType type);
+  void updateTrail(float deltaTime, const Config::MouseTheme &mouse);
   const std::deque<TrailPoint> &getTrailPoints() const { return m_trail; }
 
   void registerScroll(int wheelDelta);
@@ -114,10 +126,10 @@ public:
   bool isScrollingDown() const { return dominantScroll() == ScrollDir::Down; }
 
 private:
-  void updateCatmullTrail(float deltaTime);
-  void updateCircleTrail(float deltaTime);
+  void updateCatmullTrail(float deltaTime, const Config::MouseTheme &mouse);
+  void updateCircleTrail(float deltaTime, const Config::MouseTheme &mouse);
 
-  void ageTrail(float deltaTime);
+  void ageTrail(float deltaTime, const Config::MouseTheme &mouse);
   void appendTrailPoint(const ImVec2 &pos, bool breakLine);
   void appendWrapSegment(const ImVec2 &current);
   void trimTrailToMaxLength(float maxLength);
@@ -138,6 +150,7 @@ private:
 
   float m_idleTime{0.0f};
   float m_fadeTime{0.6f};
+  bool m_m1Highlighted{false};
 
   RoundedRect m_shape;
   bool m_justWrapped{false};
@@ -154,12 +167,10 @@ private:
 };
 
 void renderMouseIndicator(const ImVec2 &center,
-                          const Mouse::Type mouseStyleType);
-
-void updateM1Highlight(bool m1Pressed);
+                          const Mouse::Type mouseStyleType,
+                          const AppState &app);
 
 bool isTypeCircle(Mouse::Type type);
 bool isTypeRect(Mouse::Type type);
 
-extern MouseState g_mouseState;
 } // namespace Mouse

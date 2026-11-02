@@ -1,22 +1,21 @@
 #ifndef INPUTHANDLE_H
 #define INPUTHANDLE_H
 
+#include <array>
+#include <cstddef>
 #include <string>
 #include <vector>
 #include <windows.h>
 #include <winuser.h>
 
-namespace Keyboard {
-struct State;
-}
+struct AppState;
 
 namespace Binds {
 // binds
 enum class BindType {
   dragMode,
-  hideOverlay,
-  openSettings,
-  resizeMode,
+  toggleOverlay,
+  toggleSettings,
   max_bindTypes
 };
 
@@ -24,6 +23,7 @@ struct Bind {
   std::string name;
   int vkCode;
   std::string keyName;
+	bool empty;
   BindType type;
   bool operator==(const Bind &) const = default;
 };
@@ -35,9 +35,9 @@ using BindsVector = std::vector<Bind>;
 
 extern const BindsArray defaultBinds;
 
-bool recordBind(Bind &outBind);
+bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app);
 
-void handleBinds(const Keyboard::State &state, HWND hWnd);
+void handleBinds(HWND hWnd, AppState &app);
 
 void syncBindsOrder(BindsVector &outBinds);
 } // namespace Binds

@@ -1,80 +1,75 @@
 #include "Hotkeys.h"
+#include "AppState.h"
 #include "Config.h"
-#include "Keyboard.h"
+#include "Constants.h"
 #include "Helpers.h"
-#include "Tray.h"
+#include "Keyboard.h"
 #include "MainWindow.h"
 #include "SettingsWindow.h"
+#include "Tray.h"
 #include <array>
-#include <nlohmann/json.hpp>
 #include <windows.h>
-using json = nlohmann::json;
-
 namespace Binds {
 
-static bool s_bindJustRecorded{false};
-
 const BindsArray defaultBinds{
-    Bind{"Drag mode", VK_F4, "F4", BindType::dragMode},
-    Bind{"Hide overlay", VK_F6, "F6", BindType::hideOverlay},
-    Bind{"Open settings", VK_F9, "F9", BindType::openSettings},
-    Bind{"Resize mode", VK_F10, "F10", BindType::resizeMode}};
+    Bind{"Drag mode", VK_F4, "F4", false, BindType::dragMode},
+    Bind{"Toggle overlay", VK_F6, "F6", false, BindType::toggleOverlay},
+    Bind{"Toggle settings", VK_F9, "F9", false, BindType::toggleSettings}};
 
 static_assert(defaultBinds.size() ==
                   static_cast<std::size_t>(BindType::max_bindTypes),
               "default binds array out of sync with bind type enum");
 
-void handleBindType(const BindType type, HWND hWnd) {
+void handleBindType(const BindType type, HWND hWnd, AppState &app) {
   switch (type) {
   case BindType::dragMode:
-    MainWindow::g_dragMode = !MainWindow::g_dragMode;
-    MainWindow::SetDragMode(hWnd, MainWindow::g_dragMode);
+    app.dragMode = !app.dragMode;
+    MainWindow::SetDragMode(hWnd, app.dragMode);
     break;
-  case BindType::hideOverlay:
-    if (!MainWindow::IsVisible()) {
-      MainWindow::Show();
-    } else {
-      MainWindow::Hide();
-    }
+  case BindType::toggleOverlay:
+    MainWindow::toogleOverlay();
     break;
-  case BindType::openSettings:
-    if (!SettingsWindow::IsVisible()) {
-      SettingsWindow::Show();
-    } else {
-      SettingsWindow::Hide();
-    }
+  case BindType::toggleSettings:
+    SettingsWindow::toggleWindow();
     break;
-  case BindType::resizeMode:
-    MainWindow::g_resizeMode = !MainWindow::g_resizeMode;
-    MainWindow::SetResizeMode(hWnd, MainWindow::g_resizeMode);
+    // case BindType::resizeMode:
+    //   app.resizeMode = !app.resizeMode;
+    //   MainWindow::SetResizeMode(hWnd, app.resizeMode);
 
   default:
     break;
   }
 }
 
-void handleBinds(const Keyboard::State &kb, HWND hWnd) {
-  if (s_bindJustRecorded) {
-    s_bindJustRecorded = false;
+void handleBinds(HWND hWnd, AppState &app) {
+  if (app.bindJustRecorded) {
+    app.bindJustRecorded = false;
     return;
   }
-  for (const auto &bind : Config::activeConfig.binds) {
-    if (kb.inRange(bind.vkCode) && kb.pressed(bind.vkCode)) {
-      handleBindType(bind.type, hWnd);
+
+  for (const auto &bind : app.config.binds) {
+    if (app.keyboard.inRange(bind.vkCode) &&
+        app.keyboard.pressed(bind.vkCode) && !bind.empty) {
+      handleBindType(bind.type, hWnd, app);
     }
   }
 }
 
-bool isBindFree(int vk) {
-  for (const auto &bind : Config::activeConfig.binds) {
-    if (vk == bind.vkCode) {
+bool isBindFree(int vk, const BindsVector &binds) {
+  for (const auto &bind : binds) {
+    if (vk == bind.vkCode && !bind.empty) {
       return false;
     }
   }
   return true;
 }
 
-bool recordBind(Bind &outBind) {
+static void makeEmpty(Bind &outBind) {
+  outBind.empty = true;
+  outBind.keyName = Consts::EMPTY_HOTKEY_NAME;
+}
+
+bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
   Bind prevBindState{outBind};
 
   std::array<bool, 256> wasDown{};
@@ -86,7 +81,7 @@ bool recordBind(Bind &outBind) {
     bool escapeDown{(GetAsyncKeyState(VK_ESCAPE) & 0x8000) != 0};
 
     if (!wasDown[VK_ESCAPE] && escapeDown) {
-      outBind = prevBindState;
+      makeEmpty(outBind);
       return true;
     }
 
@@ -101,17 +96,21 @@ bool recordBind(Bind &outBind) {
       }
 
       if (down) {
-        if (Helper::VkToName(vk) == "Unknown" || !isBindFree(vk)) {
+        if (Helper::VkToName(vk) == "Unknown") {
+          makeEmpty(outBind);
+          app.bindJustRecorded = true;
+          return false;
+        } else if (!(isBindFree(vk, binds))) {
           outBind = prevBindState;
-          s_bindJustRecorded = true;
-
+          app.bindJustRecorded = true;
           return false;
         }
 
+        outBind.empty = false;
         outBind.vkCode = vk;
         outBind.keyName = Helper::VkToName(vk);
 
-        s_bindJustRecorded = true;
+        app.bindJustRecorded = true;
 
         return true;
       }

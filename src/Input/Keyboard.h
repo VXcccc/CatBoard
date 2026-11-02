@@ -9,8 +9,16 @@ namespace Layouts {
 struct Layout;
 }
 namespace Mouse {
-class MouseState;
+class State;
 }
+namespace Config {
+struct Theme;
+struct Settings;
+}
+namespace Sound {
+struct PackVK;
+}
+struct AppState;
 
 namespace Keyboard {
 using KeyBitSet = std::bitset<Consts::VK_COUNT>;
@@ -38,7 +46,8 @@ struct State {
   bool inRange(int vk) const { return vk > 0 && vk < Consts::VK_COUNT; }
 
   // visuals vector is synced with layout indicies
-  void resyncVisuals(const Layouts::Layout &layout);
+  void resyncVisuals(const Layouts::Layout &layout,
+                     const Config::Theme &theme);
 };
 
 // bool detectAnyMouseKeyChanged(Keyboard::State &state);
@@ -49,17 +58,18 @@ struct State {
 // void handleKeySoundFull(const Keyboard::State &state);
 
 void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
-                    const Layouts::Layout &layout);
+                     const Layouts::Layout &layout,
+                     const Sound::PackVK &soundPack);
 
 void updateActive(const Layouts::Layout &layout, Keyboard::State &state,
-                  const Mouse::MouseState &mouse);
+                  const Mouse::State &mouse,
+                  const Config::Settings &settings);
 
 bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &state,
-                     float deltaTime);
+                     float deltaTime, const Config::Theme &theme);
 
 bool updateScale(const Layouts::Layout &layout, Keyboard::State &state,
-                 float deltaTime);
+                 float deltaTime, const Config::Theme &theme);
 
-void renderKeyboard(const Layouts::Layout &layout,
-                    const Keyboard::State &state);
+void renderKeyboard( AppState &app);
 } // namespace Keyboard

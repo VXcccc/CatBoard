@@ -52,7 +52,8 @@ bool loadFont(const Font &font, ImFont *&activeFont);
 
 // void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
 //                 float explicitSize);
-void updateFont(Font &outLastAppliedFont, ImFont *&activeFont);
+void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
+                const Font &requestedFont);
 
 bool installDefaultFonts();
 void refreshFonts();

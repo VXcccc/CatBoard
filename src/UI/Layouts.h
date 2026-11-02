@@ -4,10 +4,14 @@
 #include <array>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <string_view>
+#include <vector>
 
 namespace Keyboard{
 	struct State;
 }
+
+struct AppState;
 
 namespace Layouts {
 
@@ -97,15 +101,14 @@ struct LayoutEditState {
 };
 
 extern std::vector<std::string> layouts;
-extern std::string defaultLayoutName;
+extern const std::string defaultLayoutName;
 
 bool installDefaultLayouts();
 void refreshLayouts();
-bool loadLayout(std::string_view name, Layout &activeLayout,
-                Keyboard::State &keyboard);
+bool loadLayout(std::string_view name, AppState &app);
 bool deleteLayout(std::string_view name);
 
-void drawLayoutEditorTab(LayoutEditState &state);
+void drawLayoutEditorTab(LayoutEditState &state, AppState &app);
 
-void drawLayoutPropertiesOverlay(LayoutEditState &state);
+void drawLayoutPropertiesOverlay(LayoutEditState &state, AppState &app);
 } // namespace Layouts

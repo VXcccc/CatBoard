@@ -34,7 +34,6 @@ add_executable(${PROJECT_NAME} WIN32
     src/UI/MainWindow.cpp
     src/UI/Layouts.cpp
     src/UI/Render.cpp
-		src/UI/AppState.cpp
 
     Resource/app.rc
 

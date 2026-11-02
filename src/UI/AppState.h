@@ -6,6 +6,7 @@
 #include "Images.h"
 #include "Layouts.h"
 #include "Mouse.h"
+#include "Themes.h"
 
 struct AppState {
   Keyboard::State keyboard{};
@@ -13,7 +14,11 @@ struct AppState {
   Layouts::Layout layout{};
   Images::Pack imagePack{};
   Sound::PackVK soundPack{};
-  Mouse::MouseState mouse{config.theme.mouse.sensitivity,
-                          config.theme.mouse.decayRate,
-                          config.theme.mouse.fadeTime};
+  Mouse::State mouse{};
+
+	// bool resizeMode{false};
+  bool dragMode{false};
+  bool bindJustRecorded{false};
+  bool previousObsMode{false};
+  int uiTheme{Themes::defaultTheme};
 };

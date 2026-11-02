@@ -19,8 +19,7 @@ constexpr std::array<std::string, MaxStyles> styles{
     "Dark", "White", "RoseQuartz", "GruvBox", "Catppuccin", "Dracula",
 };
 
-inline int defaultTheme{static_cast<int>(Style::RoseQuartz)};
-inline int activeTheme{defaultTheme};
+inline constexpr int defaultTheme{static_cast<int>(Style::RoseQuartz)};
 
 // Forward declarations
 inline void ImGuiDarkStyle();
@@ -57,22 +56,22 @@ inline void ApplyTheme(int theme) {
   }
 }
 
-inline void LoadUiSettings() {
+inline void LoadUiSettings(int &outTheme) {
   std::ifstream file(Paths::getUIJsonPath());
   if (!file)
     return;
 
   try {
     const json j = json::parse(file);
-    const int theme = j.value("theme", activeTheme);
+    const int theme = j.value("theme", outTheme);
     if (theme >= 0 && theme < static_cast<int>(Style::MaxStyles))
-      activeTheme = theme;
+      outTheme = theme;
   } catch (...) {
-    activeTheme = defaultTheme;
+    outTheme = defaultTheme;
   }
 }
 
-inline bool SaveUiSettings() {
+inline bool SaveUiSettings(int theme) {
   const auto path{Paths::getUIJsonPath()};
   std::filesystem::create_directories(path.parent_path());
 
@@ -80,7 +79,7 @@ inline bool SaveUiSettings() {
   if (!file)
     return false;
 
-  file << nlohmann::json{{"theme", activeTheme}}.dump(4);
+  file << nlohmann::json{{"theme", theme}}.dump(4);
   return file.good();
 }
 

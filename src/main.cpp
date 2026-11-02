@@ -30,6 +30,7 @@
 #include "Mouse.h"
 #include "SettingsWindow.h"
 #include "Sound.h"
+#include "Themes.h"
 #include "Tray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
@@ -72,7 +73,6 @@ static IDXGISwapChain1 *g_pSwapChain = nullptr;
 static bool g_SwapChainOccluded = false;
 static UINT g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView *g_mainRenderTargetView = nullptr;
-static bool s_visible = true;
 static HWND s_hwnd = nullptr;
 static IDCompositionDevice *g_dcompDevice = nullptr;
 static IDCompositionTarget *g_dcompTarget = nullptr;
@@ -97,33 +97,28 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
 void fpsLimitter(
     const std::chrono::time_point<std::chrono::steady_clock> &frameStart,
     const Config::Settings &config);
-void handleObsMode(const Config::Settings &config);
+void handleObsMode(AppState &app);
 void initDebugConsole();
 
 namespace MainWindow {
-static ImVec4 s_clearColor{Consts::defaultClearColor};
-
 ID3D11Device *get_g_pd3dDevice() { return g_pd3dDevice; }
 
 void Show() {
-  s_visible = true;
   ::ShowWindow(s_hwnd, SW_SHOW);
   ::SetForegroundWindow(s_hwnd);
 }
 
-void Hide() {
-  s_visible = false;
-  ::ShowWindow(s_hwnd, SW_HIDE);
-}
+void Hide() { ::ShowWindow(s_hwnd, SW_HIDE); }
 
-bool IsVisible() { return s_visible; }
+bool IsVisible() { return s_hwnd && ::IsWindowVisible(s_hwnd); }
 
-void ApplyOverlayPosition(const Config::Settings &config,
-                          const Layouts::Layout &layout) {
-  if (g_dragMode) {
+void ApplyOverlayPosition(const AppState &app) {
+  if (!s_hwnd || app.dragMode) {
     return;
   }
 
+  const auto &config{app.config};
+  const auto &layout{app.layout};
   const auto &ovScale{config.overlay.scale};
   int windowWidth{(int)((layout.windowWidth * g_main_scale) * ovScale)};
   int windowHeight{(int)((layout.windowHeight * g_main_scale) * ovScale)};
@@ -131,8 +126,12 @@ void ApplyOverlayPosition(const Config::Settings &config,
   SetWindowPos(s_hwnd, nullptr, pos.x, pos.y, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
 }
 
-void ApplyOverlaySize(const Config::Settings &config,
-                      const Layouts::Layout &layout) {
+void ApplyOverlaySize(const AppState &app) {
+  if (!s_hwnd)
+    return;
+
+  const auto &config{app.config};
+  const auto &layout{app.layout};
   bool obsMode{config.misc.obsMode};
   const auto &ovScale{config.overlay.scale};
   int windowWidth{
@@ -150,7 +149,11 @@ HWND getHWND() { return s_hwnd; }
 
 float getG_MainScale() { return g_main_scale; }
 
-void setClearColor(const ImVec4 &clearColor) { s_clearColor = clearColor; }
+ImVec4 getClearColor(const AppState &app) {
+  return app.config.misc.obsMode
+             ? Helper::fromConfigColor(app.config.theme.obsBackground)
+             : Consts::defaultClearColor;
+}
 
 } // namespace MainWindow
 
@@ -160,12 +163,12 @@ int main(int, char **) {
 #ifdef DEBUG_CATBOARD
   initDebugConsole();
 #endif
-  initDebugConsole();
 
   // the state holding all active variables;
   AppState app;
 
   Config::LoadActiveConfig(app.config);
+  app.previousObsMode = app.config.misc.obsMode;
 
   if (!(Layouts::installDefaultLayouts())) {
     Helper::fatalError(L"Failed to install default layouts");
@@ -173,7 +176,7 @@ int main(int, char **) {
 
   Layouts::refreshLayouts();
 
-  if (!(Layouts::loadLayout(app.config.selectedLayout, app.layout, app.keyboard))) {
+  if (!(Layouts::loadLayout(app.config.selectedLayout, app))) {
     Helper::fatalError(L"Failed to load keyboard layout");
   }
 
@@ -188,7 +191,7 @@ int main(int, char **) {
                        L"libvorbis --triplet x64-mingw-dynamic");
   }
 
-  if (!(Sound::loadSoundPack(app.config.soundPack.name))) {
+  if (!(Sound::loadSoundPack(app.config.soundPack.name, app.soundPack))) {
     Helper::fatalError(L"Failed to load sound pack");
   }
 
@@ -196,10 +199,11 @@ int main(int, char **) {
     Helper::fatalError(L"Failed to install default image packs");
   }
 
-  if (!(Images::Load(app.config.imagePack.name))) {
-    if (!(Images::Load(Images::defaultPack.name)))
+  if (!(Images::Load(app.config.imagePack.name, app.imagePack))) {
+    if (!(Images::Load(Images::defaultPack.name, app.imagePack)))
       Helper::fatalError(L"Failed to load image pack");
   }
+  app.config.imagePack = app.imagePack;
   Images::refreshImagePacks();
 
   // Make process DPI aware and obtain main monitor scale
@@ -231,7 +235,7 @@ int main(int, char **) {
       WS_EX_NOREDIRECTIONBITMAP | WS_EX_TRANSPARENT | WS_EX_TOPMOST |
           WS_EX_LAYERED | WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE,
       wc.lpszClassName, L"CatBoard Overlay", WS_POPUP, pos.x, pos.y,
-      windowWidth, windowHeight, nullptr, nullptr, wc.hInstance, nullptr);
+      windowWidth, windowHeight, nullptr, nullptr, wc.hInstance, &app);
   // ::SetLayeredWindowAttributes(s_hwnd, RGB(0, 0, 0), 0, LWA_COLORKEY);
 
   if (!RegisterRawMouseInput(s_hwnd)) {
@@ -288,7 +292,7 @@ int main(int, char **) {
     }
   }
 
-  SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext);
+  SettingsWindow::Create(wc.hInstance, g_pd3dDevice, g_pd3dDeviceContext, app);
 
   g_fpsTimer = CreateWaitableTimerExW(nullptr, nullptr,
                                       CREATE_WAITABLE_TIMER_HIGH_RESOLUTION,
@@ -301,7 +305,7 @@ int main(int, char **) {
   // creating tray icon
   Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
 
-  MainWindow::SetObsMode(s_hwnd, app.config.misc.obsMode);
+  MainWindow::SetObsMode(s_hwnd, app.config.misc.obsMode, app);
 
   // Our state
   bool show_demo_window = true;
@@ -315,15 +319,16 @@ int main(int, char **) {
   // arrays only for layouts keys
 
   // arrays for full keyboard
-  static bool firstFrame = true;
+  bool firstFrame = true;
+  int prevScrollState{};
+  Config::Overlay prevOverlay{};
+  Fonts::Font lastAppliedFont{};
 
   // deltaTime
   LARGE_INTEGER freq;
   LARGE_INTEGER lastDeltaTime;
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&lastDeltaTime);
-
-  static Config::Overlay prevOverlay{};
 
   // debug
   SettingsWindow::Show();
@@ -334,10 +339,9 @@ int main(int, char **) {
     // See the WndProc() function below for our to dispatch events to the Win32
     // backend.
 
-    static Fonts::Font lastAppliedFont{};
-    Fonts::updateFont(lastAppliedFont, Fonts::overlayFont);
+    Fonts::updateFont(lastAppliedFont, Fonts::overlayFont, app.config.font);
 
-    handleObsMode(app.config);
+    handleObsMode(app);
 
     MSG msg;
     while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE)) {
@@ -368,61 +372,61 @@ int main(int, char **) {
 
     float deltaTime{getDeltaTime(freq, lastDeltaTime)};
 
-    bool overlayPropertiesChanged{
-        MainWindow::overlayChanged(prevOverlay, app.config.overlay)};
+    bool overlayPropertiesChanged{MainWindow::overlayChanged(prevOverlay, app)};
 
     app.keyboard.pollFullKeyboard();
 
     // mouse poll
-    Mouse::g_mouseState.consumePendingDelta();
+    app.mouse.consumePendingDelta();
 
     const Mouse::Type &curType{app.config.theme.mouse.style.type};
 
     if (Mouse::isTypeCircle(curType)) {
-      Mouse::g_mouseState.updateMouseState(deltaTime, app.layout.mouse.radius);
+      app.mouse.updateMouseState(deltaTime, app.layout.mouse.radius,
+                                 app.config.theme.mouse);
     } else if (Mouse::isTypeRect(curType)) {
-      Mouse::g_mouseState.updateMouseState(deltaTime,
-                                           (app.layout.mouse.width / 2),
-                                           (app.layout.mouse.height / 2));
+      app.mouse.updateMouseState(deltaTime, (app.layout.mouse.width / 2),
+                                 (app.layout.mouse.height / 2),
+                                 app.config.theme.mouse);
     }
 
     if (app.config.theme.mouse.highlightM1)
-      Mouse::updateM1Highlight(app.keyboard.pressed(VK_LBUTTON));
+      app.mouse.setM1Highlighted(app.keyboard.pressed(VK_LBUTTON));
+    else
+      app.mouse.setM1Highlighted(false);
 
-    Mouse::g_mouseState.updateScroll(deltaTime);
-    Mouse::g_mouseState.updateTrail(deltaTime,
-                                    app.config.theme.mouse.trail.style.type);
+    app.mouse.updateScroll(deltaTime);
+    app.mouse.updateTrail(deltaTime, app.config.theme.mouse);
 
     bool anyKeyChanged{app.keyboard.anyChanged()};
 
-    Keyboard::updateActive(app.layout, app.keyboard, Mouse::g_mouseState);
+    Keyboard::updateActive(app.layout, app.keyboard, app.mouse, app.config);
 
-    bool scaleAnimating{
-        Keyboard::updateScale(app.layout, app.keyboard, deltaTime)};
+    bool scaleAnimating{Keyboard::updateScale(app.layout, app.keyboard,
+                                              deltaTime, app.config.theme)};
 
-    bool colorAnimating{
-        Keyboard::updateKeyColors(app.layout, app.keyboard, deltaTime)};
+    bool colorAnimating{Keyboard::updateKeyColors(app.layout, app.keyboard,
+                                                  deltaTime, app.config.theme)};
 
     bool animationActive{scaleAnimating || colorAnimating};
 
-    Binds::handleBinds(app.keyboard, s_hwnd);
+    Binds::handleBinds(s_hwnd, app);
 
     if (app.config.soundPack.enable) {
-      Keyboard::hadnleKeySounds(
-          app.keyboard, app.config.soundPack.layoutKeysOnlySound, app.layout);
+      Keyboard::hadnleKeySounds(app.keyboard,
+                                app.config.soundPack.layoutKeysOnlySound,
+                                app.layout, app.soundPack);
     }
 
-    static int prevScrollState;
-    int currentScrollState{Mouse::g_mouseState.getScrollDownTimes() +
-                           Mouse::g_mouseState.getScrollUpTimes()};
+    int currentScrollState{app.mouse.getScrollDownTimes() +
+                           app.mouse.getScrollUpTimes()};
     bool scrollActive{prevScrollState != currentScrollState};
     prevScrollState = currentScrollState;
 
-    bool mouseIndicatorActive{std::abs(Mouse::g_mouseState.getOffsetX()) >
-                                  Mouse::g_mouseState.getSensivity() ||
-                              std::abs(Mouse::g_mouseState.getOffsetY()) >
-                                  Mouse::g_mouseState.getSensivity() ||
-                              scrollActive};
+    bool mouseIndicatorActive{
+        std::abs(app.mouse.getOffsetX()) > app.mouse.getSensivity() ||
+        std::abs(app.mouse.getOffsetY()) > app.mouse.getSensivity() ||
+        scrollActive};
 
     bool needsRender{anyKeyChanged || firstFrame || mouseIndicatorActive ||
                      animationActive || overlayPropertiesChanged ||
@@ -442,18 +446,17 @@ int main(int, char **) {
 
     ImGui::NewFrame();
 
-    Keyboard::renderKeyboard(app.layout, app.keyboard);
+    Keyboard::renderKeyboard(app);
 
     const auto &ovScale{app.config.overlay.scale};
     ImVec2 mouseCenter(app.layout.mouse.centerX * ovScale,
                        app.layout.mouse.centerY * ovScale);
+    if (app.config.theme.mouse.imagesDisplay) {
+      Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter, app);
+    }
     if (app.config.theme.mouse.enabled) {
       Mouse::renderMouseIndicator(mouseCenter,
-                                  app.config.theme.mouse.style.type);
-    }
-    if (app.config.theme.mouse.imagesDisplay) {
-      Images::drawMouseImages(ImGui::GetBackgroundDrawList(), mouseCenter,
-                              app.keyboard.down);
+                                  app.config.theme.mouse.style.type, app);
     }
 
     // debug
@@ -469,11 +472,10 @@ int main(int, char **) {
 
     // Rendering
     ImGui::Render();
+    const ImVec4 clearColor{MainWindow::getClearColor(app)};
     const float clear_color_with_alpha[4] = {
-        MainWindow::s_clearColor.x * MainWindow::s_clearColor.w,
-        MainWindow::s_clearColor.y * MainWindow::s_clearColor.w,
-        MainWindow::s_clearColor.z * MainWindow::s_clearColor.w,
-        MainWindow::s_clearColor.w};
+        clearColor.x * clearColor.w, clearColor.y * clearColor.w,
+        clearColor.z * clearColor.w, clearColor.w};
     g_pd3dDeviceContext->OMSetRenderTargets(1, &g_mainRenderTargetView,
                                             nullptr);
     g_pd3dDeviceContext->ClearRenderTargetView(g_mainRenderTargetView,
@@ -522,18 +524,10 @@ int main(int, char **) {
 
 // to do make it by toogle
 
-void handleObsMode(const Config::Settings &config) {
-  static bool lastObsModeCondition{config.misc.obsMode};
-  if (config.misc.obsMode != lastObsModeCondition) {
-    MainWindow::SetObsMode(s_hwnd, config.misc.obsMode);
-    lastObsModeCondition = config.misc.obsMode;
-  }
-
-  if (config.misc.obsMode) {
-    MainWindow::setClearColor(
-        Helper::fromConfigColor(config.theme.obsBackground));
-  } else {
-    MainWindow::setClearColor(Consts::defaultClearColor);
+void handleObsMode(AppState &app) {
+  if (app.config.misc.obsMode != app.previousObsMode) {
+    MainWindow::SetObsMode(s_hwnd, app.config.misc.obsMode, app);
+    app.previousObsMode = app.config.misc.obsMode;
   }
 }
 
@@ -725,7 +719,7 @@ void CleanupRenderTarget() {
     g_mainRenderTargetView = nullptr;
   }
 }
-void WM_RawMouseInputHandle(LPARAM lParam) {
+void WM_RawMouseInputHandle(LPARAM lParam, Mouse::State &mouseState) {
   UINT dataSize;
   GetRawInputData((HRAWINPUT)lParam, RID_INPUT, nullptr, &dataSize,
                   sizeof(RAWINPUTHEADER));
@@ -738,11 +732,11 @@ void WM_RawMouseInputHandle(LPARAM lParam) {
       if (raw->header.dwType == RIM_TYPEMOUSE) {
         LONG rawDeltaX = raw->data.mouse.lLastX;
         LONG rawDeltaY = raw->data.mouse.lLastY;
-        Mouse::g_mouseState.addRawDelta(rawDeltaX, rawDeltaY);
+        mouseState.addRawDelta(rawDeltaX, rawDeltaY);
       }
       if (raw->data.mouse.usButtonFlags & RI_MOUSE_WHEEL) {
         short wheelDelta{static_cast<short>(raw->data.mouse.usButtonData)};
-        Mouse::g_mouseState.registerScroll(wheelDelta);
+        mouseState.registerScroll(wheelDelta);
       }
     }
   }
@@ -764,12 +758,21 @@ extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
 // Generally you may always pass all inputs to dear imgui, and hide them
 // from your application based on those two flags.
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
+  if (msg == WM_NCCREATE) {
+    const auto *createInfo{reinterpret_cast<const CREATESTRUCTW *>(lParam)};
+    SetWindowLongPtrW(hWnd, GWLP_USERDATA,
+                      reinterpret_cast<LONG_PTR>(createInfo->lpCreateParams));
+  }
+  auto *app{
+      reinterpret_cast<AppState *>(GetWindowLongPtrW(hWnd, GWLP_USERDATA))};
+
   if (ImGui_ImplWin32_WndProcHandler(hWnd, msg, wParam, lParam))
     return true;
 
   switch (msg) {
   case WM_INPUT: {
-    WM_RawMouseInputHandle(lParam);
+    if (app)
+      WM_RawMouseInputHandle(lParam, app->mouse);
     break;
   }
   case WM_SIZE:
@@ -784,14 +787,16 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     break;
   // handle tray icon
   case Consts::WM_TRAYICON:
-    Tray::On_TrayWM_NOTIFYICON(wParam, lParam, hWnd);
+    if (app)
+      Tray::On_TrayWM_NOTIFYICON(wParam, lParam, hWnd, *app);
     return 0;
   // handle menu
   case WM_COMMAND:
-    Tray::On_WM_COMMAND(wParam, lParam, hWnd);
+    if (app)
+      Tray::On_WM_COMMAND(wParam, lParam, hWnd, *app);
     return 0;
   case WM_NCHITTEST:
-    if (MainWindow::g_dragMode) {
+    if (app && app->dragMode) {
       LRESULT position = DefWindowProc(hWnd, msg, wParam, lParam);
       return position == HTCLIENT ? HTCAPTION : position;
     }
@@ -801,7 +806,8 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     // GetWindowRect(hWnd, &rect);
     // app.config.overlay.x = rect.left;
     // app.config.overlay.y = rect.top;
-    Config::Apply(app.config);
+    if (app)
+      Config::Apply(app->config);
     return 0;
   }
   case WM_DESTROY:

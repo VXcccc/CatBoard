@@ -4,13 +4,13 @@
 // maybe goona change location of this variable later
 
 #include "Constants.h"
-#include "Hotkeys.h"
-#include "Mouse.h"
 #include "Fonts.h"
-#include "Images.h"
-#include "Sound.h"
 #include "Helpers.h"
+#include "Hotkeys.h"
+#include "Images.h"
 #include "Layouts.h"
+#include "Mouse.h"
+#include "Sound.h"
 #include <array>
 #include <string>
 #include <string_view>
@@ -137,20 +137,20 @@ struct Settings {
   Overlay overlay{};
   Fonts::Font font{};
   Misc misc{};
-  std::string configName{"Default"};
+  std::string configName{};
   Images::Pack imagePack{};
 };
 
-// current config
+// available config file names
 extern std::vector<std::string> configs;
 
-bool Load(std::string_view name);
+bool Load(std::string_view name, Settings &outConfig);
 bool Save(std::string_view name, const Config::Settings &settings);
 bool Delete(std::string_view name);
 Helper::FileCreateResult Create(std::string_view name);
 void refreshConfigs();
 
-void LoadActiveConfig(Settings &activeConfig);
+void LoadActiveConfig(Settings &outConfig);
 bool Apply(const Settings &settings);
 } // namespace Config
 

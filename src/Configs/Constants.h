@@ -36,6 +36,8 @@ constexpr float EDITOR_MAXZOOM{100.0f};
 
 constexpr int VK_COUNT{256};
 
+constexpr std::string EMPTY_HOTKEY_NAME{"..."};
+
 } // namespace Consts
 
 #endif // !CONSTANTS_H

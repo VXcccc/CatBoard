@@ -26,6 +26,7 @@
 #include <cmath>
 #include <dwmapi.h>
 #include <dxgi.h>
+#include <functional>
 #include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -49,7 +50,6 @@ static ID3D11DeviceContext *s_deviceContext = nullptr;
 static IDXGISwapChain *s_swapChain = nullptr;
 static ID3D11RenderTargetView *s_rtv = nullptr;
 static ImGuiContext *s_imguiContext = nullptr;
-static bool s_visible = false;
 static UINT s_resizeWidth = 0, s_resizeHeight = 0;
 
 static void CreateRenderTarget() {
@@ -114,7 +114,7 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam,
 HWND GetHWND() { return s_hwnd; }
 
 bool Create(HINSTANCE hInstance, ID3D11Device *device,
-            ID3D11DeviceContext *deviceContext) {
+            ID3D11DeviceContext *deviceContext, AppState &app) {
   s_device = device;
   s_deviceContext = deviceContext;
 
@@ -197,8 +197,8 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   io.FontDefault = s_settingsFont;
 
   io.IniFilename = nullptr; // .ini for settings
-  Themes::LoadUiSettings();
-  Themes::ApplyTheme(Themes::activeTheme);
+  Themes::LoadUiSettings(app.uiTheme);
+  Themes::ApplyTheme(app.uiTheme);
   ImGui_ImplWin32_Init(s_hwnd);
   ImGui_ImplDX11_Init(s_device, s_deviceContext);
 
@@ -224,8 +224,6 @@ void ForceForeground(HWND hwnd) {
 }
 
 void Show() {
-  s_visible = true;
-
   if (IsIconic(s_hwnd)) {
     ::ShowWindow(s_hwnd, SW_RESTORE);
   } else {
@@ -242,12 +240,17 @@ void Show() {
                  SWP_NOMOVE | SWP_NOSIZE | SWP_SHOWWINDOW);
 }
 
-void Hide() {
-  s_visible = false;
-  ::ShowWindow(s_hwnd, SW_HIDE);
-}
+void Hide() { ::ShowWindow(s_hwnd, SW_HIDE); }
 
-bool IsVisible() { return s_visible; }
+bool IsVisible() { return s_hwnd && ::IsWindowVisible(s_hwnd); }
+
+void toggleWindow() {
+  if (!SettingsWindow::IsVisible()) {
+    SettingsWindow::Show();
+  } else {
+    SettingsWindow::Hide();
+  }
+}
 
 // Tabs handling
 enum class SettingsTab {
@@ -323,8 +326,11 @@ struct SettingsEditState {
   std::vector<Config::Settings> redoSettings{};
 };
 
+void syncCurrentIndices(SettingsEditState &state, const AppState &app);
+
 void restoreFromConfig(SettingsEditState &state,
-                       const Config::Settings &prevSettings) {
+                       const Config::Settings &prevSettings, AppState &app) {
+  app.config = prevSettings;
   state.theme = prevSettings.theme;
 
   state.selectedLayout = prevSettings.selectedLayout;
@@ -336,6 +342,7 @@ void restoreFromConfig(SettingsEditState &state,
   state.binds = prevSettings.binds;
 
   state.font = prevSettings.font;
+  state.letterCaseMode = static_cast<int>(prevSettings.font.letterCase.mode);
 
   state.overlay = prevSettings.overlay;
 
@@ -343,10 +350,12 @@ void restoreFromConfig(SettingsEditState &state,
 
   state.configName = prevSettings.configName;
 
-  state.imagePack = prevSettings.imagePack;
-
-  Layouts::loadLayout(prevSettings.selectedLayout);
-  Sound::loadSoundPack(prevSettings.soundPack.name);
+  Layouts::loadLayout(prevSettings.selectedLayout, app);
+  Sound::loadSoundPack(prevSettings.soundPack.name, app.soundPack);
+  if (!Images::Load(prevSettings.imagePack.name, app.imagePack))
+    app.imagePack = prevSettings.imagePack;
+  state.imagePack = app.imagePack;
+  app.config.imagePack = app.imagePack;
   Sound::setMasterVolume(prevSettings.soundPack.volume);
 }
 
@@ -379,7 +388,7 @@ void clearUndo(SettingsEditState &state) {
   state.redoSettings.clear();
 }
 
-void undo(SettingsEditState &state) {
+void undo(SettingsEditState &state, AppState &app) {
   if (state.undoSettings.empty())
     return;
 
@@ -388,14 +397,14 @@ void undo(SettingsEditState &state) {
   Config::Settings prevSettings{state.undoSettings.back()};
   state.undoSettings.pop_back();
 
-  Config::activeConfig = prevSettings;
-  restoreFromConfig(state, prevSettings);
+  restoreFromConfig(state, prevSettings, app);
+  syncCurrentIndices(state, app);
 
   // added this cuz for some reason its loses focus after pressing ctrl z
   ForceForeground(s_hwnd);
 }
 
-void redo(SettingsEditState &state) {
+void redo(SettingsEditState &state, AppState &app) {
   if (state.redoSettings.empty())
     return;
 
@@ -404,20 +413,20 @@ void redo(SettingsEditState &state) {
   Config::Settings nextSettings{state.redoSettings.back()};
   state.redoSettings.pop_back();
 
-  Config::activeConfig = nextSettings;
-  restoreFromConfig(state, nextSettings);
+  restoreFromConfig(state, nextSettings, app);
+  syncCurrentIndices(state, app);
   ForceForeground(s_hwnd);
 }
 
 void handleUndoRedoInput(SettingsEditState &state,
                          Config::Settings &lastCommitted,
-                         SettingsTab currentTab) {
+                         SettingsTab currentTab, AppState &app) {
   if (!ImGui::GetIO().WantTextInput && currentTab != SettingsTab::Layouts) {
     if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiMod_Shift | ImGuiKey_Z)) {
-      redo(state);
+      redo(state, app);
       lastCommitted = buildSettings(state);
     } else if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
-      undo(state);
+      undo(state, app);
       lastCommitted = buildSettings(state);
     }
   }
@@ -437,6 +446,24 @@ std::size_t findIndexByName(const std::vector<std::string> &vec,
     return 0;
   }
   return static_cast<std::size_t>(std::distance(vec.begin(), it));
+}
+
+void syncCurrentIndices(SettingsEditState &state, const AppState &app) {
+  state.currentConfig = findIndexByName(Config::configs, app.config.configName);
+  state.currentLayout =
+      findIndexByName(Layouts::layouts, app.config.selectedLayout);
+  state.currentSound =
+      findIndexByName(Sound::sounds, app.config.soundPack.name);
+  state.currentFont = findIndexByName(Fonts::fonts, app.config.font.name);
+  state.currentImagePack =
+      findIndexByName(Images::packs, app.config.imagePack.name);
+  state.currentMouseStyle =
+      findIndexByName(Helper::extractNames(Mouse::mouseStyles),
+                      app.config.theme.mouse.style.name);
+  state.currentTrailStyle =
+      findIndexByName(Helper::extractNames(Mouse::trailStyles),
+                      app.config.theme.mouse.trail.style.name);
+  state.currentUITheme = static_cast<std::size_t>(app.uiTheme);
 }
 
 // Helper draw functions
@@ -473,20 +500,20 @@ void drawLayoutCombo(SettingsEditState &state, AppState &app) {
   drawGenericCombo("Layout", Layouts::layouts, "No layouts",
                    state.currentLayout,
                    [&state, &app](std::size_t i, const std::string &name) {
-                     if (Layouts::loadLayout(name, app.layout, app.keyboard)) {
+                     if (Layouts::loadLayout(name, app)) {
                        state.currentLayout = i;
                        state.selectedLayout = name;
                      }
                    });
 }
 
-void drawImagePackCombo(SettingsEditState &state, const Images::Pack &activePack) {
+void drawImagePackCombo(SettingsEditState &state, AppState &app) {
   drawGenericCombo("Image Pack", Images::packs, "No image packs",
                    state.currentImagePack,
-                   [&state, &activePack](std::size_t i, const std::string &name) {
-                     if (Images::Load(name)) {
+                   [&state, &app](std::size_t i, const std::string &name) {
+                     if (Images::Load(name, app.imagePack)) {
                        state.currentImagePack = i;
-                       state.imagePack = activePack;
+                       state.imagePack = app.imagePack;
                      }
                    });
 }
@@ -507,10 +534,10 @@ void drawConfigCombo(SettingsEditState &state) {
                    });
 }
 
-void drawSoundCombo(SettingsEditState &state) {
+void drawSoundCombo(SettingsEditState &state, AppState &app) {
   drawGenericCombo("Sound", Sound::sounds, "No sounds", state.currentSound,
-                   [&state](std::size_t i, const std::string &name) {
-                     if (Sound::loadSoundPack(name)) {
+                   [&state, &app](std::size_t i, const std::string &name) {
+                     if (Sound::loadSoundPack(name, app.soundPack)) {
                        state.currentSound = i;
                        state.soundPack.name = name;
                      }
@@ -539,14 +566,14 @@ void drawTrailStyleCombo(SettingsEditState &state,
                    });
 }
 
-void drawThemeCombo(SettingsEditState &state) {
+void drawThemeCombo(SettingsEditState &state, AppState &app) {
   drawGenericCombo("UI Theme", Themes::styles, "No Themes",
                    state.currentUITheme,
-                   [&state](std::size_t i, const std::string &name) {
+                   [&state, &app](std::size_t i, const std::string &name) {
                      state.currentUITheme = i;
-                     Themes::activeTheme = static_cast<int>(i);
-                     Themes::SaveUiSettings();
-                     Themes::ApplyTheme(Themes::activeTheme);
+                     app.uiTheme = static_cast<int>(i);
+                     Themes::SaveUiSettings(app.uiTheme);
+                     Themes::ApplyTheme(app.uiTheme);
                    });
 }
 
@@ -687,10 +714,10 @@ void drawMouseSection(SettingsEditState &state) {
   }
 }
 
-void drawImageSection(SettingsEditState &state) {
+void drawImageSection(SettingsEditState &state, AppState &app) {
   ImGui::SeparatorText("Image");
 
-  drawImagePackCombo(state);
+  drawImagePackCombo(state, app);
 
   if (ImGui::Button("Open images folder")) {
     Paths::openImagesDirectory();
@@ -731,7 +758,7 @@ void drawImageSection(SettingsEditState &state) {
     }
   }
   if (state.theme.keysImagesDisplay) {
-    Images::drawSizeOfImages(state.imagePack);
+    Images::drawSizeOfImages(state.imagePack, app.layout);
   }
 
   if (state.theme.keysImagesDisplay) {
@@ -780,18 +807,18 @@ void drawFontSection(SettingsEditState &state) {
 
 // Draw. functions
 
-void drawVisualsTab(SettingsEditState &state) {
+void drawVisualsTab(SettingsEditState &state, AppState &app) {
   drawKeyboardSection(state);
   drawMouseSection(state);
 
-  drawImageSection(state);
+  drawImageSection(state, app);
 
   drawFontSection(state);
 }
 
 void drawLayoutsTab(SettingsEditState &state,
                     Layouts::LayoutEditState &layoutEditState, AppState &app) {
-  drawLayoutCombo(state);
+  drawLayoutCombo(state, app);
   if (ImGui::Button("Open layout folder")) {
     Paths::openLayoutDirectory();
   }
@@ -826,11 +853,15 @@ void drawLayoutsTab(SettingsEditState &state,
 
   ImGui::Checkbox("Show layout editor", &state.showLayoutEditor);
   if (state.showLayoutEditor) {
-    Layouts::drawLayoutEditorTab(layoutEditState);
+    Layouts::drawLayoutEditorTab(layoutEditState, app);
   }
 }
 
-void drawMiscTab(SettingsEditState &state) {
+void drawMiscTab(SettingsEditState &state, AppState &app) {
+  app.config.theme = state.theme;
+  app.config.misc = state.misc;
+  app.config.overlay = state.overlay;
+
   ImGui::Checkbox("Enable V-Sync", &state.misc.vsync);
   ImGui::Checkbox("Enable ObsMode", &state.misc.obsMode);
 
@@ -840,7 +871,7 @@ void drawMiscTab(SettingsEditState &state) {
 
   Helper::SliderInt("FPS", state.misc.fps, 5, 360, 5, 2000);
 
-  drawThemeCombo(state);
+  drawThemeCombo(state, app);
 
   ImGui::SeparatorText("Overlay Properties");
 
@@ -848,35 +879,45 @@ void drawMiscTab(SettingsEditState &state) {
       "Overlay position that you select here saves into config,\n"
       "if you use drag mode, the position wont be saved");
 
-  if (ImGui::DragInt("OverlayX", &state.overlay.x))
-    MainWindow::ApplyOverlayPosition();
+  if (ImGui::DragInt("OverlayX", &state.overlay.x)) {
+    app.config.overlay = state.overlay;
+    MainWindow::ApplyOverlayPosition(app);
+  }
 
-  if (ImGui::DragInt("OverlayY", &state.overlay.y))
-    MainWindow::ApplyOverlayPosition();
+  if (ImGui::DragInt("OverlayY", &state.overlay.y)) {
+    app.config.overlay = state.overlay;
+    MainWindow::ApplyOverlayPosition(app);
+  }
 
   if (!state.misc.obsMode) {
     if (Helper::SliderFloat("Overlay Scale", state.overlay.scale, 0.0f, 3.0f,
-                            0.0f, 10.0f))
-      MainWindow::ApplyOverlaySize();
+                            0.0f, 10.0f)) {
+      app.config.overlay = state.overlay;
+      MainWindow::ApplyOverlaySize(app);
+    }
 
   } else {
     state.overlay.scale = 1.0f;
   }
 }
 
-void drawBindsTab(SettingsEditState &state) {
+void drawBindsTab(SettingsEditState &state, AppState &app) {
   Binds::syncBindsOrder(state.binds);
   for (auto &bind : state.binds) {
+		ImGui::PushID(bind.name.c_str());
+
     ImGui::TextUnformatted(bind.name.c_str());
 
     ImGui::SameLine();
     if (ImGui::Button(bind.keyName.c_str())) {
-      Binds::recordBind(bind);
+      Binds::recordBind(bind, state.binds, app);
     }
+
+		ImGui::PopID();
   }
 }
 
-void drawSoundsTab(SettingsEditState &state) {
+void drawSoundsTab(SettingsEditState &state, AppState &app) {
   ImGui::Checkbox("Enable asmr sounds", &state.soundPack.enable);
   if (state.soundPack.enable) {
     ImGui::Checkbox("Sounds only for keys in layout",
@@ -886,7 +927,7 @@ void drawSoundsTab(SettingsEditState &state) {
       Sound::setMasterVolume(static_cast<float>(state.volumePercent / 100.0f));
     }
 
-    drawSoundCombo(state);
+    drawSoundCombo(state, app);
 
     if (ImGui::Button("Open sounds folder")) {
       Paths::openSoundsDirectory();
@@ -901,69 +942,69 @@ void drawSoundsTab(SettingsEditState &state) {
   }
 }
 
-void drawConfigsTab(SettingsEditState &state) {
+void drawConfigsTab(SettingsEditState &state, AppState &app) {
   drawConfigCombo(state);
 
-  if (ImGui::Button("Save config")) {
-    ImGui::OpenPopup("Save config");
-  }
-
-  if (ImGui::BeginPopupModal("Save config", nullptr,
-                             ImGuiWindowFlags_AlwaysAutoResize)) {
-    ImGui::Text("Are you sure you want to save %s config",
-                Config::configs[state.currentConfig].c_str());
-    if (ImGui::Button("Yes", ImVec2(100, 0))) {
-      Config::Save(Config::configs[state.currentConfig], buildSettings(state));
-      ImGui::CloseCurrentPopup();
+  const bool hasConfigs{!Config::configs.empty()};
+  if (hasConfigs) {
+    if (ImGui::Button("Save config")) {
+      ImGui::OpenPopup("Save config");
     }
-    ImGui::SameLine();
-    if (ImGui::Button("No", ImVec2(100, 0))) {
-      ImGui::CloseCurrentPopup();
-    }
-    ImGui::EndPopup();
-  }
 
-  ImGui::SameLine();
-
-  if (ImGui::Button("Load config")) {
-    if (Config::Load(Config::configs[state.currentConfig])) {
-      restoreFromConfig(state, Config::activeConfig);
-
-      if (!Layouts::loadLayout(Config::activeConfig.selectedLayout)) {
-        Helper::errorMesBox(L"Failed to load keyboard layout from config");
+    if (ImGui::BeginPopupModal("Save config", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+      ImGui::Text("Are you sure you want to save %s config",
+                  Config::configs[state.currentConfig].c_str());
+      if (ImGui::Button("Yes", ImVec2(100, 0))) {
+        Config::Save(Config::configs[state.currentConfig],
+                     buildSettings(state));
+        ImGui::CloseCurrentPopup();
       }
-
-      if (!Sound::loadSoundPack(Config::activeConfig.soundPack.name)) {
-        Helper::errorMesBox(L"Failed to load sound pack from config");
+      ImGui::SameLine();
+      if (ImGui::Button("No", ImVec2(100, 0))) {
+        ImGui::CloseCurrentPopup();
       }
-
-      MainWindow::ApplyOverlayPosition();
-
-      state.previous = Config::activeConfig;
+      ImGui::EndPopup();
     }
-  }
 
-  ImGui::SameLine();
-
-  if (ImGui::Button("Delete config")) {
-    ImGui::OpenPopup("Delete config");
-  }
-
-  if (ImGui::BeginPopupModal("Delete config", nullptr,
-                             ImGuiWindowFlags_AlwaysAutoResize)) {
-    ImGui::Text("Are you sure you want to delete %s config",
-                Config::configs[state.currentConfig].c_str());
-    if (ImGui::Button("Yes", ImVec2(100, 0))) {
-      Config::Delete(Config::configs[state.currentConfig]);
-      Config::refreshConfigs();
-      validateCurrentIndex(state.currentConfig, std::size(Config::configs));
-      ImGui::CloseCurrentPopup();
-    }
     ImGui::SameLine();
-    if (ImGui::Button("No", ImVec2(100, 0))) {
-      ImGui::CloseCurrentPopup();
+
+    if (ImGui::Button("Load config")) {
+      Config::Settings loadedSettings{};
+      if (Config::Load(Config::configs[state.currentConfig], loadedSettings)) {
+        restoreFromConfig(state, loadedSettings, app);
+        syncCurrentIndices(state, app);
+
+        MainWindow::ApplyOverlayPosition(app);
+
+        state.previous = app.config;
+      }
     }
-    ImGui::EndPopup();
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Delete config")) {
+      ImGui::OpenPopup("Delete config");
+    }
+
+    if (ImGui::BeginPopupModal("Delete config", nullptr,
+                               ImGuiWindowFlags_AlwaysAutoResize)) {
+      ImGui::Text("Are you sure you want to delete %s config",
+                  Config::configs[state.currentConfig].c_str());
+      if (ImGui::Button("Yes", ImVec2(100, 0))) {
+        Config::Delete(Config::configs[state.currentConfig]);
+        Config::refreshConfigs();
+        validateCurrentIndex(state.currentConfig, std::size(Config::configs));
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::SameLine();
+      if (ImGui::Button("No", ImVec2(100, 0))) {
+        ImGui::CloseCurrentPopup();
+      }
+      ImGui::EndPopup();
+    }
+  } else {
+    ImGui::TextDisabled("No configs found. Create one below.");
   }
 
   ImGui::SameLine();
@@ -980,6 +1021,7 @@ void drawConfigsTab(SettingsEditState &state) {
         Helper::getFileCreateError(Config::Create(state.configNameInput));
     if (state.configNameError.empty()) {
       Config::refreshConfigs();
+      syncCurrentIndices(state, app);
     }
   }
 
@@ -993,17 +1035,19 @@ void drawConfigsTab(SettingsEditState &state) {
 }
 
 void drawApplyCancel(SettingsEditState &state,
-                     const Config::Settings &newSettings) {
+                     const Config::Settings &newSettings, AppState &app) {
 
   if (ImGui::Button("Apply")) {
+    app.config = newSettings;
+    app.imagePack = state.imagePack;
     Config::Apply(newSettings);
     state.previous = newSettings;
   }
   ImGui::SameLine();
 
   if (ImGui::Button("Cancel")) {
-    Config::activeConfig = state.previous;
-    restoreFromConfig(state, state.previous);
+    restoreFromConfig(state, state.previous, app);
+    syncCurrentIndices(state, app);
   }
 }
 
@@ -1020,7 +1064,7 @@ void drawSettingsTabs(SettingsTab &outCurrentTab) {
 }
 
 void RenderFrame(AppState &app) {
-  if (!s_visible)
+  if (!IsVisible())
     return;
 
   ImGuiContext *prev = ImGui::GetCurrentContext();
@@ -1050,28 +1094,10 @@ void RenderFrame(AppState &app) {
     Config::refreshConfigs();
     Sound::refreshSounds();
 
-    editState.previous = Config::activeConfig;
-    restoreFromConfig(editState, editState.previous);
+    editState.previous = app.config;
+    restoreFromConfig(editState, editState.previous, app);
+    syncCurrentIndices(editState, app);
     lastCommitted = editState.previous;
-
-    editState.currentConfig =
-        findIndexByName(Config::configs, Config::activeConfig.configName);
-    editState.currentLayout =
-        findIndexByName(Layouts::layouts, Config::activeConfig.selectedLayout);
-    editState.currentSound =
-        findIndexByName(Sound::sounds, Config::activeConfig.soundPack.name);
-    editState.currentFont =
-        findIndexByName(Fonts::fonts, Config::activeConfig.font.name);
-    editState.currentImagePack =
-        findIndexByName(Images::packs, Config::activeConfig.imagePack.name);
-    editState.currentMouseStyle =
-        findIndexByName(Helper::extractNames(Mouse::mouseStyles),
-                        Config::activeConfig.theme.mouse.style.name);
-    editState.currentTrailStyle =
-        findIndexByName(Helper::extractNames(Mouse::trailStyles),
-                        Config::activeConfig.theme.mouse.trail.style.name);
-
-    editState.currentUITheme = static_cast<std::size_t>(Themes::activeTheme);
   }
   wasVisibleLastFrame = visibleNow;
 
@@ -1093,27 +1119,27 @@ void RenderFrame(AppState &app) {
 
   drawSettingsTabs(currentTab);
 
-  handleUndoRedoInput(editState, lastCommitted, currentTab);
+  handleUndoRedoInput(editState, lastCommitted, currentTab, app);
 
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.6);
   switch (currentTab) {
   case SettingsTab::Visuals:
-    drawVisualsTab(editState);
+    drawVisualsTab(editState, app);
     break;
   case SettingsTab::Layouts:
-    drawLayoutsTab(editState, layoutEditState);
+    drawLayoutsTab(editState, layoutEditState, app);
     break;
   case SettingsTab::Sounds:
-    drawSoundsTab(editState);
+    drawSoundsTab(editState, app);
     break;
   case SettingsTab::Misc:
-    drawMiscTab(editState);
+    drawMiscTab(editState, app);
     break;
   case SettingsTab::Binds:
-    drawBindsTab(editState);
+    drawBindsTab(editState, app);
     break;
   case SettingsTab::Configs:
-    drawConfigsTab(editState);
+    drawConfigsTab(editState, app);
     break;
   default:
     break;
@@ -1122,7 +1148,8 @@ void RenderFrame(AppState &app) {
 
   Config::Settings newSettings = buildSettings(editState);
   // Passing new settings but dont saving them
-  Config::activeConfig = newSettings;
+  app.config = newSettings;
+  // app.imagePack = editState.imagePack;
 
   bool settingsChanged{nlohmann::json(newSettings).dump() !=
                        nlohmann::json(lastCommitted).dump()};
@@ -1135,14 +1162,14 @@ void RenderFrame(AppState &app) {
   if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds ||
       currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc ||
       currentTab == SettingsTab::Layouts) {
-    drawApplyCancel(editState, newSettings);
+    drawApplyCancel(editState, newSettings, app);
   }
 
   ImGui::PopFont();
   ImGui::End();
 
   if (currentTab == SettingsTab::Layouts && editState.showLayoutEditor)
-    Layouts::drawLayoutPropertiesOverlay(layoutEditState);
+    Layouts::drawLayoutPropertiesOverlay(layoutEditState, app);
 
   ImGui::Render();
 

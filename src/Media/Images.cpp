@@ -1,4 +1,5 @@
 #include "Images.h"
+#include "AppState.h"
 #include "Config.h"
 #include "JsonParser.h"
 #include "Keyboard.h"
@@ -41,7 +42,7 @@
 
 namespace Images {
 // extern
-Images::Pack defaultPack{};
+const Images::Pack defaultPack{};
 std::vector<std::string> packs{};
 
 // static
@@ -139,8 +140,10 @@ bool LoadTextureFromFile(const char *file_name,
   return ret;
 }
 
-Texture getOrLoadTexture(const std::string &fileName) {
-  auto it{g_textureCache.find(fileName)};
+Texture getOrLoadTexture(const std::string &fileName, const Pack &pack) {
+  const auto path{(Paths::getImagePackPath(pack.name) / (fileName + ".png"))
+                      .string()};
+  auto it{g_textureCache.find(path)};
   if (it != g_textureCache.end()) {
     return it->second;
   }
@@ -148,11 +151,8 @@ Texture getOrLoadTexture(const std::string &fileName) {
   ID3D11ShaderResourceView *srv{nullptr};
   int w{0};
   int h{0};
-  auto path{(Paths::getImagePackPath(activePack.name) / (fileName + ".png"))
-                .string()};
-
   if (LoadTextureFromFile(path.c_str(), &srv, &w, &h)) {
-    g_textureCache[fileName] = Texture{srv, w, h};
+    g_textureCache[path] = Texture{srv, w, h};
     return Texture{srv, w, h};
   }
   return Texture{nullptr};
@@ -166,7 +166,7 @@ void clearTextureCache() {
   g_textureCache.clear();
 }
 
-bool Load(std::string_view name) {
+bool Load(std::string_view name, Pack &outPack) {
   if (!Paths::ensureImagesDirectory()) {
     return false;
   }
@@ -180,7 +180,7 @@ bool Load(std::string_view name) {
       return false;
     }
     const auto j = json::parse(file);
-    activePack = j.get<Images::Pack>();
+    outPack = j.get<Images::Pack>();
   } catch (const std::exception &e) {
     std::string err{e.what()};
     // Helper::drawErrorInSettings(err);
@@ -189,27 +189,27 @@ bool Load(std::string_view name) {
   return true;
 }
 
-const Image *findImageForKey(int vkCode) {
+const Image *findImageForKey(int vkCode, const Pack &pack) {
   auto it = std::find_if(
-      activePack.explicitImages.begin(), activePack.explicitImages.end(),
+      pack.explicitImages.begin(), pack.explicitImages.end(),
       [&](const Image &image) { return image.vkCode == vkCode; });
-  if (it != activePack.explicitImages.end()) {
+  if (it != pack.explicitImages.end()) {
     return &*it;
   }
-  return &activePack.defaultKey;
+  return &pack.defaultKey;
 }
 
-void drawSizeOfImages(const Pack &pack) {
+void drawSizeOfImages(const Pack &pack, const Layouts::Layout &layout) {
   if (!ImGui::CollapsingHeader("Images Size"))
     return;
 
   std::string output{};
   bool defaultRecorded{false};
-  for (const auto &key : Layouts::activeLayout.keys) {
-    const Image *image{findImageForKey(key.code)};
+  for (const auto &key : layout.keys) {
+    const Image *image{findImageForKey(key.code, pack)};
     // maybe by activeFileName is better idk
     const std::string &fileName{image->backGroundFileName};
-    Texture texture{getOrLoadTexture(fileName)};
+    Texture texture{getOrLoadTexture(fileName, pack)};
     if (!texture.srv)
       continue;
 
@@ -227,22 +227,22 @@ void drawSizeOfImages(const Pack &pack) {
   ImGui::TextWrapped("%s", output.c_str());
 }
 
-void drawKeyboardImages(ImDrawList *draw, const Keyboard::State &state) {
-  for (std::size_t i{0}; i < Layouts::activeLayout.keys.size(); ++i) {
-    const auto &v{state.visuals[i]};
-    const auto &key{Layouts::activeLayout.keys[i]};
+void drawKeyboardImages(ImDrawList *draw, const AppState &app) {
+  for (std::size_t i{0}; i < app.layout.keys.size(); ++i) {
+    const auto &v{app.keyboard.visuals[i]};
+    const auto &key{app.layout.keys[i]};
 
     bool down{v.active};
 
-    const Image *image{findImageForKey(key.code)};
+    const Image *image{findImageForKey(key.code, app.imagePack)};
     const std::string &fileName{down ? image->activeFileName
                                      : image->backGroundFileName};
 
-    Texture texture{getOrLoadTexture(fileName)};
+    Texture texture{getOrLoadTexture(fileName, app.imagePack)};
     if (!texture.srv)
       continue;
 
-    const auto &ovScale{Config::activeConfig.overlay.scale};
+    const auto &ovScale{app.config.overlay.scale};
     ImVec2 topLeft{key.x * ovScale, key.y * ovScale};
     // todo fix the problem with different size of key in layout and in image
     // size
@@ -250,15 +250,17 @@ void drawKeyboardImages(ImDrawList *draw, const Keyboard::State &state) {
     draw->AddImage(
         (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
         ImVec2(1, 1),
-        IM_COL32(255, 255, 255, Config::activeConfig.theme.keysImageOpacity));
+        IM_COL32(255, 255, 255, app.config.theme.keysImageOpacity));
   }
 }
 
 void handleScroll(ImDrawList *draw, const MouseButton &scroll,
-                  const ImVec2 &partCenter, bool up) {
+                  const ImVec2 &partCenter, bool up,
+                  const ::Mouse::State &mouseState,
+                  const Config::MouseTheme &mouseTheme) {
   ImGui::PushFont(Fonts::overlayFont);
-  int counter{up ? ::Mouse::g_mouseState.getScrollUpTimes()
-                 : ::Mouse::g_mouseState.getScrollDownTimes()};
+  int counter{up ? mouseState.getScrollUpTimes()
+                 : mouseState.getScrollDownTimes()};
   if (counter > 0) {
     std::string label{std::to_string(counter)};
 
@@ -266,24 +268,25 @@ void handleScroll(ImDrawList *draw, const MouseButton &scroll,
     ImVec2 textPos{partCenter.x - (textSize.x * 0.5f),
                    partCenter.y - (textSize.y * 0.5f)};
     ImU32 textColor{
-        Helper::ToImU32(Config::activeConfig.theme.mouse.scrollCounter)};
+        Helper::ToImU32(mouseTheme.scrollCounter)};
     draw->AddText(textPos, textColor, label.c_str());
   }
   ImGui::PopFont();
 }
 
 void drawMousePart(ImDrawList *draw, const ImVec2 &center,
-                   const MouseButton &part, bool active) {
+                   const MouseButton &part, bool active, const Pack &pack,
+                   const AppState &app) {
   const std::string &fileName{active ? part.buttonActive : part.buttonIdle};
   if (fileName.empty())
     return;
-  Texture texture{getOrLoadTexture(fileName)};
+  Texture texture{getOrLoadTexture(fileName, pack)};
   if (!texture.srv)
     return;
 
-  const auto &mouse{Config::activeConfig.theme.mouse};
+  const auto &mouse{app.config.theme.mouse};
 
-  const auto &ovScale{Config::activeConfig.overlay.scale};
+  const auto &ovScale{app.config.overlay.scale};
 
   float partX{((part.x + mouse.imageOffsetX) * mouse.imageScale) * ovScale};
   float partY{((part.y + mouse.imageOffsetY) * mouse.imageScale) * ovScale};
@@ -298,29 +301,37 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   draw->AddImage(
       (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
       ImVec2(1, 1),
-      IM_COL32(255, 255, 255, Config::activeConfig.theme.mouse.imageOpacity));
-  if (part == activePack.mouse.scrollUp) {
-    handleScroll(draw, part, partCenter, true);
-  } else if (part == activePack.mouse.scrollDown) {
-    handleScroll(draw, part, partCenter, false);
+      IM_COL32(255, 255, 255, app.config.theme.mouse.imageOpacity));
+  if (part == pack.mouse.scrollUp) {
+    handleScroll(draw, part, partCenter, true, app.mouse, mouse);
+  } else if (part == pack.mouse.scrollDown) {
+    handleScroll(draw, part, partCenter, false, app.mouse, mouse);
   }
 }
 
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
-                     const Keyboard::KeyBitSet &keysDown) {
-  const Mouse &mouse{activePack.mouse};
-  const auto &mouseState{::Mouse::g_mouseState};
+                     const AppState &app) {
+  const Mouse &mouse{app.imagePack.mouse};
+  const auto &mouseState{app.mouse};
+  const auto &keysDown{app.keyboard.down};
 
-  drawMousePart(draw, center, mouse.left, keysDown[VK_LBUTTON]);
-  drawMousePart(draw, center, mouse.right, keysDown[VK_RBUTTON]);
-  drawMousePart(draw, center, mouse.mouse4, keysDown[VK_XBUTTON1]);
-  drawMousePart(draw, center, mouse.mouse5, keysDown[VK_XBUTTON2]);
-  drawMousePart(draw, center, mouse.bottom, false);
+  drawMousePart(draw, center, mouse.left, keysDown[VK_LBUTTON], app.imagePack,
+                app);
+  drawMousePart(draw, center, mouse.right, keysDown[VK_RBUTTON], app.imagePack,
+                app);
+  drawMousePart(draw, center, mouse.mouse4, keysDown[VK_XBUTTON1], app.imagePack,
+                app);
+  drawMousePart(draw, center, mouse.mouse5, keysDown[VK_XBUTTON2], app.imagePack,
+                app);
+  drawMousePart(draw, center, mouse.bottom, false, app.imagePack, app);
   // fix middle
 
-  drawMousePart(draw, center, mouse.middle, keysDown[VK_MBUTTON]);
+  drawMousePart(draw, center, mouse.middle, keysDown[VK_MBUTTON], app.imagePack,
+                app);
 
-  drawMousePart(draw, center, mouse.scrollUp, mouseState.isScrollingUp());
-  drawMousePart(draw, center, mouse.scrollDown, mouseState.isScrollingDown());
+  drawMousePart(draw, center, mouse.scrollUp, mouseState.isScrollingUp(),
+                app.imagePack, app);
+  drawMousePart(draw, center, mouse.scrollDown, mouseState.isScrollingDown(),
+                app.imagePack, app);
 }
 } // namespace Images

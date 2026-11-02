@@ -51,9 +51,8 @@ bool loadFont(const Font &font, ImFont *&activeFont) {
   return true;
 }
 
-void updateFont(Font &outLastAppliedFont, ImFont *&activeFont) {
-  const auto &font{Config::activeConfig.font};
-
+void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
+                const Font &font) {
   if (font.name != outLastAppliedFont.name ||
       font.sizePixels != outLastAppliedFont.sizePixels) {
     if (loadFont(font, activeFont)) {

@@ -1,6 +1,6 @@
 #include "Config.h"
-#include "JsonParser.h"
 #include "Helpers.h"
+#include "JsonParser.h"
 #include "Paths.h"
 #include <combaseapi.h>
 #include <exception>
@@ -21,23 +21,26 @@ void refreshConfigs() {
   Helper::refresh(configs, Paths::configDirectory(), ".json");
 }
 
-void LoadActiveConfig(Settings& activeConfig) {
+void LoadActiveConfig(Settings &outConfig) {
   const auto path{Paths::getActiveConfigPath()};
 
   // first load
   if (!std::filesystem::exists(path)) {
-    Apply(activeConfig);
+    Apply(outConfig);
     return;
   }
 
-  // silently reseting config to defaults
   try {
     std::ifstream file{path};
     const auto j = json::parse(file);
-    activeConfig = j.get<Settings>();
+    outConfig = j.get<Settings>();
+
+		// silently reseting config to defaults(except name)
   } catch (const std::exception &) {
-    activeConfig = defaultConfig;
-    Apply(activeConfig);
+		Settings resultConfig {defaultConfig};
+		resultConfig.configName = outConfig.configName;
+    outConfig = resultConfig;
+    Apply(outConfig);
   }
 }
 
@@ -51,7 +54,6 @@ bool Apply(const Settings &settings) {
   }
 
   file << json(settings).dump(4);
-  activeConfig = settings;
   return file.good();
 }
 
@@ -76,7 +78,9 @@ Helper::FileCreateResult Create(std::string_view name) {
     return Helper::FileCreateResult::FileError;
   }
 
-  file << json(defaultConfig).dump(4);
+	Settings resultConfig {defaultConfig};
+	resultConfig.configName = name;
+  file << json(resultConfig).dump(4);
   if (!file) {
     return Helper::FileCreateResult::FileError;
   }
@@ -101,7 +105,7 @@ bool Save(std::string_view name, const Config::Settings &settings) {
   return file.good();
 }
 
-bool Load(std::string_view name) {
+bool Load(std::string_view name, Settings &outConfig) {
   const auto path{Paths::getConfigPath(name)};
 
   try {
@@ -110,7 +114,7 @@ bool Load(std::string_view name) {
       return false;
     }
     const auto j = json::parse(file);
-    activeConfig = j.get<Settings>();
+    outConfig = j.get<Settings>();
   } catch (const std::exception &e) {
     std::string err{e.what()};
     Helper::drawErrorInSettings(err);

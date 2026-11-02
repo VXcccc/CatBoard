@@ -6,6 +6,7 @@
 #include <d3d11.h>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <string_view>
 #include <vector>
 using json = nlohmann::json;
 // forward declarations
@@ -13,6 +14,11 @@ namespace Keyboard {
 struct State;
 using KeyBitSet = std::bitset<Consts::VK_COUNT>;
 } // namespace Keyboard
+
+struct AppState;
+namespace Layouts {
+struct Layout;
+}
 
 namespace Images {
 struct Image {
@@ -64,16 +70,16 @@ bool installDefaultImagePacks();
 //                          ID3D11ShaderResourceView **out_srv, int *out_width,
 //                          int *out_height);
 
-void drawKeyboardImages(ImDrawList *draw, const Keyboard::State &state);
+void drawKeyboardImages(ImDrawList *draw, const AppState &app);
 
-bool Load(std::string_view name);
+bool Load(std::string_view name, Pack &outPack);
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
-                     const Keyboard::KeyBitSet &currentKeysDown);
+                     const AppState &app);
 
 void refreshImagePacks();
 
-void drawSizeOfImages(const Pack &pack);
+void drawSizeOfImages(const Pack &pack, const Layouts::Layout &layout);
 
-extern Images::Pack defaultPack;
+extern const Images::Pack defaultPack;
 extern std::vector<std::string> packs;
 }; // namespace Images

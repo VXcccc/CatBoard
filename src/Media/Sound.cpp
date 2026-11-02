@@ -15,7 +15,7 @@
 
 namespace Sound {
 std::vector<std::string> sounds;
-std::string defaultSoundPack{"cherrymx-red-abs"};
+const std::string defaultSoundPack{"cherrymx-red-abs"};
 
 static ma_resource_manager g_resourceManager;
 static ma_engine g_engine;
@@ -123,7 +123,7 @@ ma_sound *findFreeVoice() {
   return nullptr; // maybe todo system that gonna stole the resource for voice
 }
 
-bool loadSoundPack(std::string_view name) {
+bool loadSoundPack(std::string_view name, PackVK &outPack) {
   auto packDir = Paths::getSoundPackPath(name);
   auto result = Load(packDir);
 
@@ -132,16 +132,16 @@ bool loadSoundPack(std::string_view name) {
   }
 
   uninitVoicePool();
-  activePack = std::move(*result);
+  outPack = std::move(*result);
 
-  const auto audioPath{Paths::getSoundPackPath(name) / activePack.audio_file};
+  const auto audioPath{Paths::getSoundPackPath(name) / outPack.audio_file};
 
   return initVoicePool(audioPath);
 }
 
-void playKey(int keyCode, bool is_down) {
-  auto it{activePack.KeyDefByVK.find(keyCode)};
-  if (it == activePack.KeyDefByVK.end()) {
+void playKey(int keyCode, bool is_down, const PackVK &pack) {
+  auto it{pack.KeyDefByVK.find(keyCode)};
+  if (it == pack.KeyDefByVK.end()) {
     return;
   }
 
