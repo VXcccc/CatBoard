@@ -1,35 +1,263 @@
 {
-  "windowWidth": 350,
-  "windowHeight": 287,
-  "keys": [
-    { "keyCode": 9,   "x": 9,   "y": 53,  "w": 67,  "h": 43, "label": "Tab" },
-    { "keyCode": 49,  "x": 53,  "y": 9,   "w": 43,  "h": 43, "label": "1" },
-    { "keyCode": 50,  "x": 97,  "y": 9,   "w": 43,  "h": 43, "label": "2" },
-    { "keyCode": 51,  "x": 141, "y": 9,   "w": 43,  "h": 43, "label": "3" },
-    { "keyCode": 52,  "x": 185, "y": 9,   "w": 43,  "h": 43, "label": "4" },
-    { "keyCode": 53,  "x": 229, "y": 9,   "w": 43,  "h": 43, "label": "5" },
-    { "keyCode": 81,  "x": 77,  "y": 53,  "w": 43,  "h": 43, "label": "q" },
-    { "keyCode": 87,  "x": 121, "y": 53,  "w": 43,  "h": 43, "label": "w" },
-    { "keyCode": 69,  "x": 165, "y": 53,  "w": 43,  "h": 43, "label": "e" },
-    { "keyCode": 82,  "x": 209, "y": 53,  "w": 43,  "h": 43, "label": "r" },
-    { "keyCode": 84,  "x": 253, "y": 53,  "w": 43,  "h": 43, "label": "t" },
-    { "keyCode": 20,  "x": 9,   "y": 97,  "w": 79,  "h": 43, "label": "Caps" },
-    { "keyCode": 65,  "x": 89,  "y": 97,  "w": 43,  "h": 43, "label": "a" },
-    { "keyCode": 83,  "x": 133, "y": 97,  "w": 43,  "h": 43, "label": "s" },
-    { "keyCode": 68,  "x": 177, "y": 97,  "w": 43,  "h": 43, "label": "d" },
-    { "keyCode": 70,  "x": 221, "y": 97,  "w": 43,  "h": 43, "label": "f" },
-    { "keyCode": 71,  "x": 265, "y": 97,  "w": 43,  "h": 43, "label": "g" },
-    { "keyCode": 160, "x": 9,   "y": 141, "w": 100, "h": 43, "label": "Shift" },
-    { "keyCode": 90,  "x": 110, "y": 141, "w": 43,  "h": 43, "label": "z" },
-    { "keyCode": 88,  "x": 154, "y": 141, "w": 43,  "h": 43, "label": "x" },
-    { "keyCode": 67,  "x": 198, "y": 141, "w": 43,  "h": 43, "label": "c" },
-    { "keyCode": 86,  "x": 242, "y": 141, "w": 43,  "h": 43, "label": "v" },
-    { "keyCode": 162, "x": 9,   "y": 185, "w": 67,  "h": 43, "label": "Ctrl" },
-    { "keyCode": 164, "x": 119, "y": 185, "w": 67,  "h": 43, "label": "Alt" },
-    { "keyCode": 32,  "x": 187, "y": 185, "w": 121, "h": 43, "label": "" },
-
-
-    { "keyCode": 1, "x": 9,   "y": 229, "w": 43,  "h": 43, "label": "LMB" },
-    { "keyCode": 2, "x": 53,  "y": 229, "w": 43,  "h": 43, "label": "RMB" }
-  ]
+    "keys": [
+        {
+            "h": 43.0,
+            "keyCode": 9,
+            "label": "Tab",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 67.0,
+            "x": 9.0,
+            "y": 53.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 49,
+            "label": "1",
+            "shiftLabel": "!",
+            "type": 0,
+            "w": 43.0,
+            "x": 53.0,
+            "y": 9.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 50,
+            "label": "2",
+            "shiftLabel": "@",
+            "type": 0,
+            "w": 43.0,
+            "x": 97.0,
+            "y": 9.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 51,
+            "label": "3",
+            "shiftLabel": "#",
+            "type": 0,
+            "w": 43.0,
+            "x": 141.0,
+            "y": 9.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 52,
+            "label": "4",
+            "shiftLabel": "$",
+            "type": 0,
+            "w": 43.0,
+            "x": 185.0,
+            "y": 9.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 53,
+            "label": "5",
+            "shiftLabel": "%",
+            "type": 0,
+            "w": 43.0,
+            "x": 229.0,
+            "y": 9.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 81,
+            "label": "q",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 77.0,
+            "y": 53.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 87,
+            "label": "w",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 121.0,
+            "y": 53.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 69,
+            "label": "e",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 165.0,
+            "y": 53.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 82,
+            "label": "r",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 209.0,
+            "y": 53.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 84,
+            "label": "t",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 253.0,
+            "y": 53.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 20,
+            "label": "Caps",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 79.0,
+            "x": 9.0,
+            "y": 97.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 65,
+            "label": "a",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 89.0,
+            "y": 97.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 83,
+            "label": "s",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 133.0,
+            "y": 97.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 68,
+            "label": "d",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 177.0,
+            "y": 97.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 70,
+            "label": "f",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 221.0,
+            "y": 97.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 71,
+            "label": "g",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 265.0,
+            "y": 97.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 160,
+            "label": "Shift",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 100.0,
+            "x": 9.0,
+            "y": 141.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 90,
+            "label": "z",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 110.0,
+            "y": 141.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 88,
+            "label": "x",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 154.0,
+            "y": 141.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 67,
+            "label": "c",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 198.0,
+            "y": 141.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 86,
+            "label": "v",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 43.0,
+            "x": 242.0,
+            "y": 141.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 162,
+            "label": "Ctrl",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 67.0,
+            "x": 9.0,
+            "y": 185.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 164,
+            "label": "Alt",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 67.0,
+            "x": 119.0,
+            "y": 185.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 32,
+            "label": "",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 121.0,
+            "x": 187.0,
+            "y": 185.0
+        }
+    ],
+    "mouse": {
+        "centerX": 374.0,
+        "centerY": 184.0,
+        "height": 75.0,
+        "radius": 37.0,
+        "width": 100.0
+    },
+    "windowHeight": 287,
+    "windowWidth": 450
 }

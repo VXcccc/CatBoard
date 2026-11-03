@@ -21,7 +21,7 @@ namespace Mouse {
 enum class Type { CatBoard, NohBoard, Wrap, Pan, maxMouseStyles };
 
 struct MouseStyle {
-  std::string name{"Cat Board"};
+  std::string name{"CatBoard"};
   Type type{Type::CatBoard};
 };
 

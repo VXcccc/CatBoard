@@ -11,6 +11,7 @@
 #include "MainWindow.h"
 #include "Mouse.h"
 #include "Paths.h"
+#include "Resource/PreInstalledFonts.h"
 #include "Resource/ResourceConstants.h"
 #include "Sound.h"
 #include "Themes.h"
@@ -190,10 +191,10 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
 
   ImGuiIO &io = ImGui::GetIO();
 
-  Fonts::Font settingsFont{"JetBrainsMonoNerdFontMono-Bold", 17.0f};
-  s_settingsFont = io.Fonts->AddFontFromFileTTF(
-      Paths::getFontPath(settingsFont.name).string().c_str(),
-      settingsFont.sizePixels);
+  constexpr float settingsFontSizePixels{18.0f};
+  s_settingsFont = io.Fonts->AddFontFromMemoryTTF(_jetBrainsMonoBold,
+                                                  _jetBrainsMonoBoldSize,
+                                                  settingsFontSizePixels);
   io.FontDefault = s_settingsFont;
 
   io.IniFilename = nullptr; // .ini for settings
@@ -904,7 +905,7 @@ void drawMiscTab(SettingsEditState &state, AppState &app) {
 void drawBindsTab(SettingsEditState &state, AppState &app) {
   Binds::syncBindsOrder(state.binds);
   for (auto &bind : state.binds) {
-		ImGui::PushID(bind.name.c_str());
+    ImGui::PushID(bind.name.c_str());
 
     ImGui::TextUnformatted(bind.name.c_str());
 
@@ -913,7 +914,7 @@ void drawBindsTab(SettingsEditState &state, AppState &app) {
       Binds::recordBind(bind, state.binds, app);
     }
 
-		ImGui::PopID();
+    ImGui::PopID();
   }
 }
 

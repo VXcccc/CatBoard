@@ -1,0 +1,257 @@
+{
+    "binds": [
+        {
+            "keyName": "F4",
+            "name": "Drag mode",
+            "type": 0,
+            "vkCode": 115
+        },
+        {
+            "keyName": "F6",
+            "name": "Hide overlay",
+            "type": 1,
+            "vkCode": 117
+        },
+        {
+            "keyName": "F9",
+            "name": "Open settings",
+            "type": 2,
+            "vkCode": 120
+        },
+        {
+            "keyName": "F10",
+            "name": "Resize mode",
+            "type": 3,
+            "vkCode": 121
+        }
+    ],
+    "configName": "Staggered",
+    "font": {
+        "letterCase": {
+            "mode": 0,
+            "options": {
+                "capsInsensitiveKeys": true,
+                "capsLockDisplay": false,
+                "capsSensitiveKeys": false
+            }
+        },
+        "name": "JetBrainsMonoNerdFontMono-ExtraBold",
+        "sizePixels": 28.0
+    },
+    "imagePack": {
+        "defaultKey": {
+            "activeFileName": "keyw",
+            "backGroundFileName": "keyb",
+            "vkCode": 0
+        },
+        "explicitImages": [],
+        "mouse": {
+            "bottom": {
+                "buttonActive": "",
+                "buttonIdle": "",
+                "h": 0.0,
+                "w": 0.0,
+                "x": 0.0,
+                "y": 0.0
+            },
+            "left": {
+                "buttonActive": "leftbp",
+                "buttonIdle": "leftb",
+                "h": 219.0,
+                "w": 63.0,
+                "x": -31.0,
+                "y": 0.0
+            },
+            "middle": {
+                "buttonActive": "sw",
+                "buttonIdle": "sb",
+                "h": 38.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -67.5
+            },
+            "mouse4": {
+                "buttonActive": "m4w",
+                "buttonIdle": "m4b",
+                "h": 41.0,
+                "w": 5.0,
+                "x": -51.0,
+                "y": 5.0
+            },
+            "mouse5": {
+                "buttonActive": "m5w",
+                "buttonIdle": "m5b",
+                "h": 35.0,
+                "w": 7.0,
+                "x": -53.0,
+                "y": -31.0
+            },
+            "right": {
+                "buttonActive": "rightbp",
+                "buttonIdle": "rightb",
+                "h": 219.0,
+                "w": 62.0,
+                "x": 31.5,
+                "y": 0.0
+            },
+            "scrollDown": {
+                "buttonActive": "sdw",
+                "buttonIdle": "sdb",
+                "h": 19.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -58.0
+            },
+            "scrollUp": {
+                "buttonActive": "suw",
+                "buttonIdle": "sub",
+                "h": 19.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -77.0
+            }
+        },
+        "name": "DefaultImagePack"
+    },
+    "misc": {
+        "fps": 60,
+        "obsMode": false,
+        "vsync": false
+    },
+    "overlay": {
+        "scale": 1.0,
+        "x": 626,
+        "y": 762
+    },
+    "selectedLayout": "Staggered",
+    "soundPack": {
+        "enable": false,
+        "layoutKeysOnlySound": false,
+        "name": "cherrymx-red-abs",
+        "volume": 1.0
+    },
+    "theme": {
+        "activeFill": [
+            168,
+            127,
+            251,
+            255
+        ],
+        "activeText": [
+            16,
+            21,
+            29,
+            255
+        ],
+        "animType": 1,
+        "animateColors": true,
+        "animation": true,
+        "animationSpeed": 70,
+        "idleFill": [
+            16,
+            21,
+            29,
+            128
+        ],
+        "idleText": [
+            250,
+            251,
+            254,
+            255
+        ],
+        "keyOutline": {
+            "activeColor": [
+                0,
+                0,
+                0,
+                255
+            ],
+            "enable": false,
+            "idleColor": [
+                255,
+                255,
+                255,
+                255
+            ],
+            "thickness": 3.0
+        },
+        "keyRounding": 13.079999923706055,
+        "keysImageOpacity": 255,
+        "keysImagesDisplay": false,
+        "mouse": {
+            "decayRate": 8.0,
+            "enabled": false,
+            "fadeTime": 0.6000000238418579,
+            "fill": [
+                26,
+                26,
+                26,
+                200
+            ],
+            "highlightColor": [
+                255,
+                255,
+                255,
+                255
+            ],
+            "highlightM1": true,
+            "highlightScale": 1.25,
+            "imageOpacity": 255,
+            "imageScale": 1.0,
+            "imagesDisplay": false,
+            "inner": [
+                255,
+                255,
+                255,
+                255
+            ],
+            "lerpColor": false,
+            "outer": [
+                255,
+                255,
+                255,
+                255
+            ],
+            "outerThickness": 3.0,
+            "rounding": 6.0,
+            "scrollCounter": [
+                0,
+                0,
+                0,
+                255
+            ],
+            "sensitivity": 0.5,
+            "smallRadius": 7.400000095367432,
+            "style": {
+                "name": "Cat Board",
+                "type": 0
+            },
+            "trail": {
+                "color": [
+                    255,
+                    255,
+                    255,
+                    255
+                ],
+                "duration": 0.6000000238418579,
+                "enable": true,
+                "maxLength": 150.0,
+                "maxWidth": 3.0,
+                "minWidth": 1.0,
+                "style": {
+                    "name": "Catmull",
+                    "type": 1
+                },
+                "subdivisions": 5
+            }
+        },
+        "obsBackground": [
+            0,
+            255,
+            0,
+            255
+        ],
+        "pressScale": 0.5
+    },
+    "version": 1
+}

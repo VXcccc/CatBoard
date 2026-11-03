@@ -1,5 +1,4 @@
-#ifndef PATHS_H
-#define PATHS_H
+#pragma once
 
 #include <filesystem>
 #include <string_view>
@@ -44,4 +43,3 @@ void openImagesDirectory();
 
 } // namespace Paths
 
-#endif // !PATHS_H

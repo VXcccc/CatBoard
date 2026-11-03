@@ -1,0 +1,193 @@
+{
+    "keys": [
+        {
+            "h": 50.0,
+            "keyCode": 49,
+            "label": "1",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 70.0,
+            "y": 10.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 50,
+            "label": "2",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 130.0,
+            "y": 10.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 51,
+            "label": "3",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 190.0,
+            "y": 10.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 52,
+            "label": "4",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 250.0,
+            "y": 10.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 9,
+            "label": "TAB",
+            "shiftLabel": "",
+            "w": 80.0,
+            "x": 10.0,
+            "y": 70.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 81,
+            "label": "Q",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 100.0,
+            "y": 70.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 87,
+            "label": "W",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 160.0,
+            "y": 70.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 69,
+            "label": "E",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 220.0,
+            "y": 70.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 82,
+            "label": "R",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 280.0,
+            "y": 70.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 160,
+            "label": "SHIFT",
+            "shiftLabel": "",
+            "w": 110.0,
+            "x": 10.0,
+            "y": 130.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 65,
+            "label": "A",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 130.0,
+            "y": 130.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 83,
+            "label": "S",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 190.0,
+            "y": 130.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 68,
+            "label": "D",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 250.0,
+            "y": 130.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 70,
+            "label": "F",
+            "shiftLabel": "",
+            "w": 50.0,
+            "x": 310.0,
+            "y": 130.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 162,
+            "label": "CTRL",
+            "shiftLabel": "",
+            "w": 80.0,
+            "x": 10.0,
+            "y": 190.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 164,
+            "label": "ALT",
+            "shiftLabel": "",
+            "w": 80.0,
+            "x": 100.0,
+            "y": 190.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 32,
+            "label": "SPACE",
+            "shiftLabel": "",
+            "w": 170.0,
+            "x": 190.0,
+            "y": 190.0
+        },
+        {
+            "h": 30.0,
+            "keyCode": 1,
+            "label": "M1",
+            "shiftLabel": "",
+            "w": 75.2412109375,
+            "x": 374.7587890625,
+            "y": 10.0
+        },
+        {
+            "h": 30.0,
+            "keyCode": 4,
+            "label": "-",
+            "shiftLabel": "",
+            "w": 75.24099731445313,
+            "x": 463.5,
+            "y": 10.0
+        },
+        {
+            "h": 30.0,
+            "keyCode": 2,
+            "label": "M2",
+            "shiftLabel": "",
+            "w": 75.24099731445313,
+            "x": 550.0,
+            "y": 10.0
+        }
+    ],
+    "mouse": {
+        "centerX": 500.0,
+        "centerY": 145.0,
+        "height": 190.0,
+        "radius": 37.0,
+        "width": 260.0
+    },
+    "windowHeight": 287,
+    "windowWidth": 700
+}

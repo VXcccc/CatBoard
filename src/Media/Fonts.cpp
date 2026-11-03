@@ -1,11 +1,12 @@
 
 #include "Config.h"
 #include "Constants.h"
-#include "Keyboard.h"
-#include "Resource/PreInstalledFonts.h"
 #include "Helpers.h"
+#include "Keyboard.h"
 #include "Paths.h"
+#include "Resource/PreInstalledFonts.h"
 #include "imgui.h"
+#include <filesystem>
 #include <string>
 #include <vector>
 #include <windows.h>
@@ -36,8 +37,9 @@ bool loadIconFont(float overlayFontSize) {
 bool loadFont(const Font &font, ImFont *&activeFont) {
   ImGuiIO &io{ImGui::GetIO()};
   const auto path{Paths::getFontPath(font.name)};
-  if (!std::filesystem::exists(path))
+  if (!std::filesystem::exists(path)) {
     return false;
+  }
 
   io.Fonts->ClearFonts();
   activeFont =

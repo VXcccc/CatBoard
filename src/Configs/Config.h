@@ -34,7 +34,7 @@ struct Outline {
 };
 
 struct Trail {
-  bool enable{true};
+  bool enable{false};
   float duration{0.6f};
   float maxLength{150.0f};
 

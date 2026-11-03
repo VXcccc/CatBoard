@@ -84,6 +84,18 @@ std::filesystem::path getSoundPackJsonPath(std::string_view name) {
   return getSoundPackPath(name) / "config.json";
 }
 
+static std::filesystem::path windowsFontsDir() {
+  PWSTR raw = nullptr;
+  std::filesystem::path result;
+
+  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Fonts, 0, nullptr, &raw))) {
+    result = raw;
+  }
+  CoTaskMemFree(raw);
+
+  return result;
+}
+
 std::filesystem::path getFontPath(std::string_view name) {
   return fontsDirectory() / (std::string{name} + ".ttf");
 }

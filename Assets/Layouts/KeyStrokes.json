@@ -1,0 +1,103 @@
+{
+    "keys": [
+        {
+            "h": 45.0,
+            "keyCode": 1,
+            "label": "-",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 45.0,
+            "x": 10.0,
+            "y": 10.0
+        },
+        {
+            "h": 45.0,
+            "keyCode": 87,
+            "label": "W",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 45.0,
+            "x": 63.0,
+            "y": 10.0
+        },
+        {
+            "h": 45.0,
+            "keyCode": 2,
+            "label": "-",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 45.0,
+            "x": 116.0,
+            "y": 10.0
+        },
+        {
+            "h": 45.0,
+            "keyCode": 65,
+            "label": "A",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 45.0,
+            "x": 10.0,
+            "y": 63.0
+        },
+        {
+            "h": 45.0,
+            "keyCode": 83,
+            "label": "S",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 45.0,
+            "x": 63.0,
+            "y": 63.0
+        },
+        {
+            "h": 45.0,
+            "keyCode": 68,
+            "label": "D",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 45.0,
+            "x": 116.0,
+            "y": 63.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 162,
+            "label": "DUCK",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 70.0,
+            "x": 9.0,
+            "y": 113.0
+        },
+        {
+            "h": 43.0,
+            "keyCode": 32,
+            "label": "JUMP",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 70.0,
+            "x": 91.0,
+            "y": 113.0
+        },
+        {
+            "h": 45.0,
+            "keyCode": 0,
+            "label": "",
+            "shiftLabel": "",
+            "type": 1,
+            "w": 45.0,
+            "x": 63.0,
+            "y": 165.0
+        }
+    ],
+    "mouse": {
+        "centerX": 290.0,
+        "centerY": 83.0,
+        "height": 146.0,
+        "radius": 37.0,
+        "width": 250.0
+    },
+    "windowHeight": 220,
+    "windowWidth": 481
+}

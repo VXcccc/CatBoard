@@ -37,8 +37,8 @@ struct RectBounds {
 } // namespace
 
 const std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
-    mouseStyles{{{"Cat Board", Type::CatBoard},
-                 {"Noh Board", Type::NohBoard},
+    mouseStyles{{{"CatBoard", Type::CatBoard},
+                 {"NohBoard", Type::NohBoard},
                  {"Wrap", Type::Wrap},
                  {"Pan", Type::Pan}}};
 

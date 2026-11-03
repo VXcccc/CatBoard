@@ -1,0 +1,235 @@
+{
+    "binds": [
+        {
+            "bindName": "Drag mode",
+            "keyName": "F4",
+            "type": 0,
+            "vkCode": 115
+        },
+        {
+            "bindName": "Hide overlay",
+            "keyName": "F6",
+            "type": 1,
+            "vkCode": 117
+        },
+        {
+            "bindName": "Open settings",
+            "keyName": "F9",
+            "type": 2,
+            "vkCode": 120
+        }
+    ],
+    "configName": "Pinky",
+    "font": {
+        "letterCase": {
+            "mode": 0,
+            "options": {
+                "capsInsensitiveKeys": false,
+                "capsLockDisplay": false,
+                "capsSensitiveKeys": false
+            }
+        },
+        "name": "LilitaOne-Regular",
+        "sizePixels": 20.0
+    },
+    "imagePack": {
+        "defaultKey": {
+            "activeFileName": "keyw",
+            "backGroundFileName": "keyb",
+            "vkCode": 0
+        },
+        "explicitImages": [],
+        "mouse": {
+            "left": {
+                "buttonActive": "leftbp",
+                "buttonIdle": "leftb",
+                "h": 219.0,
+                "w": 63.0,
+                "x": -31.0,
+                "y": 0.0
+            },
+            "middle": {
+                "buttonActive": "midbp",
+                "buttonIdle": "midb",
+                "h": 38.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -67.5
+            },
+            "mouse4": {
+                "buttonActive": "m4w",
+                "buttonIdle": "m4b",
+                "h": 41.0,
+                "w": 5.0,
+                "x": -51.0,
+                "y": 5.0
+            },
+            "mouse5": {
+                "buttonActive": "m5w",
+                "buttonIdle": "m5b",
+                "h": 35.0,
+                "w": 7.0,
+                "x": -53.0,
+                "y": -31.0
+            },
+            "right": {
+                "buttonActive": "rightbp",
+                "buttonIdle": "rightb",
+                "h": 219.0,
+                "w": 62.0,
+                "x": 31.5,
+                "y": 0.0
+            },
+            "scrollDown": {
+                "buttonActive": "sdw",
+                "buttonIdle": "sdb",
+                "h": 19.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -58.0
+            },
+            "scrollUp": {
+                "buttonActive": "suw",
+                "buttonIdle": "sub",
+                "h": 19.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -77.0
+            }
+        },
+        "name": "DefaultImagePack"
+    },
+    "misc": {
+        "fps": 120,
+        "obsMode": false,
+        "vsync": true
+    },
+    "overlayPos": {
+        "x": 2,
+        "y": 839
+    },
+    "selectedLayout": "testingggg",
+    "soundPack": {
+        "enable": false,
+        "layoutKeysOnlySound": false,
+        "name": "cherrymx-red-abs",
+        "volume": 0.25
+    },
+    "theme": {
+        "activeFill": [
+            206,
+            92,
+            128,
+            255
+        ],
+        "activeText": [
+            255,
+            255,
+            255,
+            255
+        ],
+        "animType": 0,
+        "animateColors": true,
+        "animation": true,
+        "animationSpeed": 100,
+        "idleFill": [
+            30,
+            0,
+            9,
+            186
+        ],
+        "idleText": [
+            206,
+            92,
+            128,
+            255
+        ],
+        "keyOutline": {
+            "activeColor": [
+                115,
+                179,
+                215,
+                255
+            ],
+            "enable": true,
+            "idleColor": [
+                255,
+                96,
+                165,
+                170
+            ],
+            "thickness": 2.0
+        },
+        "keyRounding": 10.0,
+        "keysImageOpacity": 255,
+        "keysImagesDisplay": false,
+        "mouse": {
+            "decayRate": 8.0,
+            "enabled": true,
+            "fadeTime": 0.6000000238418579,
+            "fill": [
+                30,
+                0,
+                9,
+                186
+            ],
+            "highlightColor": [
+                255,
+                255,
+                255,
+                255
+            ],
+            "highlightM1": true,
+            "highlightScale": 1.25,
+            "imageOpacity": 255,
+            "imagesDisplay": false,
+            "inner": [
+                115,
+                179,
+                215,
+                255
+            ],
+            "lerpColor": false,
+            "outer": [
+                255,
+                96,
+                165,
+                170
+            ],
+            "outerThickness": 3.4100000858306885,
+            "rounding": 6.949999809265137,
+            "sensitivity": 0.20000000298023224,
+            "smallRadius": 3.2300000190734863,
+            "style": {
+                "name": "Pan",
+                "type": 3
+            },
+            "trail": {
+                "color": [
+                    115,
+                    179,
+                    215,
+                    255
+                ],
+                "duration": 1.0,
+                "enable": true,
+                "maxLength": 300.0,
+                "maxWidth": 3.0,
+                "minWidth": 1.0,
+                "style": {
+                    "name": "Catmull trail",
+                    "type": 1
+                },
+                "subdivisions": 5
+            }
+        },
+        "obsBackground": [
+            0,
+            255,
+            0,
+            255
+        ],
+        "pressScale": 1.149999976158142
+    },
+    "version": 1
+}

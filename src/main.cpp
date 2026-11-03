@@ -288,7 +288,7 @@ int main(int, char **) {
   Fonts::refreshFonts();
   if (!(Fonts::loadFont(app.config.font, Fonts::overlayFont))) {
     if (!(Fonts::loadFont(Fonts::Font{}, Fonts::overlayFont))) {
-      Helper::fatalError(L"Failed to load font");
+      Helper::fatalError(L"Failed to load any fonts, check your fonts directory");
     }
   }
 

@@ -51,7 +51,7 @@ bool loadLayoutFile(std::string_view name, AppState &app) {
       return false;
 
     app.layout = json::parse(file).get<Layout>();
-    // MainWindow::ApplyOverlaySize(app);
+    MainWindow::ApplyOverlaySize(app);
     return true;
   } catch (const std::exception &) {
     return false;
