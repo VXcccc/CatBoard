@@ -192,9 +192,8 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   ImGuiIO &io = ImGui::GetIO();
 
   constexpr float settingsFontSizePixels{18.0f};
-  s_settingsFont = io.Fonts->AddFontFromMemoryTTF(_jetBrainsMonoBold,
-                                                  _jetBrainsMonoBoldSize,
-                                                  settingsFontSizePixels);
+  s_settingsFont = io.Fonts->AddFontFromMemoryTTF(
+      _jetBrainsMonoBold, _jetBrainsMonoBoldSize, settingsFontSizePixels);
   io.FontDefault = s_settingsFont;
 
   io.IniFilename = nullptr; // .ini for settings
@@ -904,18 +903,24 @@ void drawMiscTab(SettingsEditState &state, AppState &app) {
 }
 
 void drawBindsTab(SettingsEditState &state, AppState &app) {
+  if (ImGui::BeginTable("Binds", state.binds.size(), ImGuiTableFlags_SizingFixedFit)) {
+    for (auto &bind : state.binds) {
+      const char *bindName{bind.name.c_str()};
+      ImGui::PushID(bindName);
 
-  for (auto &bind : state.binds) {
-    ImGui::PushID(bind.name.c_str());
+      ImGui::TableNextRow();
+      ImGui::TableNextColumn();
+      ImGui::TextUnformatted(bindName);
 
-    ImGui::TextUnformatted(bind.name.c_str());
+      ImGui::TableNextColumn();
 
-    ImGui::SameLine();
-    if (ImGui::Button(bind.keyName.c_str())) {
-      Binds::recordBind(bind, state.binds, app);
+      if (ImGui::Button(bind.keyName.c_str())) {
+        Binds::recordBind(bind, state.binds, app);
+      }
+
+      ImGui::PopID();
     }
-
-    ImGui::PopID();
+    ImGui::EndTable();
   }
 }
 

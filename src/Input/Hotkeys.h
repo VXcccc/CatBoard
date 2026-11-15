@@ -1,7 +1,9 @@
 #ifndef INPUTHANDLE_H
 #define INPUTHANDLE_H
 
+#include "Constants.h"
 #include <array>
+#include <bitset>
 #include <cstddef>
 #include <string>
 #include <vector>
@@ -10,8 +12,13 @@
 
 struct AppState;
 
+namespace Keyboard {
+using KeyBitSet = std::bitset<Consts::VK_COUNT>;
+}
+
 namespace Binds {
 // binds
+
 enum class BindType {
   dragMode,
   toggleOverlay,
@@ -26,7 +33,14 @@ struct Bind {
   std::string keyName;
   bool empty;
   BindType type;
+  std::vector<int> modifierKeys{};
   bool operator==(const Bind &) const = default;
+};
+
+struct RecordingState {
+  Bind *recordingBind{nullptr};
+  Bind recordingPrev{};
+	Keyboard::KeyBitSet recordingWasDown{};
 };
 
 using BindsArray =

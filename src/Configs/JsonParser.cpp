@@ -595,11 +595,14 @@ void from_json(const json &j, Pack &pack) {
 namespace Binds {
 
 void to_json(json &j, const Bind &bind) {
-  j = {{"name", bind.name},
-       {"vkCode", bind.vkCode},
-       {"keyName", bind.keyName},
-			 {"empty", bind.empty},
-       {"type", static_cast<int>(bind.type)}};
+  j = {
+      {"name", bind.name},
+      {"vkCode", bind.vkCode},
+      {"keyName", bind.keyName},
+      {"empty", bind.empty},
+      {"type", static_cast<int>(bind.type)},
+      {"modifierKeys", bind.modifierKeys},
+  };
 }
 
 void from_json(const json &j, Bind &bind) {
@@ -617,6 +620,9 @@ void from_json(const json &j, Bind &bind) {
 
   if (j.contains("type"))
     bind.type = static_cast<BindType>(j.at("type").get<int>());
+	
+  if (j.contains("modifierKeys"))
+    j.at("modifierKeys").get_to(bind.modifierKeys);
 }
 
 } // namespace Binds

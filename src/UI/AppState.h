@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Config.h"
+#include "Hotkeys.h"
 #include "Keyboard.h"
 #include "Sound.h"
 #include "Images.h"
@@ -15,6 +16,7 @@ struct AppState {
   Images::Pack imagePack{};
   Sound::PackVK soundPack{};
   Mouse::State mouse{};
+	// Binds::RecordingState bindRecordState{};
 
 	// bool resizeMode{false};
   bool dragMode{false};

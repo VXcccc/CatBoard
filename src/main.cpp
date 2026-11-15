@@ -335,7 +335,7 @@ int main(int, char **) {
   QueryPerformanceCounter(&lastDeltaTime);
 
   // debug
-  SettingsWindow::Show();
+  // SettingsWindow::Show();
 
   while (!done) {
     const auto frameStart{std::chrono::steady_clock::now()};

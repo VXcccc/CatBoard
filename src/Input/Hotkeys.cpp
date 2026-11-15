@@ -8,17 +8,19 @@
 #include "SettingsWindow.h"
 #include "Tray.h"
 #include <array>
+#include <vector>
 #include <windows.h>
+
 namespace Binds {
 
 // If you want to add custom hotkey add new Type in BindType also add new Bind
 // to this Array and finally add functionality that you want your bind execute
 // in handleBindType() switch statement
 const BindsArray defaultBinds{
-    Bind{"Drag mode", VK_F4, "F4", false, BindType::dragMode},
-    Bind{"Toggle overlay", VK_F6, "F6", false, BindType::toggleOverlay},
-    Bind{"Toggle settings", VK_F9, "F9", false, BindType::toggleSettings},
-    Bind{"Exit", VK_F12, "...", true, BindType::exit}};
+    Bind{"Drag mode", VK_F4, "F4", false, BindType::dragMode, {}},
+    Bind{"Toggle overlay", VK_F6, "F6", false, BindType::toggleOverlay, {}},
+    Bind{"Toggle settings", VK_F9, "F9", false, BindType::toggleSettings, {}},
+    Bind{"Exit", VK_F12, "...", true, BindType::exit, {}}};
 
 static_assert(defaultBinds.size() ==
                   static_cast<std::size_t>(BindType::max_bindTypes),
@@ -48,6 +50,18 @@ void handleBindType(const BindType type, HWND hWnd, AppState &app) {
   }
 }
 
+static bool isModifersPressed(const std::vector<int> &modifierKeys,
+                              const AppState &app) {
+  if (modifierKeys.empty())
+    return true;
+  for (const int mKey : modifierKeys) {
+    if (!app.keyboard.down[mKey]) {
+      return false;
+    }
+  }
+  return true;
+}
+
 void handleBinds(HWND hWnd, AppState &app) {
   if (app.bindJustRecorded) {
     app.bindJustRecorded = false;
@@ -56,16 +70,25 @@ void handleBinds(HWND hWnd, AppState &app) {
 
   for (const auto &bind : app.config.binds) {
     if (app.keyboard.inRange(bind.vkCode) &&
-        app.keyboard.pressed(bind.vkCode) && !bind.empty) {
+        app.keyboard.pressed(bind.vkCode) && !bind.empty &&
+        isModifersPressed(bind.modifierKeys, app)) {
       handleBindType(bind.type, hWnd, app);
     }
   }
 }
 
-bool isBindFree(int vk, const BindsVector &binds) {
-  for (const auto &bind : binds) {
-    if (vk == bind.vkCode && !bind.empty) {
+bool isBindFree(int vk, const BindsVector &binds,
+                const std::vector<int> &modifierKeys) {
+  for (const auto &existingBind : binds) {
+    bool vkCodesEqual{vk == existingBind.vkCode};
+    if (vkCodesEqual && !existingBind.empty &&
+        existingBind.modifierKeys.empty()) {
       return false;
+    } else if (!existingBind.modifierKeys.empty()) {
+      if (modifierKeys == existingBind.modifierKeys && vkCodesEqual &&
+          !existingBind.empty) {
+        return false;
+      }
     }
   }
   return true;
@@ -76,9 +99,20 @@ static void makeEmpty(Bind &outBind) {
   outBind.keyName = Consts::EMPTY_HOTKEY_NAME;
 }
 
-bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
-  Bind prevBindState{outBind};
+static bool isKeyDown(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
 
+static bool isModifierVk(int vk) {
+  return vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU ||
+         (vk >= VK_LSHIFT && vk <= VK_RMENU); // 0xA0..0xA5
+}
+
+// maybe remove while loop from here add an recordingstate struct
+bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
+  // if you want to add more modifierKeys add vk codes to this array and change
+  // isModifierVk function
+  constexpr std::array modifierKeys{VK_CONTROL, VK_SHIFT, VK_MENU};
+
+  Bind prevBindState{outBind};
   std::array<bool, 256> wasDown{};
   for (int vk = 0; vk < 256; ++vk) {
     wasDown[vk] = (GetAsyncKeyState(vk) & 0x8000) != 0;
@@ -93,7 +127,7 @@ bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
     }
 
     for (int vk{0}; vk < 256; ++vk) {
-      bool down = (GetAsyncKeyState(vk) & 0x8000) != 0;
+      bool down = isKeyDown(vk);
 
       if (wasDown[vk]) {
         if (!down) {
@@ -102,20 +136,46 @@ bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
         continue;
       }
 
+      if (isModifierVk(vk))
+        continue;
+
       if (down) {
         if (Helper::VkToName(vk) == "Unknown") {
           makeEmpty(outBind);
           app.bindJustRecorded = true;
           return false;
-        } else if (!(isBindFree(vk, binds))) {
+        }
+
+        // record all pressed modifierKeys
+        std::vector<int> recordedMKeys{};
+        for (const int mKey : modifierKeys) {
+          if (isKeyDown(mKey))
+            recordedMKeys.push_back(mKey);
+        }
+
+        if (!(isBindFree(vk, binds, recordedMKeys))) {
           outBind = prevBindState;
           app.bindJustRecorded = true;
           return false;
         }
 
+        outBind.modifierKeys.clear();
+        outBind.modifierKeys = std::move(recordedMKeys);
+
         outBind.empty = false;
         outBind.vkCode = vk;
-        outBind.keyName = Helper::VkToName(vk);
+        if (outBind.modifierKeys.empty()) {
+          outBind.keyName = Helper::VkToName(vk);
+        } else {
+          std::string keyNameResult{};
+          for (const int mKey : outBind.modifierKeys) {
+            keyNameResult += Helper::VkToName(mKey);
+            keyNameResult += " + ";
+          }
+          keyNameResult += Helper::VkToName(vk);
+
+          outBind.keyName = keyNameResult;
+        }
 
         app.bindJustRecorded = true;
 

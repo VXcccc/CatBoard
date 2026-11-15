@@ -64,7 +64,7 @@ bool installDefault(const std::filesystem::path &source,
                     const std::filesystem::path &destination);
 
 bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
-                ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoInputs);
+               ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoInputs);
 
 // c_min, c_max = clamp min, clamp max
 bool SliderInt(const std::string &label, int &v, int v_min, int v_max,
@@ -140,5 +140,13 @@ inline bool operator==(const ImVec2 &a, const ImVec2 &b) {
   return a.x == b.x && a.y == b.y;
 }
 inline bool operator!=(const ImVec2 &a, const ImVec2 &b) { return !(a == b); }
+
+inline bool operator>(const ImVec2 &a, const ImVec2 &b) {
+  return a.x > b.x && a.y > b.y;
+}
+
+inline bool operator<(const ImVec2 &a, const ImVec2 &b) {
+  return !(a > b);
+}
 
 #endif // !HELPERS_H
