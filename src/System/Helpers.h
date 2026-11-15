@@ -47,6 +47,8 @@ void refresh(std::vector<std::string> &category,
 
 std::string VkToName(int vk);
 
+std::string VkToShiftLabel(int vk);
+
 int toColorRGB(float value);
 float fromColorRGB(int value);
 

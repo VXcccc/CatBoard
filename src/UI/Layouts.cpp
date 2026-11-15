@@ -20,7 +20,6 @@
 #include <filesystem>
 #include <fstream>
 #include <optional>
-#include <ostream>
 #include <string>
 #include <string_view>
 #include <synchapi.h>
@@ -215,8 +214,8 @@ static KeysMatrix buildRows(std::vector<Key *> keys) {
   return rows;
 }
 
-static KeysMatrix getKeysMatrix(LayoutEditState &state) {
-  constexpr float eps = 0.01f;
+static KeysMatrix getSelectedKeysMatrix(LayoutEditState &state) {
+  // constexpr float eps = 0.01f;
   std::vector<Key *> keys;
   void *it = nullptr;
   ImGuiID id;
@@ -243,8 +242,7 @@ static RowSpan rowSpan(const std::vector<Key *> &row) {
 }
 
 // returning nullopt if gaps are not eqaul or every row < 2
-std::optional<float> getGap(LayoutEditState &state, KeyProp prop) {
-  const KeysMatrix rows{getKeysMatrix(state)};
+std::optional<float> getGap(const KeysMatrix &rows, KeyProp prop) {
   std::optional<float> common;
 
   const auto isDiffer = [&](float gap) {
@@ -272,7 +270,7 @@ std::optional<float> getGap(LayoutEditState &state, KeyProp prop) {
 }
 
 void setGap(LayoutEditState &state, float gap, KeyProp prop) {
-  const auto rows{getKeysMatrix(state)};
+  const auto rows{getSelectedKeysMatrix(state)};
 
   if (prop == KeyProp::gapX) {
     for (const auto &row : rows) {
@@ -360,56 +358,48 @@ bool isKeysPropsEqual(LayoutEditState &state, KeyProp prop) {
 
 void setSelectedKeysProperty(LayoutEditState &state, KeyProp prop,
                              float value) {
-  void *it{nullptr};
-  ImGuiID id{};
-
-  if (!state.selection.GetNextSelectedItem(&it, &id))
+  if (state.selection.Size == 0)
     return;
 
   if (prop == KeyProp::gapX || prop == KeyProp::gapY) {
     setGap(state, value, prop);
+    return;
   }
 
-  const int firstIdx{static_cast<int>(id)};
-  Key &firstKey{state.layout.keys[firstIdx]};
+  const bool keepGap{state.applyGapWithMultiResize && state.selection.Size > 1};
 
-  const bool sameY{isKeysPropsEqual(state, KeyProp::Y)};
-  const bool sameX{isKeysPropsEqual(state, KeyProp::X)};
+  std::optional<float> gapX, gapY;
+  if (keepGap) {
+    gapX = getGap(getSelectedKeysMatrix(state), KeyProp::gapX);
+    gapY = getGap(getSelectedKeysMatrix(state), KeyProp::gapY);
+  }
 
-  const float oldValue{getKeyProperty(firstKey, prop)};
-  const float delta{value - oldValue};
-
-  setKeyProperty(firstKey, prop, value);
-
-  int offset{1};
+  void *it{nullptr};
+  ImGuiID id{};
 
   while (state.selection.GetNextSelectedItem(&it, &id)) {
-    const int idx{static_cast<int>(id)};
-    Key &key{state.layout.keys[idx]};
+    if (id < state.layout.keys.size())
+      setKeyProperty(state.layout.keys[id], prop, value);
+  }
 
-    if (state.moveWhenMultiResize) {
-      if (prop == KeyProp::W && sameY) {
-        key.x += delta * offset;
-      } else if (prop == KeyProp::H && sameX) {
-        key.y += delta * offset;
-      }
-    }
-
-    setKeyProperty(key, prop, value);
-
-    ++offset;
+  if (keepGap) {
+    if (prop == KeyProp::W)
+      setGap(state, gapX.value_or(state.gap), KeyProp::gapX);
+    else if (prop == KeyProp::H)
+      setGap(state, gapY.value_or(state.gap), KeyProp::gapY);
   }
 }
 
 void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
                           float sliderWidth = 150.0f) {
   const bool isGap{prop == KeyProp::gapY || prop == KeyProp::gapX};
+  const bool isSize{prop == KeyProp::W || prop == KeyProp::H};
 
   if (isGap && state.selection.Size < 2)
     return;
-  if (!(isGap) && !isKeysPropsEqual(state, prop))
+  if (!isGap && !isSize && !isKeysPropsEqual(state, prop))
     return;
-  if (prop == KeyProp::gapY && getKeysMatrix(state).size() < 2)
+  if (prop == KeyProp::gapY && getSelectedKeysMatrix(state).size() < 2)
     return;
 
   void *it{nullptr};
@@ -420,8 +410,9 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
 
   float value{};
   bool displayGapHelper{false};
+  bool displaySizeHelper{false};
   if (isGap) {
-    const auto gap{getGap(state, prop)};
+    const auto gap{getGap(getSelectedKeysMatrix(state), prop)};
     if (!gap) {
       displayGapHelper = true;
     }
@@ -429,7 +420,13 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
   } else {
     if (id >= state.layout.keys.size())
       return;
-    value = getKeyProperty(state.layout.keys[static_cast<int>(id)], prop);
+
+    if (isKeysPropsEqual(state, prop))
+      value = getKeyProperty(state.layout.keys[static_cast<int>(id)], prop);
+    else {
+      value = 0.0f;
+      displaySizeHelper = true;
+    }
   }
 
   float min{0.0f};
@@ -453,8 +450,46 @@ void drawMultiKeyProperty(LayoutEditState &state, KeyProp prop,
     Helper::HelpMarker("Gap diff, so the value is set to 0.0f");
   }
 
+  if (displaySizeHelper) {
+    ImGui::SameLine();
+    Helper::HelpMarker("Size diff, so the value is set to 0.0f");
+  }
+
   if (changed)
     setSelectedKeysProperty(state, prop, value);
+}
+
+static float getMostFreqGapX(LayoutEditState &state) {
+  std::vector<Key *> keys;
+  keys.reserve(state.layout.keys.size());
+  for (Key &key : state.layout.keys)
+    keys.push_back(&key);
+
+  const KeysMatrix rows{buildRows(std::move(keys))};
+
+  std::vector<float> gaps;
+  for (const auto &row : rows) {
+    for (std::size_t i{0}; i + 1 < row.size(); ++i)
+      gaps.push_back(row[i + 1]->x - (row[i]->x + row[i]->w));
+  }
+
+  if (gaps.empty())
+    return state.gap;
+
+  int maxCount{0};
+  float result{state.gap};
+
+  for (const float value : gaps) {
+    const int count{
+        static_cast<int>(std::count(gaps.begin(), gaps.end(), value))};
+
+    if (count > maxCount) {
+      maxCount = count;
+      result = value;
+    }
+  }
+
+  return result;
 }
 
 static float mostFreqWH(LayoutEditState &state, KeyProp prop) {
@@ -545,7 +580,19 @@ void addKey(LayoutEditState &state, KeyType type = KeyType::Keyboard) {
     state.recordingKeyCode = true;
 }
 
-void deleteSelectedKeys(LayoutEditState &state) {
+void addSpecialKeyPopup(LayoutEditState &state) {
+  if (ImGui::BeginPopup("SpecialKeyPopup")) {
+    for (std::size_t i{0}; i < sKeysInfo.size(); ++i) {
+      const auto &sKey{sKeysInfo[i]};
+      if (ImGui::Selectable(sKey.name.c_str()))
+        addKey(state, sKey.type);
+    }
+    ImGui::EndPopup();
+  }
+  return;
+}
+
+static void deleteSelectedKeys(LayoutEditState &state) {
   std::vector<int> indices;
   void *it{nullptr};
   ImGuiID id;
@@ -564,13 +611,46 @@ void deleteSelectedKeys(LayoutEditState &state) {
   state.selection.Clear();
 }
 
+static void deleteLabels(LayoutEditState &state) {
+  void *it{nullptr};
+  ImGuiID id{};
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    int i{static_cast<int>(id)};
+    if (i >= 0 && i < (int)state.layout.keys.size()) {
+      Key &key{state.layout.keys[static_cast<int>(id)]};
+      key.label = "";
+      key.shiftLabel = "";
+    }
+  }
+}
+
+static void applySuggestedLabels(LayoutEditState &state) {
+  void *it{nullptr};
+  ImGuiID id{};
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    int i{static_cast<int>(id)};
+    if (i >= 0 && i < (int)state.layout.keys.size()) {
+      Key &key{state.layout.keys[static_cast<int>(id)]};
+      key.label = Helper::VkToName(key.code);
+
+      std::string_view shiftLabel{Helper::VkToShiftLabel(key.code)};
+      if (!shiftLabel.empty()) {
+        key.shiftLabel = shiftLabel;
+      }
+    }
+  }
+}
+
 static void moveSelectedKeys(LayoutEditState &state, const ImVec2 &delta) {
   void *it{nullptr};
   ImGuiID id{};
   while (state.selection.GetNextSelectedItem(&it, &id)) {
-    Key &key{state.layout.keys[static_cast<int>(id)]};
-    key.x += delta.x;
-    key.y += delta.y;
+    int i{static_cast<int>(id)};
+    if (i >= 0 && i < (int)state.layout.keys.size()) {
+      Key &key{state.layout.keys[i]};
+      key.x += delta.x;
+      key.y += delta.y;
+    }
   }
 }
 
@@ -927,7 +1007,8 @@ static void drawResizeHandles(LayoutEditState &state, ImDrawList *draw,
   ImGui::PopID();
 }
 
-void drawLayoutEditorCanvas(LayoutEditState &state, const AppState &app) {
+static void drawLayoutEditorCanvas(LayoutEditState &state,
+                                   const AppState &app) {
   handleEditorShortcuts(state);
   ImGui::PushStyleColor(ImGuiCol_NavHighlight, ImVec4(0, 0, 0, 0));
   const float zoom{state.zoom};
@@ -1085,6 +1166,31 @@ void drawLayoutEditorCanvas(LayoutEditState &state, const AppState &app) {
   ImGui::PopFont();
 }
 
+static void drawAdvancedLabelButtons(LayoutEditState &state) {
+  if (ImGui::Button("UPPER")) {
+    changeSelectedLetterCase(state, true);
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("lower")) {
+    changeSelectedLetterCase(state, false);
+  }
+
+  std::string suggestedLabelsButtonLabel{state.selection.Size > 1
+                                             ? "Apply suggested labels"
+                                             : "Apply suggested label"};
+  if (ImGui::Button(suggestedLabelsButtonLabel.c_str())) {
+    applySuggestedLabels(state);
+  }
+
+  std::string deleteLabelsButtonLabel{
+      state.selection.Size > 1 ? "Delete labels" : "Delete label"};
+  if (ImGui::Button(deleteLabelsButtonLabel.c_str())) {
+    deleteLabels(state);
+  }
+}
+
 void drawLayoutEditorProperties(LayoutEditState &state, const AppState &app) {
   constexpr float sliderWidth{150.0f};
 
@@ -1120,18 +1226,10 @@ void drawLayoutEditorProperties(LayoutEditState &state, const AppState &app) {
     if (ImGui::Button("Add key")) {
       addKey(state);
     }
-    if (ImGui::Button("Add special Key")) {
+    if (ImGui::Button("Add special key")) {
       ImGui::OpenPopup("SpecialKeyPopup");
     }
-    if (ImGui::BeginPopup("SpecialKeyPopup")) {
-      // ImGui::SeparatorText("Special keys");
-      for (std::size_t i{0}; i < sKeysInfo.size(); ++i) {
-        const auto &sKey{sKeysInfo[i]};
-        if (ImGui::Selectable(sKey.name.c_str()))
-          addKey(state, sKey.type);
-      }
-      ImGui::EndPopup();
-    }
+    addSpecialKeyPopup(state);
     return;
   }
 
@@ -1197,14 +1295,8 @@ void drawLayoutEditorProperties(LayoutEditState &state, const AppState &app) {
   drawMultiKeyProperty(state, KeyProp::gapX, sliderWidth);
   drawMultiKeyProperty(state, KeyProp::gapY, sliderWidth);
 
-  if (ImGui::Button("UPPER")) {
-    changeSelectedLetterCase(state, true);
-  }
-
-  ImGui::SameLine();
-
-  if (ImGui::Button("lower")) {
-    changeSelectedLetterCase(state, false);
+  if (state.showAdvancedLabelButtons) {
+    drawAdvancedLabelButtons(state);
   }
 
   std::string deleteButtonLabel{state.selection.Size > 1 ? "Delete keys"
@@ -1220,8 +1312,9 @@ void drawLayoutPropertiesOverlay(LayoutEditState &state, AppState &app) {
   constexpr float pad{30.0f};
   constexpr float dockHeight{240.0f};
 
-  ImGui::SetNextWindowPos({display.x - pad, display.y - dockHeight - (pad * 2)},
-                          ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+  ImGui::SetNextWindowPos(
+      {(display.x - pad), (display.y - (display.y * 0.5f) - dockHeight)},
+      ImGuiCond_Always, ImVec2(1.0f, 0.0f));
   ImGui::SetNextWindowSize({dockHeight, 0.0f});
   ImGui::SetNextWindowBgAlpha(0.5f);
 
@@ -1234,56 +1327,31 @@ void drawLayoutPropertiesOverlay(LayoutEditState &state, AppState &app) {
   ImGui::End();
 }
 
-void drawLayoutEditorOptions(LayoutEditState &state, AppState &app) {
-  ImGui::BeginChild("Options", ImVec2(410, 120), true);
-
-  if (ImGui::Button("Edit current layout")) {
-    saveUndoClearRedo(state);
-    state.layout.keys.clear();
-    state.layout = app.layout;
-    state.selection.Clear();
-    state.resetViewOffset();
-    state.mouseCenterSelected = false;
-    state.layoutNameInput = app.config.selectedLayout;
-    state.defaultKeyHeight = mostFreqWH(state, KeyProp::H);
-    state.defaultKeyWidth = mostFreqWH(state, KeyProp::W);
+static void editCurrentLayout(LayoutEditState &state, AppState &app) {
+  saveUndoClearRedo(state);
+  state.layout.keys.clear();
+  state.layout = app.layout;
+  state.selection.Clear();
+  state.resetViewOffset();
+  state.mouseCenterSelected = false;
+  state.layoutNameInput = app.config.selectedLayout;
+  state.defaultKeyHeight = mostFreqWH(state, KeyProp::H);
+  state.defaultKeyWidth = mostFreqWH(state, KeyProp::W);
+  const float mostFreqGapX = getMostFreqGapX(state);
+  state.gap = mostFreqGapX;
+  if (mostFreqGapX > 0.0f) {
+    state.gridSize = mostFreqGapX;
   }
+}
+static void resetLayout(LayoutEditState &state) {
+  saveUndoClearRedo(state);
+  state.layout.keys.clear();
+  state.selection.Clear();
+  state.resetViewOffset();
+  state.mouseCenterSelected = false;
+}
 
-  ImGui::SameLine();
-
-  if (ImGui::Button("Reset layout")) {
-    saveUndoClearRedo(state);
-    state.layout.keys.clear();
-    state.selection.Clear();
-    state.resetViewOffset();
-    state.mouseCenterSelected = false;
-  }
-
-  if (ImGui::Button("Add key")) {
-    addKey(state);
-  }
-
-  ImGui::SameLine();
-
-  ImGui::SetNextItemWidth(150);
-  ImGui::InputText("##LayoutName", &state.layoutNameInput);
-  ImGui::SameLine();
-
-  if (ImGui::Button("Save layout")) {
-    const auto path = Paths::getLayoutPath(state.layoutNameInput);
-
-    if (std::filesystem::exists(path)) {
-      ImGui::OpenPopup("Save Layout");
-    } else {
-      state.layoutNameError = Helper::getFileCreateError(
-          saveLayout(state.layoutNameInput, state.layout));
-
-      if (state.layoutNameError.empty()) {
-        refreshLayouts();
-      }
-    }
-  }
-
+static void saveLayoutPopup(LayoutEditState &state, AppState &app) {
   if (ImGui::BeginPopupModal("Save Layout", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
 
@@ -1313,51 +1381,109 @@ void drawLayoutEditorOptions(LayoutEditState &state, AppState &app) {
 
     ImGui::EndPopup();
   }
+}
+
+static void drawWindowLayoutOptions(LayoutEditState &state, AppState &app) {
+  ImGui::BeginChild("Window & layout options", ImVec2(420, 170), true);
+
+  if (ImGui::Button("Edit current layout")) {
+    editCurrentLayout(state, app);
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Reset layout")) {
+    resetLayout(state);
+  }
+
+  if (ImGui::Button("Add key")) {
+    addKey(state);
+  }
+
+  ImGui::SameLine();
+
+  if (ImGui::Button("Add special key")) {
+    ImGui::OpenPopup("SpecialKeyPopup");
+  }
+  addSpecialKeyPopup(state);
+
+  ImGui::SetNextItemWidth(150);
+  ImGui::InputText("##LayoutName", &state.layoutNameInput);
+  ImGui::SameLine();
+
+  if (ImGui::Button("Save layout")) {
+    const auto path = Paths::getLayoutPath(state.layoutNameInput);
+
+    if (std::filesystem::exists(path)) {
+      ImGui::OpenPopup("Save Layout");
+    } else {
+      state.layoutNameError = Helper::getFileCreateError(
+          saveLayout(state.layoutNameInput, state.layout));
+
+      if (state.layoutNameError.empty()) {
+        refreshLayouts();
+      }
+    }
+  }
 
   if (!state.layoutNameError.empty()) {
     Helper::drawErrorInSettings(state.layoutNameError);
   }
 
+  saveLayoutPopup(state, app);
+
   // todo make clamp between user monitor
   Helper::SliderInt("Window width", state.layout.windowWidth, 10, 1920, "%d",
-                    300);
+                    260);
 
   Helper::SliderInt("Window height", state.layout.windowHeight, 10, 1080, "%d",
-                    300);
+                    260);
 
   ImGui::EndChild();
+}
 
-  ImGui::SameLine();
+static void drawKeysGeneralOptions(LayoutEditState &state) {
+  ImGui::BeginChild("Keys general options", ImVec2(420, 170), true);
 
-  ImGui::BeginChild("add key options", ImVec2(410, 120), true);
+  ImGui::Checkbox("Apply gap with multi resize",
+                  &state.applyGapWithMultiResize);
+
+  ImGui::Checkbox("Show advanced label buttons",
+                  &state.showAdvancedLabelButtons);
 
   ImGui::Checkbox("Enable grid", &state.gridEnabled);
 
   if (state.gridEnabled) {
+    ImGui::SameLine();
+
     ImGui::Checkbox("Snap to grid", &state.snapToGrid);
     Helper::SliderFloat("Grid size", state.gridSize, 1.0f, 30.0f, 1.0f, 100.0f,
-                        "%.2f", 300);
+                        "%.2f", 260);
     // ImGui::SeparatorText("");
   }
 
-  Helper::SliderFloat("Gap", state.gap, 0.0f, 30.0f, -20.0f, 100.0f, "%.2f",
-                      300);
+  Helper::SliderFloat("GapX", state.gap, 0.0f, 30.0f, -20.0f, 100.0f, "%.2f",
+                      260);
 
   Helper::SliderFloat("Step", state.step, 0.01f, 30.0f, 0.01f, 100.0f, "%.2f",
-                      300);
+                      260);
 
   Helper::SliderFloat("Key width", state.defaultKeyWidth, 10.0f, 200.0f, "%.0f",
-                      300);
+                      260);
 
   Helper::SliderFloat("Key height", state.defaultKeyHeight, 10.0f, 200.0f,
-                      "%.0f", 300);
+                      "%.0f", 260);
 
   Helper::SliderFloat("Zoom", state.zoom, Consts::EDITOR_MINZOOM,
-                      Consts::EDITOR_MAXZOOM, "%.2f", 300);
-
-  ImGui::Checkbox("Move with multi resize", &state.moveWhenMultiResize);
+                      Consts::EDITOR_MAXZOOM, "%.2f", 260);
 
   ImGui::EndChild();
+}
+
+static void drawLayoutEditorOptions(LayoutEditState &state, AppState &app) {
+  drawWindowLayoutOptions(state, app);
+  ImGui::SameLine();
+  drawKeysGeneralOptions(state);
 }
 
 void drawLayoutEditorTab(LayoutEditState &state, AppState &app) {
@@ -1367,10 +1493,8 @@ void drawLayoutEditorTab(LayoutEditState &state, AppState &app) {
 
   ImGui::SeparatorText("");
 
-  ImGui::BeginChild("canvas",
-                    ImVec2(state.layout.windowWidth * state.zoom + 20,
-                           state.layout.windowHeight * state.zoom + 20),
-                    true, ImGuiWindowFlags_HorizontalScrollbar);
+  ImGui::BeginChild("canvas", ImGui::GetContentRegionAvail(), false,
+                    ImGuiWindowFlags_HorizontalScrollbar);
   drawLayoutEditorCanvas(state, app);
   ImGui::EndChild();
 

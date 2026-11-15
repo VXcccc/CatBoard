@@ -1,4 +1,4 @@
-// shoutout mechvibes
+// shoutout mechvibes https://github.com/hainguyents13/mechvibes
 #ifndef SOUND_H
 #define SOUND_H
 

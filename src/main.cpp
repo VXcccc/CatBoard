@@ -164,6 +164,9 @@ int main(int, char **) {
   initDebugConsole();
 #endif
 
+	//debug
+  // initDebugConsole();
+
   // the state holding all active variables;
   AppState app;
 
@@ -288,7 +291,8 @@ int main(int, char **) {
   Fonts::refreshFonts();
   if (!(Fonts::loadFont(app.config.font, Fonts::overlayFont))) {
     if (!(Fonts::loadFont(Fonts::Font{}, Fonts::overlayFont))) {
-      Helper::fatalError(L"Failed to load any fonts, check your fonts directory");
+      Helper::fatalError(
+          L"Failed to load any fonts, check your fonts directory");
     }
   }
 
@@ -811,6 +815,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
   }
   case WM_DESTROY:
+    Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
     ::PostQuitMessage(0);
     return 0;
   }

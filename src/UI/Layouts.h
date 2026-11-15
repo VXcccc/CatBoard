@@ -83,7 +83,8 @@ struct LayoutEditState {
   bool focusLabelInput{false};
 
   ImGuiSelectionBasicStorage selection;
-  bool moveWhenMultiResize{true};
+  bool applyGapWithMultiResize{true};
+  bool showAdvancedLabelButtons{false};
 
   bool gridEnabled{true};
   bool snapToGrid{true};

@@ -107,8 +107,7 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
     MainWindow::SetDragMode(hWnd, app.dragMode);
     return;
   case Consts::ID_EXIT:
-    Shell_NotifyIcon(NIM_DELETE, &g_nid);
-    PostQuitMessage(0);
+		PostMessageW(hWnd, WM_CLOSE, 0, 0);
     return;
   }
 }

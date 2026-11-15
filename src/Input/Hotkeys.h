@@ -16,6 +16,7 @@ enum class BindType {
   dragMode,
   toggleOverlay,
   toggleSettings,
+  exit,
   max_bindTypes
 };
 
@@ -23,7 +24,7 @@ struct Bind {
   std::string name;
   int vkCode;
   std::string keyName;
-	bool empty;
+  bool empty;
   BindType type;
   bool operator==(const Bind &) const = default;
 };
@@ -39,7 +40,7 @@ bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app);
 
 void handleBinds(HWND hWnd, AppState &app);
 
-void syncBindsOrder(BindsVector &outBinds);
+BindsVector syncBindsOrder(const BindsVector &prevBinds);
 } // namespace Binds
 
 #endif // !INPUTHANDLE_H

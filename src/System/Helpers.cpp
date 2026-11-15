@@ -159,7 +159,7 @@ bool installDefault(const std::filesystem::path &source,
   return !ec;
 }
 
-bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol, 
+bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
                ImGuiColorEditFlags flags) {
   ImVec4 ImVecCol{fromConfigColor(outCol)};
   if (ImGui::ColorEdit4(label.c_str(), &ImVecCol.x, flags)) {
@@ -240,6 +240,39 @@ std::string VkToName(int vk) {
     return std::string{static_cast<char>(vk)};
 
   return "Unknown";
+}
+
+std::string VkToShiftLabel(int vk) {
+  static const std::unordered_map<int, std::string> map{
+      {'1', "!"},
+      {'2', "@"},
+      {'3', "#"},
+      {'4', "$"},
+      {'5', "%"},
+      {'6', "^"},
+      {'7', "&"},
+      {'8', "*"},
+      {'9', "("},
+      {'0', ")"},
+      {VK_OEM_1, ":"},
+      {VK_OEM_PLUS, "+"},
+      {VK_OEM_COMMA, "<"},
+      {VK_OEM_MINUS, "_"},
+      {VK_OEM_PERIOD, ">"},
+      {VK_OEM_2, "?"},
+      {VK_OEM_3, "~"},
+      {VK_OEM_4, "{"},
+      {VK_OEM_5, "|"},
+      {VK_OEM_6, "}"},
+      {VK_OEM_7, "\""},
+  };
+
+  const auto it = map.find(vk);
+
+  if (it != map.end())
+    return it->second;
+
+  return "";
 }
 
 } // namespace Helper

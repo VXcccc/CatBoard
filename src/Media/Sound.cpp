@@ -1,7 +1,6 @@
+// shoutout mechvibes https://github.com/hainguyents13/mechvibes
 #include "Helpers.h"
 #include "Paths.h"
-
-#include "Config.h"
 #include "Constants.h"
 #include "Sound.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
@@ -183,6 +182,8 @@ bool installDefaultSoundPacks() {
                                 Paths::soundsDirectory());
 }
 
+// the difference between Helper::VkToName function is that function uses code
+// from sound json file (these code names are used in mechvibes)
 const std::unordered_map<std::string, int> &CodeToVK() {
   static const std::unordered_map<std::string, int> map = {
       {"KeyA", 'A'},

@@ -1,5 +1,6 @@
 #include "Config.h"
 #include "Helpers.h"
+#include "Hotkeys.h"
 #include "JsonParser.h"
 #include "Paths.h"
 #include <combaseapi.h>
@@ -34,6 +35,9 @@ void LoadActiveConfig(Settings &outConfig) {
     std::ifstream file{path};
     const auto j = json::parse(file);
     outConfig = j.get<Settings>();
+
+		//checking for all hotkeys defined to be loaded
+		outConfig.binds = Binds::syncBindsOrder(outConfig.binds);
 
 		// silently reseting config to defaults(except name)
   } catch (const std::exception &) {

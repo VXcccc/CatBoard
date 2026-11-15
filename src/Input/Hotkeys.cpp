@@ -11,10 +11,14 @@
 #include <windows.h>
 namespace Binds {
 
+// If you want to add custom hotkey add new Type in BindType also add new Bind
+// to this Array and finally add functionality that you want your bind execute
+// in handleBindType() switch statement
 const BindsArray defaultBinds{
     Bind{"Drag mode", VK_F4, "F4", false, BindType::dragMode},
     Bind{"Toggle overlay", VK_F6, "F6", false, BindType::toggleOverlay},
-    Bind{"Toggle settings", VK_F9, "F9", false, BindType::toggleSettings}};
+    Bind{"Toggle settings", VK_F9, "F9", false, BindType::toggleSettings},
+    Bind{"Exit", VK_F12, "...", true, BindType::exit}};
 
 static_assert(defaultBinds.size() ==
                   static_cast<std::size_t>(BindType::max_bindTypes),
@@ -31,6 +35,9 @@ void handleBindType(const BindType type, HWND hWnd, AppState &app) {
     break;
   case BindType::toggleSettings:
     SettingsWindow::toggleWindow();
+    break;
+  case BindType::exit:
+    PostMessageW(hWnd, WM_CLOSE, 0, 0);
     break;
     // case BindType::resizeMode:
     //   app.resizeMode = !app.resizeMode;
@@ -120,28 +127,25 @@ bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
   return false;
 }
 
-// add for compatibility with old configs if new bind added
-void syncBindsOrder(BindsVector &outBinds) {
-  const auto previousBinds{outBinds};
-
+BindsVector syncBindsOrder(const BindsVector &prevBinds) {
   BindsVector ordered;
   ordered.reserve(Binds::defaultBinds.size());
 
   for (const auto &defaultBind : Binds::defaultBinds) {
-    const auto it = std::find_if(previousBinds.begin(), previousBinds.end(),
+    const auto it = std::find_if(prevBinds.begin(), prevBinds.end(),
                                  [&defaultBind](const Bind &bind) {
                                    return (bind.type == defaultBind.type &&
                                            bind.name == defaultBind.name);
                                  });
 
-    if (it != previousBinds.end()) {
+    if (it != prevBinds.end()) {
       ordered.push_back(*it);
     } else {
       ordered.push_back(defaultBind);
     }
   }
 
-  outBinds = std::move(ordered);
+  return ordered;
 }
 
 } // namespace Binds

@@ -819,6 +819,7 @@ void drawVisualsTab(SettingsEditState &state, AppState &app) {
 
 void drawLayoutsTab(SettingsEditState &state,
                     Layouts::LayoutEditState &layoutEditState, AppState &app) {
+
   drawLayoutCombo(state, app);
   if (ImGui::Button("Open layout folder")) {
     Paths::openLayoutDirectory();
@@ -903,7 +904,7 @@ void drawMiscTab(SettingsEditState &state, AppState &app) {
 }
 
 void drawBindsTab(SettingsEditState &state, AppState &app) {
-  Binds::syncBindsOrder(state.binds);
+
   for (auto &bind : state.binds) {
     ImGui::PushID(bind.name.c_str());
 
@@ -1122,7 +1123,7 @@ void RenderFrame(AppState &app) {
 
   handleUndoRedoInput(editState, lastCommitted, currentTab, app);
 
-  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.6);
+  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4);
   switch (currentTab) {
   case SettingsTab::Visuals:
     drawVisualsTab(editState, app);
@@ -1161,8 +1162,7 @@ void RenderFrame(AppState &app) {
   }
 
   if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds ||
-      currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc ||
-      currentTab == SettingsTab::Layouts) {
+      currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc) {
     drawApplyCancel(editState, newSettings, app);
   }
 
