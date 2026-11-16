@@ -149,18 +149,14 @@ void refresh(std::vector<std::string> &category,
 
 bool installDefault(const std::filesystem::path &source,
                     const std::filesystem::path &destination) {
-  if (std::filesystem::exists(destination)) {
-    if (!Consts::IS_PORTABLE) {
-      std::filesystem::remove_all(source);
-    }
+  std::error_code ec;
+
+  if (std::filesystem::exists(destination, ec)) {
     return true;
   }
 
-  std::error_code ec;
-
   std::filesystem::copy(source, destination,
                         std::filesystem::copy_options::recursive, ec);
-  std::filesystem::remove_all(source, ec);
 
   return !ec;
 }

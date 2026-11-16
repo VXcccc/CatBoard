@@ -8,9 +8,8 @@
 namespace Paths {
 namespace {
 std::filesystem::path categoryDirectory(std::string_view category) {
-  std::string portableDir{"Assets"};
   if (Consts::IS_PORTABLE) {
-    return std::filesystem::path{portableDir} / std::string{category};
+    return getExecutableDir() / "Assets" / std::string{category};
   }
   return getAppDataDir() / std::string{category};
 }

@@ -150,9 +150,12 @@ set(CPACK_NSIS_MUI_UNIICON "${_ico}")
 
 set(CPACK_NSIS_MUI_FINISHPAGE_RUN "CatBoard.exe")
 
-set(CPACK_NSIS_CREATE_ICONS_EXTRA
-    "CreateShortCut '$DESKTOP\\\\CatBoard.lnk' '$INSTDIR\\\\CatBoard.exe'")
-set(CPACK_NSIS_DELETE_ICONS_EXTRA
-    "Delete '$DESKTOP\\\\CatBoard.lnk'")
+set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
+  MessageBox MB_YESNO|MB_ICONQUESTION 'Create a desktop shortcut?' /SD IDNO IDNO +2
+  CreateShortCut '$DESKTOP\\\\CatBoard.lnk' '$INSTDIR\\\\CatBoard.exe'
+")
+set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
+  Delete '$DESKTOP\\\\CatBoard.lnk'
+")
 
 include(CPack)
