@@ -39,7 +39,7 @@ void refreshLayouts() {
 }
 
 bool installDefaultLayouts() {
-  return Helper::installDefault(Paths::getExecutableDir() / "Layouts",
+  return Helper::installDefault(Paths::getAssetsDir() / "Layouts",
                                 Paths::layoutDirectory());
 }
 
@@ -1117,6 +1117,9 @@ static void drawLayoutEditorCanvas(LayoutEditState &state,
       state.moveAnchor = {key.x, key.y};
       saveUndoClearRedo(state);
     }
+    if (state.selection.Size >= 1) {
+      state.mouseCenterSelected = false;
+    }
 
     if (ImGui::IsItemActive() &&
         ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
@@ -1497,11 +1500,5 @@ void drawLayoutEditorTab(LayoutEditState &state, AppState &app) {
                     ImGuiWindowFlags_HorizontalScrollbar);
   drawLayoutEditorCanvas(state, app);
   ImGui::EndChild();
-
-  // ImGui::SameLine();
-
-  // ImGui::BeginChild("properties", ImVec2(250, 250), true);
-  // drawLayoutEditorProperties(state);
-  // ImGui::EndChild();
 }
 } // namespace Layouts

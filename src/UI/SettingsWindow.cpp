@@ -865,6 +865,7 @@ void drawMiscTab(SettingsEditState &state, AppState &app) {
 
   ImGui::Checkbox("Enable V-Sync", &state.misc.vsync);
   ImGui::Checkbox("Enable ObsMode", &state.misc.obsMode);
+  ImGui::Checkbox("Auto save on close", &state.misc.saveOnClose);
 
   if (state.misc.obsMode) {
     Helper::ColorEdit("Background Color", state.theme.obsBackground);
@@ -903,7 +904,8 @@ void drawMiscTab(SettingsEditState &state, AppState &app) {
 }
 
 void drawBindsTab(SettingsEditState &state, AppState &app) {
-  if (ImGui::BeginTable("Binds", state.binds.size(), ImGuiTableFlags_SizingFixedFit)) {
+  if (ImGui::BeginTable("Binds", state.binds.size(),
+                        ImGuiTableFlags_SizingFixedFit)) {
     for (auto &bind : state.binds) {
       const char *bindName{bind.name.c_str()};
       ImGui::PushID(bindName);
@@ -979,6 +981,12 @@ void drawConfigsTab(SettingsEditState &state, AppState &app) {
     if (ImGui::Button("Load config")) {
       Config::Settings loadedSettings{};
       if (Config::Load(Config::configs[state.currentConfig], loadedSettings)) {
+        // if config renamed forcing Save on load
+        if (Config::configs[state.currentConfig] != loadedSettings.configName) {
+          loadedSettings.configName = Config::configs[state.currentConfig];
+          Config::Save(Config::configs[state.currentConfig], loadedSettings);
+        }
+
         restoreFromConfig(state, loadedSettings, app);
         syncCurrentIndices(state, app);
 
@@ -1014,12 +1022,7 @@ void drawConfigsTab(SettingsEditState &state, AppState &app) {
     ImGui::TextDisabled("No configs found. Create one below.");
   }
 
-  ImGui::SameLine();
 
-  if (ImGui::Button("Refresh configs")) {
-    Config::refreshConfigs();
-    validateCurrentIndex(state.currentConfig, std::size(Config::configs));
-  }
 
   ImGui::InputText("##Config name", &state.configNameInput);
   ImGui::SameLine();
@@ -1038,6 +1041,19 @@ void drawConfigsTab(SettingsEditState &state, AppState &app) {
 
   if (ImGui::Button("Open config folder")) {
     Paths::openConfigDirectory();
+  }
+
+	ImGui::SameLine();
+
+  if (ImGui::Button("Refresh configs")) {
+    Config::refreshConfigs();
+    validateCurrentIndex(state.currentConfig, std::size(Config::configs));
+  }
+
+  ImGui::Text("Version: v%s", Consts::CATBOARD_VERSION_STR.c_str());
+	ImGui::SameLine();
+  if (ImGui::Button("Open releases page")) {
+		Helper::openReleasesPage();
   }
 }
 
@@ -1117,18 +1133,18 @@ void RenderFrame(AppState &app) {
   // maybe destroy the win titlebar and use imgui but idk rn
   ImGui::SetNextWindowPos(ImVec2(0, 0));
   ImGui::SetNextWindowSize(ImGui::GetIO().DisplaySize);
-  ImGui::Begin("SettingsRoot", nullptr,
-               ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
-                   ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
-                   ImGuiWindowFlags_NoSavedSettings |
-                   ImGuiWindowFlags_HorizontalScrollbar |
-                   ImGuiWindowFlags_NoBringToFrontOnFocus);
+  ImGui::Begin(
+      "SettingsRoot", nullptr,
+      ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize |
+          ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse |
+          ImGuiWindowFlags_NoSavedSettings |
+          ImGuiWindowFlags_NoBringToFrontOnFocus); // ImGuiWindowFlags_HorizontalScrollbar
 
   drawSettingsTabs(currentTab);
 
   handleUndoRedoInput(editState, lastCommitted, currentTab, app);
 
-  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.4);
+  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.35);
   switch (currentTab) {
   case SettingsTab::Visuals:
     drawVisualsTab(editState, app);

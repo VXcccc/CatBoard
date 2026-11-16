@@ -284,7 +284,12 @@ void from_json(const json &j, Settings &settings) {
 }
 
 void to_json(json &j, const Misc &misc) {
-  j = {{"vsync", misc.vsync}, {"obsMode", misc.obsMode}, {"fps", misc.fps}};
+  j = {
+      {"vsync", misc.vsync},
+      {"obsMode", misc.obsMode},
+      {"fps", misc.fps},
+      {"saveOnClose", misc.saveOnClose},
+  };
 }
 
 void from_json(const json &j, Misc &misc) {
@@ -297,6 +302,9 @@ void from_json(const json &j, Misc &misc) {
 
   if (j.contains("fps"))
     j.at("fps").get_to(misc.fps);
+
+  if (j.contains("saveOnClose"))
+    j.at("saveOnClose").get_to(misc.saveOnClose);
 }
 
 void to_json(json &j, const Overlay &overlay) {
@@ -620,7 +628,7 @@ void from_json(const json &j, Bind &bind) {
 
   if (j.contains("type"))
     bind.type = static_cast<BindType>(j.at("type").get<int>());
-	
+
   if (j.contains("modifierKeys"))
     j.at("modifierKeys").get_to(bind.modifierKeys);
 }

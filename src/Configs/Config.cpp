@@ -22,6 +22,11 @@ void refreshConfigs() {
   Helper::refresh(configs, Paths::configDirectory(), ".json");
 }
 
+bool installDefaultConfigs() {
+  return Helper::installDefault(Paths::getAssetsDir() / "Configs",
+                                Paths::configDirectory());
+}
+
 void LoadActiveConfig(Settings &outConfig) {
   const auto path{Paths::getActiveConfigPath()};
 
@@ -36,13 +41,13 @@ void LoadActiveConfig(Settings &outConfig) {
     const auto j = json::parse(file);
     outConfig = j.get<Settings>();
 
-		//checking for all hotkeys defined to be loaded
-		outConfig.binds = Binds::syncBindsOrder(outConfig.binds);
+    // checking for all hotkeys defined to be loaded
+    outConfig.binds = Binds::syncBindsOrder(outConfig.binds);
 
-		// silently reseting config to defaults(except name)
+    // silently reseting config to defaults(except name)
   } catch (const std::exception &) {
-		Settings resultConfig {defaultConfig};
-		resultConfig.configName = outConfig.configName;
+    Settings resultConfig{defaultConfig};
+    resultConfig.configName = outConfig.configName;
     outConfig = resultConfig;
     Apply(outConfig);
   }
@@ -82,8 +87,8 @@ Helper::FileCreateResult Create(std::string_view name) {
     return Helper::FileCreateResult::FileError;
   }
 
-	Settings resultConfig {defaultConfig};
-	resultConfig.configName = name;
+  Settings resultConfig{defaultConfig};
+  resultConfig.configName = name;
   file << json(resultConfig).dump(4);
   if (!file) {
     return Helper::FileCreateResult::FileError;

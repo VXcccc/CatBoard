@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.25)
 
-project(CatBoard LANGUAGES C CXX)
+project(CatBoard VERSION 1.0.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -13,93 +13,146 @@ set(imgui_SOURCE_DIR ${CMAKE_SOURCE_DIR}/ThirdParty/imgui)
 find_package(Vorbis CONFIG REQUIRED)
 
 add_executable(${PROJECT_NAME} WIN32
-    src/main.cpp
+				src/main.cpp
 
-    src/System/Tray.cpp
-    src/System/Paths.cpp
-    src/System/Helpers.cpp
+				src/System/Tray.cpp
+				src/System/Paths.cpp
+				src/System/Helpers.cpp
 
-    src/Configs/Config.cpp
-    src/Configs/JsonParser.cpp
+				src/Configs/Config.cpp
+				src/Configs/JsonParser.cpp
 
-    src/Input/Hotkeys.cpp
-    src/Input/Mouse.cpp
-    src/Input/Keyboard.cpp
+				src/Input/Hotkeys.cpp
+				src/Input/Mouse.cpp
+				src/Input/Keyboard.cpp
 
-    src/Media/Sound.cpp
-    src/Media/Fonts.cpp
-    src/Media/Images.cpp
+				src/Media/Sound.cpp
+				src/Media/Fonts.cpp
+				src/Media/Images.cpp
 
-    src/UI/SettingsWindow.cpp
-    src/UI/MainWindow.cpp
-    src/UI/Layouts.cpp
-    src/UI/Render.cpp
+				src/UI/SettingsWindow.cpp
+				src/UI/MainWindow.cpp
+				src/UI/Layouts.cpp
+				src/UI/Render.cpp
 
-    Resource/app.rc
+				Resource/app.rc
 
-    ${imgui_SOURCE_DIR}/imgui.cpp
-    ${imgui_SOURCE_DIR}/imgui_draw.cpp
-    ${imgui_SOURCE_DIR}/imgui_tables.cpp
-    ${imgui_SOURCE_DIR}/imgui_widgets.cpp
-    ${imgui_SOURCE_DIR}/imgui_demo.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
-    ${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
-    ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
+				${imgui_SOURCE_DIR}/imgui.cpp
+				${imgui_SOURCE_DIR}/imgui_draw.cpp
+				${imgui_SOURCE_DIR}/imgui_tables.cpp
+				${imgui_SOURCE_DIR}/imgui_widgets.cpp
+				${imgui_SOURCE_DIR}/imgui_demo.cpp
+				${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
+				${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
+				${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
 
-    ${MINIAUDIO_DIR}/miniaudio.c
-    ${MINIAUDIO_VORBIS_DIR}/miniaudio_libvorbis.c
+				${MINIAUDIO_DIR}/miniaudio.c
+				${MINIAUDIO_VORBIS_DIR}/miniaudio_libvorbis.c
 )
 
+option(CATBOARD_PORTABLE "Portable build" OFF)
+if(CATBOARD_PORTABLE)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE CATBOARD_PORTABLE)
+endif()
+
 target_compile_definitions(${PROJECT_NAME} PRIVATE
-  UNICODE
-  _UNICODE
+		UNICODE
+		_UNICODE
+		APP_VERSION_STR="${PROJECT_VERSION}"
+		APP_VERSION_INT=${PROJECT_VERSION_MAJOR}${PROJECT_VERSION_MINOR}${PROJECT_VERSION_PATCH}
 )
 
 
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}
-    ${CMAKE_SOURCE_DIR}/ThirdParty
-    ${CMAKE_SOURCE_DIR}/src
-    ${CMAKE_SOURCE_DIR}/src/Configs
-    ${CMAKE_SOURCE_DIR}/src/Input
-    ${CMAKE_SOURCE_DIR}/src/Media
-    ${CMAKE_SOURCE_DIR}/src/System
-    ${CMAKE_SOURCE_DIR}/src/UI
-    ${CMAKE_SOURCE_DIR}/Assets
+				${CMAKE_SOURCE_DIR}
+				${CMAKE_SOURCE_DIR}/ThirdParty
+				${CMAKE_SOURCE_DIR}/src
+				${CMAKE_SOURCE_DIR}/src/Configs
+				${CMAKE_SOURCE_DIR}/src/Input
+				${CMAKE_SOURCE_DIR}/src/Media
+				${CMAKE_SOURCE_DIR}/src/System
+				${CMAKE_SOURCE_DIR}/src/UI
+				${CMAKE_SOURCE_DIR}/Assets
 
-    ${imgui_SOURCE_DIR}
-    ${imgui_SOURCE_DIR}/backends
-    ${miniaudio_SOURCE_DIR}
+				${imgui_SOURCE_DIR}
+				${imgui_SOURCE_DIR}/backends
+				${miniaudio_SOURCE_DIR}
 
-    ${MINIAUDIO_DIR}
-    ${MINIAUDIO_VORBIS_DIR}
+				${MINIAUDIO_DIR}
+				${MINIAUDIO_VORBIS_DIR}
 )
 
 
 target_link_libraries(${PROJECT_NAME} PRIVATE
-    d3d11 dxgi d3dcompiler dwmapi dcomp
-    Vorbis::vorbisfile
-    winmm
+				d3d11 dxgi d3dcompiler dwmapi dcomp
+				Vorbis::vorbisfile
+				winmm
 )
 
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-    "${CMAKE_SOURCE_DIR}/Assets/Layouts"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Layouts"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-        "${CMAKE_SOURCE_DIR}/Assets/Sounds"
-        "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Sounds"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_SOURCE_DIR}/Assets/Fonts"
-      "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Fonts"
-    COMMAND ${CMAKE_COMMAND} -E copy_directory
-      "${CMAKE_SOURCE_DIR}/Assets/Images"
-      "$<TARGET_FILE_DIR:${PROJECT_NAME}>/Images"
+				COMMAND ${CMAKE_COMMAND} -E copy_directory
+				"${CMAKE_SOURCE_DIR}/Assets/Layouts"
+		"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Layouts"
+				COMMAND ${CMAKE_COMMAND} -E copy_directory
+								"${CMAKE_SOURCE_DIR}/Assets/Sounds"
+								"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Sounds"
+				COMMAND ${CMAKE_COMMAND} -E copy_directory
+						"${CMAKE_SOURCE_DIR}/Assets/Fonts"
+						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Fonts"
+				COMMAND ${CMAKE_COMMAND} -E copy_directory
+						"${CMAKE_SOURCE_DIR}/Assets/Images"
+						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Images"
+				COMMAND ${CMAKE_COMMAND} -E copy_directory
+				"${CMAKE_SOURCE_DIR}/Assets/Configs"
+				"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Configs"
 )
 
 if(MINGW)
-  target_link_options(${PROJECT_NAME} PRIVATE
-        -static-libgcc
-        -static-libstdc++
-    )
+	target_link_options(${PROJECT_NAME} PRIVATE
+								-static-libgcc
+								-static-libstdc++
+				)
 endif()
+
+
+install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .)
+install(DIRECTORY
+    ${CMAKE_SOURCE_DIR}/Assets/Layouts
+    ${CMAKE_SOURCE_DIR}/Assets/Sounds
+    ${CMAKE_SOURCE_DIR}/Assets/Fonts
+    ${CMAKE_SOURCE_DIR}/Assets/Images
+		${CMAKE_SOURCE_DIR}/Assets/Configs
+		DESTINATION Assets
+)
+set(CPACK_PACKAGE_NAME "CatBoard")
+set(CPACK_PACKAGE_VENDOR "VXcccc")
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})          
+set(CPACK_PACKAGE_FILE_NAME "CatBoard-${PROJECT_VERSION}-windows-x64")
+set(CPACK_PACKAGE_INSTALL_DIRECTORY "CatBoard")
+set(CPACK_STRIP_FILES ON)
+set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
+
+# NSIS SETUP
+set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+set(CPACK_NSIS_DISPLAY_NAME "CatBoard")
+set(CPACK_NSIS_PACKAGE_NAME "CatBoard")
+set(CPACK_NSIS_INSTALLED_ICON_NAME "CatBoard.exe")
+set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
+set(CPACK_PACKAGE_EXECUTABLES "CatBoard" "CatBoard")
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON) 
+set(CPACK_NSIS_MODIFY_PATH OFF)
+set(CPACK_NSIS_MANIFEST_DPI_AWARE ON)
+
+file(TO_NATIVE_PATH "${CMAKE_SOURCE_DIR}/Resource/icon.ico" _ico)
+string(REPLACE "\\" "\\\\" _ico "${_ico}")
+set(CPACK_NSIS_MUI_ICON "${_ico}")
+set(CPACK_NSIS_MUI_UNIICON "${_ico}")
+
+set(CPACK_NSIS_MUI_FINISHPAGE_RUN "CatBoard.exe")
+
+set(CPACK_NSIS_CREATE_ICONS_EXTRA
+    "CreateShortCut '$DESKTOP\\\\CatBoard.lnk' '$INSTDIR\\\\CatBoard.exe'")
+set(CPACK_NSIS_DELETE_ICONS_EXTRA
+    "Delete '$DESKTOP\\\\CatBoard.lnk'")
+
+include(CPack)

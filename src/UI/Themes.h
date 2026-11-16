@@ -19,7 +19,7 @@ constexpr std::array<std::string, MaxStyles> styles{
     "Dark", "White", "RoseQuartz", "GruvBox", "Catppuccin", "Dracula",
 };
 
-inline constexpr int defaultTheme{static_cast<int>(Style::RoseQuartz)};
+inline constexpr int defaultTheme{static_cast<int>(Style::Catppuccin)};
 
 // Forward declarations
 inline void ImGuiDarkStyle();

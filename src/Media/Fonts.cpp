@@ -66,7 +66,7 @@ void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
 }
 
 bool installDefaultFonts() {
-  return Helper::installDefault(Paths::getExecutableDir() / "Fonts",
+  return Helper::installDefault(Paths::getAssetsDir() / "Fonts",
                                 Paths::fontsDirectory());
 }
 

@@ -1,14 +1,11 @@
 #include "Helpers.h"
 #include "Config.h"
 #include "Constants.h"
-#include "SettingsWindow.h"
 #include "imgui.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
-#include <exception>
 #include <filesystem>
-#include <functional>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -30,6 +27,11 @@ void errorMesBox(const wchar_t *message) {
 void errorMesBox(const std::string &str) {
   std::wstring widestr = std::wstring(str.begin(), str.end());
   Helper::errorMesBox(widestr.c_str());
+}
+
+void openReleasesPage() {
+  ShellExecute(0, 0, L"https://github.com/VXcccc/CatBoard/releases", 0, 0,
+               SW_SHOW);
 }
 
 void drawErrorInSettings(std::string &error) {
@@ -148,6 +150,9 @@ void refresh(std::vector<std::string> &category,
 bool installDefault(const std::filesystem::path &source,
                     const std::filesystem::path &destination) {
   if (std::filesystem::exists(destination)) {
+    if (!Consts::IS_PORTABLE) {
+      std::filesystem::remove_all(source);
+    }
     return true;
   }
 
@@ -155,6 +160,7 @@ bool installDefault(const std::filesystem::path &source,
 
   std::filesystem::copy(source, destination,
                         std::filesystem::copy_options::recursive, ec);
+  std::filesystem::remove_all(source, ec);
 
   return !ec;
 }

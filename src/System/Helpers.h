@@ -45,6 +45,8 @@ void HelpMarker(const char *desc);
 void refresh(std::vector<std::string> &category,
              const std::filesystem::path &folder, std::string_view ext);
 
+void openReleasesPage();
+
 std::string VkToName(int vk);
 
 std::string VkToShiftLabel(int vk);
@@ -145,8 +147,6 @@ inline bool operator>(const ImVec2 &a, const ImVec2 &b) {
   return a.x > b.x && a.y > b.y;
 }
 
-inline bool operator<(const ImVec2 &a, const ImVec2 &b) {
-  return !(a > b);
-}
+inline bool operator<(const ImVec2 &a, const ImVec2 &b) { return !(a > b); }
 
 #endif // !HELPERS_H

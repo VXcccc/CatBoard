@@ -1,14 +1,14 @@
 #include "Images.h"
 #include "AppState.h"
 #include "Config.h"
-#include "JsonParser.h"
-#include "Keyboard.h"
-#include "Mouse.h"
 #include "Fonts.h"
 #include "Helpers.h"
-#include "Paths.h"
+#include "JsonParser.h"
+#include "Keyboard.h"
 #include "Layouts.h"
 #include "MainWindow.h"
+#include "Mouse.h"
+#include "Paths.h"
 #include "imgui.h"
 #include <algorithm>
 #include <array>
@@ -49,7 +49,7 @@ std::vector<std::string> packs{};
 static std::unordered_map<std::string, Texture> g_textureCache;
 
 bool installDefaultImagePacks() {
-  return Helper::installDefault(Paths::getExecutableDir() / "Images",
+  return Helper::installDefault(Paths::getAssetsDir() / "Images",
                                 Paths::imagesDirectory());
 }
 
@@ -141,8 +141,8 @@ bool LoadTextureFromFile(const char *file_name,
 }
 
 Texture getOrLoadTexture(const std::string &fileName, const Pack &pack) {
-  const auto path{(Paths::getImagePackPath(pack.name) / (fileName + ".png"))
-                      .string()};
+  const auto path{
+      (Paths::getImagePackPath(pack.name) / (fileName + ".png")).string()};
   auto it{g_textureCache.find(path)};
   if (it != g_textureCache.end()) {
     return it->second;
@@ -190,9 +190,9 @@ bool Load(std::string_view name, Pack &outPack) {
 }
 
 const Image *findImageForKey(int vkCode, const Pack &pack) {
-  auto it = std::find_if(
-      pack.explicitImages.begin(), pack.explicitImages.end(),
-      [&](const Image &image) { return image.vkCode == vkCode; });
+  auto it =
+      std::find_if(pack.explicitImages.begin(), pack.explicitImages.end(),
+                   [&](const Image &image) { return image.vkCode == vkCode; });
   if (it != pack.explicitImages.end()) {
     return &*it;
   }
@@ -200,7 +200,15 @@ const Image *findImageForKey(int vkCode, const Pack &pack) {
 }
 
 void drawSizeOfImages(const Pack &pack, const Layouts::Layout &layout) {
-  if (!ImGui::CollapsingHeader("Images Size"))
+  ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.00f));
+  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.00f));
+  ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.0f, 0.0f, 0.0f, 0.00f));
+  const bool open{ImGui::CollapsingHeader("Images Size")};
+  ImGui::PopStyleColor();
+  ImGui::PopStyleColor();
+  ImGui::PopStyleColor();
+
+  if (!open)
     return;
 
   std::string output{};
@@ -247,10 +255,9 @@ void drawKeyboardImages(ImDrawList *draw, const AppState &app) {
     // todo fix the problem with different size of key in layout and in image
     // size
     ImVec2 bottomRight{(key.x + key.w) * ovScale, (key.y + key.h) * ovScale};
-    draw->AddImage(
-        (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
-        ImVec2(1, 1),
-        IM_COL32(255, 255, 255, app.config.theme.keysImageOpacity));
+    draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight,
+                   ImVec2(0, 0), ImVec2(1, 1),
+                   IM_COL32(255, 255, 255, app.config.theme.keysImageOpacity));
   }
 }
 
@@ -267,8 +274,7 @@ void handleScroll(ImDrawList *draw, const MouseButton &scroll,
     ImVec2 textSize{ImGui::CalcTextSize(label.c_str())};
     ImVec2 textPos{partCenter.x - (textSize.x * 0.5f),
                    partCenter.y - (textSize.y * 0.5f)};
-    ImU32 textColor{
-        Helper::ToImU32(mouseTheme.scrollCounter)};
+    ImU32 textColor{Helper::ToImU32(mouseTheme.scrollCounter)};
     draw->AddText(textPos, textColor, label.c_str());
   }
   ImGui::PopFont();
@@ -298,10 +304,9 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   ImVec2 bottomRight{topLeft.x + ((part.w * mouse.imageScale) * ovScale),
                      topLeft.y + ((part.h * mouse.imageScale) * ovScale)};
 
-  draw->AddImage(
-      (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
-      ImVec2(1, 1),
-      IM_COL32(255, 255, 255, app.config.theme.mouse.imageOpacity));
+  draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight,
+                 ImVec2(0, 0), ImVec2(1, 1),
+                 IM_COL32(255, 255, 255, app.config.theme.mouse.imageOpacity));
   if (part == pack.mouse.scrollUp) {
     handleScroll(draw, part, partCenter, true, app.mouse, mouse);
   } else if (part == pack.mouse.scrollDown) {
@@ -319,10 +324,10 @@ void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
                 app);
   drawMousePart(draw, center, mouse.right, keysDown[VK_RBUTTON], app.imagePack,
                 app);
-  drawMousePart(draw, center, mouse.mouse4, keysDown[VK_XBUTTON1], app.imagePack,
-                app);
-  drawMousePart(draw, center, mouse.mouse5, keysDown[VK_XBUTTON2], app.imagePack,
-                app);
+  drawMousePart(draw, center, mouse.mouse4, keysDown[VK_XBUTTON1],
+                app.imagePack, app);
+  drawMousePart(draw, center, mouse.mouse5, keysDown[VK_XBUTTON2],
+                app.imagePack, app);
   drawMousePart(draw, center, mouse.bottom, false, app.imagePack, app);
   // fix middle
 

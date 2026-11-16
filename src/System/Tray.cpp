@@ -100,7 +100,7 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
 
   switch (uId) {
   case Consts::ID_SETTINGS:
-    SettingsWindow::toggleWindow();
+    SettingsWindow::Show();
     return;
   case Consts::ID_DRAGMODE:
     app.dragMode = !app.dragMode;

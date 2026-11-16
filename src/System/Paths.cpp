@@ -8,8 +8,9 @@
 namespace Paths {
 namespace {
 std::filesystem::path categoryDirectory(std::string_view category) {
+  std::string portableDir{"Assets"};
   if (Consts::IS_PORTABLE) {
-    return std::filesystem::path{std::string{category}};
+    return std::filesystem::path{portableDir} / std::string{category};
   }
   return getAppDataDir() / std::string{category};
 }
@@ -56,6 +57,9 @@ std::filesystem::path getExecutableDir() {
   return dir;
 }
 
+std::filesystem::path getAssetsDir() { return getExecutableDir() / "Assets"; }
+
+// ActiveConfig is always in appdata
 std::filesystem::path getActiveConfigPath() {
   return getAppDataDir() / "ActiveConfig.json";
 }

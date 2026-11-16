@@ -11,8 +11,15 @@
 #endif
 
 namespace Consts {
-constexpr int CATBOARD_VERSION{1};
+constexpr int CONFIG_VERSION{1};
+constexpr int CATBOARD_VERSION{APP_VERSION_INT};
+constexpr std::string CATBOARD_VERSION_STR{APP_VERSION_STR};
+
+#ifdef CATBOARD_PORTABLE
+constexpr bool IS_PORTABLE{true};
+#else
 constexpr bool IS_PORTABLE{false};
+#endif
 
 constexpr UINT WM_TRAYICON{WM_APP + 1};
 

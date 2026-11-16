@@ -29,6 +29,14 @@ ma_uint64 msToFrames(double ms) {
       ms * static_cast<double>(ma_engine_get_sample_rate(&g_engine)) / 1000.0);
 }
 
+static ma_uint64 msToSourceFrames(ma_sound *sound, double ms) {
+  ma_uint32 rate{};
+  ma_sound_get_data_format(sound, nullptr, nullptr, &rate, nullptr, 0);
+  if (rate == 0)
+    rate = ma_engine_get_sample_rate(&g_engine);
+  return static_cast<ma_uint64>(ms * static_cast<double>(rate) / 1000.0);
+}
+
 bool initAudio() {
   static ma_decoding_backend_vtable *s_backends[] = {
       ma_decoding_backend_libvorbis,
@@ -165,20 +173,20 @@ void playKey(int keyCode, bool is_down, const PackVK &pack) {
     return;
   }
 
-  const ma_uint64 lengthFrames{msToFrames(endms) - msToFrames(startms)};
-  const ma_uint64 now = ma_engine_get_time_in_pcm_frames(&g_engine);
+  const ma_uint64 lengthFrames{msToFrames(endms - startms)};
+  const ma_uint64 now {ma_engine_get_time_in_pcm_frames(&g_engine)};
 
   ma_sound_set_start_time_in_pcm_frames(voice, now);
   ma_sound_set_stop_time_in_pcm_frames(voice, now + lengthFrames);
 
-  ma_sound_seek_to_pcm_frame(voice, msToFrames(startms));
+  ma_sound_seek_to_pcm_frame(voice, msToSourceFrames(voice, startms));
   ma_sound_start(voice);
 }
 
 void setMasterVolume(float volume) { ma_engine_set_volume(&g_engine, volume); }
 
 bool installDefaultSoundPacks() {
-  return Helper::installDefault(Paths::getExecutableDir() / "Sounds",
+  return Helper::installDefault(Paths::getAssetsDir() / "Sounds",
                                 Paths::soundsDirectory());
 }
 

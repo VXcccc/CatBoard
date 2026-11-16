@@ -8,6 +8,7 @@ namespace Paths {
 std::filesystem::path getAppDataDir();
 
 std::filesystem::path getExecutableDir();
+std::filesystem::path getAssetsDir();
 
 std::filesystem::path getActiveConfigPath();
 std::filesystem::path getUIJsonPath();
@@ -42,4 +43,3 @@ void openFontsDirectory();
 void openImagesDirectory();
 
 } // namespace Paths
-

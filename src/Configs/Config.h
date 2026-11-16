@@ -126,10 +126,11 @@ struct Misc {
   bool vsync{false};
   bool obsMode{false};
   int fps{60};
+	bool saveOnClose{true};
 };
 
 struct Settings {
-  int version{Consts::CATBOARD_VERSION};
+  int version{Consts::CONFIG_VERSION};
   Theme theme{};
   std::string selectedLayout{Layouts::defaultLayoutName};
   SoundPackSelection soundPack{};
@@ -152,6 +153,8 @@ void refreshConfigs();
 
 void LoadActiveConfig(Settings &outConfig);
 bool Apply(const Settings &settings);
+
+bool installDefaultConfigs();
 } // namespace Config
 
 #endif // !CONFIG_H

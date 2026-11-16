@@ -30,7 +30,6 @@
 #include "Mouse.h"
 #include "SettingsWindow.h"
 #include "Sound.h"
-#include "Themes.h"
 #include "Tray.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
@@ -46,6 +45,7 @@
 #include <dxgi1_2.h>
 #include <hidclass.h>
 #include <hidusage.h>
+#include <iostream>
 #include <shellapi.h>
 #include <tchar.h>
 #include <vector>
@@ -163,8 +163,11 @@ int main(int, char **) {
 #ifdef DEBUG_CATBOARD
   initDebugConsole();
 #endif
+  CreateMutexA(0, FALSE, "Local\\CATBOARD");
+  if (GetLastError() == ERROR_ALREADY_EXISTS)
+    Helper::fatalError(L"Program already running");
 
-	//debug
+  // debug
   // initDebugConsole();
 
   // the state holding all active variables;
@@ -172,6 +175,12 @@ int main(int, char **) {
 
   Config::LoadActiveConfig(app.config);
   app.previousObsMode = app.config.misc.obsMode;
+
+  if (!(Config::installDefaultConfigs())) {
+    Helper::errorMesBox(L"Failed to install default configs");
+  }
+
+  Config::refreshConfigs();
 
   if (!(Layouts::installDefaultLayouts())) {
     Helper::fatalError(L"Failed to install default layouts");
@@ -260,6 +269,7 @@ int main(int, char **) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
+	io.IniFilename = nullptr;
   (void)io;
   io.ConfigFlags |=
       ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
@@ -815,6 +825,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
   }
   case WM_DESTROY:
+    if (app->config.misc.saveOnClose) {
+      Config::Apply(app->config);
+    }
     Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
     ::PostQuitMessage(0);
     return 0;
