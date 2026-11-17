@@ -33,15 +33,50 @@ using json = nlohmann::json;
 namespace Layouts {
 std::vector<std::string> layouts{};
 const std::string defaultLayoutName{"layout7t"};
+const Layout defaultLayout{makeDefaultLayout()};
+
+constexpr std::array<Key, 25> defaultKeysArr{
+    Key{KeyType::Keyboard, 9, "Tab", "", 9.0f, 53.0f, 67.0f, 43.0f},
+    Key{KeyType::Keyboard, 49, "1", "!", 53.0f, 9.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 50, "2", "@", 97.0f, 9.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 51, "3", "#", 141.0f, 9.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 52, "4", "$", 185.0f, 9.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 53, "5", "%", 229.0f, 9.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 81, "q", "", 77.0f, 53.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 87, "w", "", 121.0f, 53.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 69, "e", "", 165.0f, 53.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 82, "r", "", 209.0f, 53.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 84, "t", "", 253.0f, 53.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 20, "Caps", "", 9.0f, 97.0f, 79.0f, 43.0f},
+    Key{KeyType::Keyboard, 65, "a", "", 89.0f, 97.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 83, "s", "", 133.0f, 97.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 68, "d", "", 177.0f, 97.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 70, "f", "", 221.0f, 97.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 71, "g", "", 265.0f, 97.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 160, "Shift", "", 9.0f, 141.0f, 100.0f, 43.0f},
+    Key{KeyType::Keyboard, 90, "z", "", 110.0f, 141.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 88, "x", "", 154.0f, 141.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 67, "c", "", 198.0f, 141.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 86, "v", "", 242.0f, 141.0f, 43.0f, 43.0f},
+    Key{KeyType::Keyboard, 162, "Ctrl", "", 9.0f, 185.0f, 67.0f, 43.0f},
+    Key{KeyType::Keyboard, 164, "Alt", "", 119.0f, 185.0f, 67.0f, 43.0f},
+    Key{KeyType::Keyboard, 32, "", "", 187.0f, 185.0f, 121.0f, 43.0f},
+};
+
+Layout makeDefaultLayout() {
+  Layout layout{450, 287};
+  layout.mouse = {374.0f, 184.0f, 100.0f, 75.0f, 37.0f};
+  layout.keys.reserve(defaultKeysArr.size());
+  for (const auto &Key : defaultKeysArr) {
+    layout.keys.push_back(Key);
+  }
+  return layout;
+}
 
 void refreshLayouts() {
   Helper::refresh(layouts, Paths::layoutDirectory(), ".json");
 }
 
-bool installDefaultLayouts() {
-  return Helper::installDefault(Paths::getAssetsDir() / "Layouts",
-                                Paths::layoutDirectory());
-}
 
 bool loadLayoutFile(std::string_view name, AppState &app) {
   try {
@@ -58,17 +93,17 @@ bool loadLayoutFile(std::string_view name, AppState &app) {
 }
 
 bool loadLayout(std::string_view name, AppState &app) {
-  if (loadLayoutFile(name, app)) {
-    app.keyboard.resyncVisuals(app.layout, app.config.theme);
+  bool loaded{false};
+  if (!loadLayoutFile(name, app)) {
+    app.layout = defaultLayout;
+    loaded = false;
+  } else {
+    loaded = true;
+  }
 
-    return true;
-  } else if (name != defaultLayoutName)
-    if (loadLayoutFile(defaultLayoutName, app)) {
-      app.keyboard.resyncVisuals(app.layout, app.config.theme);
-      return true;
-    }
+  app.keyboard.resyncVisuals(app.layout, app.config.theme);
 
-  return false;
+  return loaded;
 }
 
 Helper::FileCreateResult saveLayout(std::string_view name,

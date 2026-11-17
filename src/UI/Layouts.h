@@ -7,8 +7,8 @@
 #include <string_view>
 #include <vector>
 
-namespace Keyboard{
-	struct State;
+namespace Keyboard {
+struct State;
 }
 
 struct AppState;
@@ -21,7 +21,14 @@ constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::MaxProps)>
 static_assert(KeyPropName.size() == static_cast<std::size_t>(KeyProp::MaxProps),
               "Key prop array is out of sync with enum");
 
-enum class KeyType { Keyboard, Wheel, ScrollUpDown, ScrollUp, ScrollDown, MaxKeyTypes };
+enum class KeyType {
+  Keyboard,
+  Wheel,
+  ScrollUpDown,
+  ScrollUp,
+  ScrollDown,
+  MaxKeyTypes
+};
 
 struct SpecialKey {
   KeyType type;
@@ -56,13 +63,11 @@ struct Mouse {
 };
 
 struct Layout {
-  int windowWidth;
-  int windowHeight;
+  int windowWidth{};
+  int windowHeight{};
   Mouse mouse{};
-  std::vector<Key> keys;
+  std::vector<Key> keys{};
 };
-
-
 
 struct LayoutEditState {
   Layout layout{230, 230};
@@ -106,7 +111,6 @@ struct LayoutEditState {
 extern std::vector<std::string> layouts;
 extern const std::string defaultLayoutName;
 
-bool installDefaultLayouts();
 void refreshLayouts();
 bool loadLayout(std::string_view name, AppState &app);
 bool deleteLayout(std::string_view name);
@@ -114,4 +118,6 @@ bool deleteLayout(std::string_view name);
 void drawLayoutEditorTab(LayoutEditState &state, AppState &app);
 
 void drawLayoutPropertiesOverlay(LayoutEditState &state, AppState &app);
+
+Layout makeDefaultLayout();
 } // namespace Layouts

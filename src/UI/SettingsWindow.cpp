@@ -335,15 +335,17 @@ void restoreFromConfig(SettingsEditState &state,
   app.config = prevSettings;
   state.theme = prevSettings.theme;
 
-  state.selectedLayout = prevSettings.selectedLayout;
-
   state.soundPack = prevSettings.soundPack;
   state.volumePercent =
       static_cast<int>(std::round(prevSettings.soundPack.volume * 100.0f));
 
   state.binds = prevSettings.binds;
 
-  // fonts handle
+  state.overlay = prevSettings.overlay;
+  state.misc = prevSettings.misc;
+  state.configName = prevSettings.configName;
+
+  // font
   state.font = prevSettings.font;
   if (!Fonts::canLoad(state.font.name)) {
     state.loadConfigError += "Missing font: " + state.font.name + '\n';
@@ -352,19 +354,27 @@ void restoreFromConfig(SettingsEditState &state,
   app.config.font = state.font;
   state.letterCaseMode = static_cast<int>(prevSettings.font.letterCase.mode);
 
-  state.overlay = prevSettings.overlay;
-  state.misc = prevSettings.misc;
-  state.configName = prevSettings.configName;
+  // layout
+  state.selectedLayout = prevSettings.selectedLayout;
+  if (!Layouts::loadLayout(state.selectedLayout, app)) {
+    state.loadConfigError += "Missing layout: " + state.selectedLayout + '\n';
+    state.selectedLayout = Layouts::defaultLayoutName;
+  }
 
-  Layouts::loadLayout(prevSettings.selectedLayout, app);
+  if(!Sound::loadSoundPack(prevSettings.soundPack.name, app.soundPack)){
+		state.loadConfigError += "Missing soundPack: " + prevSettings.soundPack.name + '\n';
+	}
+  Sound::setMasterVolume(prevSettings.soundPack.volume);
 
-	
-  Sound::loadSoundPack(prevSettings.soundPack.name, app.soundPack);
-  if (!Images::Load(prevSettings.imagePack.name, app.imagePack))
+  // image pack
+  if (!Images::Load(prevSettings.imagePack.name, app.imagePack)) {
     app.imagePack = prevSettings.imagePack;
+    state.loadConfigError +=
+        "Missing image pack: " + prevSettings.imagePack.name + '\n';
+  }
   state.imagePack = app.imagePack;
   app.config.imagePack = app.imagePack;
-  Sound::setMasterVolume(prevSettings.soundPack.volume);
+
 }
 
 Config::Settings buildSettings(const SettingsEditState &state) {
