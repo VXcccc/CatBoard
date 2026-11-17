@@ -20,15 +20,14 @@
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
 #include "imgui_internal.h"
+#include "imsearch.h"
 #include "misc/cpp/imgui_stdlib.h"
 #include <algorithm>
 #include <array>
-#include <cfloat>
 #include <cmath>
 #include <dwmapi.h>
 #include <dxgi.h>
 #include <functional>
-#include <iostream>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <type_traits>
@@ -186,6 +185,7 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
   CreateRenderTarget();
 
   s_imguiContext = ImGui::CreateContext();
+  ImSearch::CreateContext();
   ImGuiContext *prev = ImGui::GetCurrentContext();
   ImGui::SetCurrentContext(s_imguiContext);
 
@@ -260,7 +260,7 @@ enum class SettingsTab {
   Misc,
   Binds,
   Configs,
-  max_SettingsTabs
+  MaxSettingsTabs
 };
 
 struct Tab {
@@ -268,7 +268,7 @@ struct Tab {
   SettingsTab type;
 };
 
-std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
+std::array<Tab, static_cast<std::size_t>(SettingsTab::MaxSettingsTabs)> tabs{
     {{"Visuals", SettingsTab::Visuals},
      {"Layouts", SettingsTab::Layouts},
      {"Sounds", SettingsTab::Sounds},
@@ -277,7 +277,7 @@ std::array<Tab, static_cast<std::size_t>(SettingsTab::max_SettingsTabs)> tabs{
      {"Configs", SettingsTab::Configs}}};
 
 static_assert(tabs.size() ==
-                  static_cast<std::size_t>(SettingsTab::max_SettingsTabs),
+                  static_cast<std::size_t>(SettingsTab::MaxSettingsTabs),
               "tabs array is out of sync with SettingsTab enum");
 
 // Helper functions
@@ -319,6 +319,8 @@ struct SettingsEditState {
   std::string configNameInput{};
   std::string configNameError;
   std::string layoutDeleteError{};
+  std::string fontError{};
+  std::string loadConfigError{};
 
   bool showLayoutEditor{};
 
@@ -341,16 +343,22 @@ void restoreFromConfig(SettingsEditState &state,
 
   state.binds = prevSettings.binds;
 
+  // fonts handle
   state.font = prevSettings.font;
+  if (!Fonts::canLoad(state.font.name)) {
+    state.loadConfigError += "Missing font: " + state.font.name + '\n';
+    state.font.name = Fonts::defaultFontName;
+  }
+  app.config.font = state.font;
   state.letterCaseMode = static_cast<int>(prevSettings.font.letterCase.mode);
 
   state.overlay = prevSettings.overlay;
-
   state.misc = prevSettings.misc;
-
   state.configName = prevSettings.configName;
 
   Layouts::loadLayout(prevSettings.selectedLayout, app);
+
+	
   Sound::loadSoundPack(prevSettings.soundPack.name, app.soundPack);
   if (!Images::Load(prevSettings.imagePack.name, app.imagePack))
     app.imagePack = prevSettings.imagePack;
@@ -471,40 +479,80 @@ template <typename T>
 concept ComboItem =
     std::is_same_v<T, std::string> || std::is_convertible_v<T, const char *>;
 
+// template <typename Container>
+//   requires ComboItem<typename Container::value_type>
+// void drawGenericCombo(
+//     const char *label, const Container &items, const char *emptyLabel,
+//     std::size_t &outCurrentItem,
+//     std::function<void(std::size_t, const std::string &)> onSelect, bool
+//     searchBar = false) {
+//   validateCurrentIndex(outCurrentItem, std::size(items));
+//
+//   const char *preview{items.empty() ? emptyLabel
+//                                     : items[outCurrentItem].c_str()};
+//
+//   if (ImGui::BeginCombo(label, preview)) {
+//     for (std::size_t i{0}; i < items.size(); ++i) {
+//       bool isSelected{outCurrentItem == i};
+//       if (ImGui::Selectable(items[i].c_str(), isSelected)) {
+//         onSelect(i, items[i]);
+//       }
+//       if (isSelected) {
+//         ImGui::SetItemDefaultFocus();
+//       }
+//     }
+//     ImGui::EndCombo();
+//   }
+// }
 template <typename Container>
   requires ComboItem<typename Container::value_type>
 void drawGenericCombo(
     const char *label, const Container &items, const char *emptyLabel,
     std::size_t &outCurrentItem,
-    std::function<void(std::size_t, const std::string &)> onSelect) {
+    std::function<void(std::size_t, const std::string &)> onSelect,
+    bool searchBar = false) {
   validateCurrentIndex(outCurrentItem, std::size(items));
 
   const char *preview{items.empty() ? emptyLabel
                                     : items[outCurrentItem].c_str()};
 
   if (ImGui::BeginCombo(label, preview)) {
-    for (std::size_t i{0}; i < items.size(); ++i) {
-      bool isSelected{outCurrentItem == i};
-      if (ImGui::Selectable(items[i].c_str(), isSelected)) {
-        onSelect(i, items[i]);
+    if (ImSearch::BeginSearch()) {
+      ImSearch::PushStyleColor(ImSearchCol_TextHighlighted,
+                               ImGui::GetStyleColorVec4(ImGuiCol_Text));
+
+      if (searchBar)
+        ImSearch::SearchBar();
+
+      for (std::size_t i{0}; i < items.size(); ++i) {
+        const auto item = items[i];
+        ImSearch::SearchableItem(item.c_str(), [&, i](const auto &name) {
+          bool isSelected{outCurrentItem == i};
+          if (ImGui::Selectable(name, isSelected)) {
+            onSelect(i, name);
+          }
+          if (isSelected) {
+            ImGui::SetItemDefaultFocus();
+          }
+        });
       }
-      if (isSelected) {
-        ImGui::SetItemDefaultFocus();
-      }
+      ImSearch::EndSearch();
+      ImSearch::PopStyleColor();
     }
     ImGui::EndCombo();
   }
 }
 
 void drawLayoutCombo(SettingsEditState &state, AppState &app) {
-  drawGenericCombo("Layout", Layouts::layouts, "No layouts",
-                   state.currentLayout,
-                   [&state, &app](std::size_t i, const std::string &name) {
-                     if (Layouts::loadLayout(name, app)) {
-                       state.currentLayout = i;
-                       state.selectedLayout = name;
-                     }
-                   });
+  drawGenericCombo(
+      "Layout", Layouts::layouts, "No layouts", state.currentLayout,
+      [&state, &app](std::size_t i, const std::string &name) {
+        if (Layouts::loadLayout(name, app)) {
+          state.currentLayout = i;
+          state.selectedLayout = name;
+        }
+      },
+      true);
 }
 
 void drawImagePackCombo(SettingsEditState &state, AppState &app) {
@@ -518,30 +566,45 @@ void drawImagePackCombo(SettingsEditState &state, AppState &app) {
                    });
 }
 
-void drawFontCombo(SettingsEditState &state) {
-  drawGenericCombo("Font", Fonts::fonts, "No fonts", state.currentFont,
-                   [&state](std::size_t i, const std::string &name) {
-                     state.currentFont = i;
-                     state.font.name = name;
-                   });
+void drawFontCombo(SettingsEditState &state, AppState &app) {
+  drawGenericCombo(
+      "Font", Fonts::fonts, "No fonts", state.currentFont,
+      [&state, &app](std::size_t i, const std::string &name) {
+        if (Fonts::canLoad(name)) {
+          state.currentFont = i;
+          state.font.name = name;
+          state.fontError.clear();
+        } else {
+          state.fontError =
+              "Can't load font \"" + name + "\" (unsupported file)";
+        }
+      },
+      true);
+
+  if (!state.fontError.empty())
+    Helper::drawErrorInSettings(state.fontError);
 }
 
 void drawConfigCombo(SettingsEditState &state) {
-  drawGenericCombo("Config", Config::configs, "No configs", state.currentConfig,
-                   [&state](std::size_t i, const std::string &name) {
-                     state.currentConfig = i;
-                     state.configName = name;
-                   });
+  drawGenericCombo(
+      "Config", Config::configs, "No configs", state.currentConfig,
+      [&state](std::size_t i, const std::string &name) {
+        state.currentConfig = i;
+        state.configName = name;
+      },
+      true);
 }
 
 void drawSoundCombo(SettingsEditState &state, AppState &app) {
-  drawGenericCombo("Sound", Sound::sounds, "No sounds", state.currentSound,
-                   [&state, &app](std::size_t i, const std::string &name) {
-                     if (Sound::loadSoundPack(name, app.soundPack)) {
-                       state.currentSound = i;
-                       state.soundPack.name = name;
-                     }
-                   });
+  drawGenericCombo(
+      "Sound", Sound::sounds, "No sounds", state.currentSound,
+      [&state, &app](std::size_t i, const std::string &name) {
+        if (Sound::loadSoundPack(name, app.soundPack)) {
+          state.currentSound = i;
+          state.soundPack.name = name;
+        }
+      },
+      true);
 }
 
 void drawMouseStyleCommbo(SettingsEditState &state,
@@ -766,10 +829,10 @@ void drawImageSection(SettingsEditState &state, AppState &app) {
   }
 }
 
-void drawFontSection(SettingsEditState &state) {
+void drawFontSection(SettingsEditState &state, AppState &app) {
   ImGui::SeparatorText("Font");
 
-  drawFontCombo(state);
+  drawFontCombo(state, app);
 
   Helper::SliderFloat("Font size", state.font.sizePixels, 1.0f, 100.0f, 1.0f,
                       300.0f);
@@ -813,7 +876,7 @@ void drawVisualsTab(SettingsEditState &state, AppState &app) {
 
   drawImageSection(state, app);
 
-  drawFontSection(state);
+  drawFontSection(state, app);
 }
 
 void drawLayoutsTab(SettingsEditState &state,
@@ -1022,8 +1085,6 @@ void drawConfigsTab(SettingsEditState &state, AppState &app) {
     ImGui::TextDisabled("No configs found. Create one below.");
   }
 
-
-
   ImGui::InputText("##Config name", &state.configNameInput);
   ImGui::SameLine();
   if (ImGui::Button("Create config")) {
@@ -1039,11 +1100,15 @@ void drawConfigsTab(SettingsEditState &state, AppState &app) {
     Helper::drawErrorInSettings(state.configNameError);
   }
 
+  if (!state.loadConfigError.empty()) {
+    Helper::drawErrorInSettings(state.loadConfigError);
+  }
+
   if (ImGui::Button("Open config folder")) {
     Paths::openConfigDirectory();
   }
 
-	ImGui::SameLine();
+  ImGui::SameLine();
 
   if (ImGui::Button("Refresh configs")) {
     Config::refreshConfigs();
@@ -1051,9 +1116,9 @@ void drawConfigsTab(SettingsEditState &state, AppState &app) {
   }
 
   ImGui::Text("Version: v%s", Consts::CATBOARD_VERSION_STR.c_str());
-	ImGui::SameLine();
+  ImGui::SameLine();
   if (ImGui::Button("Open releases page")) {
-		Helper::openReleasesPage();
+    Helper::openReleasesPage();
   }
 }
 
@@ -1214,6 +1279,7 @@ void Shutdown() {
   ImGui_ImplDX11_Shutdown();
   ImGui_ImplWin32_Shutdown();
   ImGui::DestroyContext(s_imguiContext);
+  ImSearch::DestroyContext();
   ImGui::SetCurrentContext(prev);
 
   CleanupRenderTarget();

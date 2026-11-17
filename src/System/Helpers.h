@@ -1,5 +1,4 @@
-#ifndef HELPERS_H
-#define HELPERS_H
+#pragma once
 
 // #include "Config/Config.h"
 #include "imgui.h"
@@ -33,6 +32,9 @@ public:
 private:
   std::string m_message;
 };
+
+
+std::wstring strToWide(const std::string &str);
 
 [[noreturn]] void fatalError(const wchar_t *message);
 void errorMesBox(const wchar_t *message);
@@ -149,4 +151,3 @@ inline bool operator>(const ImVec2 &a, const ImVec2 &b) {
 
 inline bool operator<(const ImVec2 &a, const ImVec2 &b) { return !(a > b); }
 
-#endif // !HELPERS_H

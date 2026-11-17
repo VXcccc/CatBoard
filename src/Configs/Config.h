@@ -1,7 +1,4 @@
-#ifndef CONFIG_H
-#define CONFIG_H
-
-// maybe goona change location of this variable later
+#pragma once
 
 #include "Constants.h"
 #include "Fonts.h"
@@ -157,4 +154,3 @@ bool Apply(const Settings &settings);
 bool installDefaultConfigs();
 } // namespace Config
 
-#endif // !CONFIG_H

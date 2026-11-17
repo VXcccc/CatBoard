@@ -1,5 +1,4 @@
 #include "Paths.h"
-#include "Constants.h"
 #include <filesystem>
 #include <shlobj.h>
 #include <string_view>
@@ -8,10 +7,7 @@
 namespace Paths {
 namespace {
 std::filesystem::path categoryDirectory(std::string_view category) {
-  if (Consts::IS_PORTABLE) {
-    return getExecutableDir() / "Assets" / std::string{category};
-  }
-  return getAppDataDir() / std::string{category};
+  return getExecutableDir() / "Assets" / std::string{category};
 }
 
 std::filesystem::path categoryItemPath(std::string_view category,
@@ -43,6 +39,16 @@ std::filesystem::path getAppDataDir() {
   return std::filesystem::current_path();
 }
 
+std::filesystem::path fontsDirectory() {
+  PWSTR path{nullptr};
+  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Fonts, 0, NULL, &path))) {
+    std::filesystem::path result{std::filesystem::path{path}};
+    CoTaskMemFree(path);
+    return result;
+  }
+  // return categoryDirectory("Fonts");
+}
+
 std::filesystem::path getExecutableDir() {
   static const std::filesystem::path dir = [] {
     wchar_t buf[32768]{};
@@ -56,19 +62,18 @@ std::filesystem::path getExecutableDir() {
   return dir;
 }
 
-std::filesystem::path getAssetsDir() { return getExecutableDir() / "Assets"; }
+std::filesystem::path getAssetsDir() { return getExecutableDir() / ("Assets"); }
 
 // ActiveConfig is always in appdata
 std::filesystem::path getActiveConfigPath() {
-  return getAppDataDir() / "ActiveConfig.json";
+  return getExecutableDir() / "ActiveConfig.json";
 }
 
-std::filesystem::path getUIJsonPath() { return getAppDataDir() / "UI.json"; }
+std::filesystem::path getUIJsonPath() { return getExecutableDir() / "UI.json"; }
 
 std::filesystem::path configDirectory() { return categoryDirectory("Configs"); }
 std::filesystem::path layoutDirectory() { return categoryDirectory("Layouts"); }
 std::filesystem::path soundsDirectory() { return categoryDirectory("Sounds"); }
-std::filesystem::path fontsDirectory() { return categoryDirectory("Fonts"); }
 std::filesystem::path imagesDirectory() { return categoryDirectory("Images"); }
 
 std::filesystem::path getConfigPath(std::string_view name) {
@@ -114,7 +119,7 @@ std::filesystem::path getImagePackJson(std::string_view name) {
 bool ensureConfigDirectory() { return ensureCategoryDirectory("Configs"); }
 bool ensureLayoutDirectory() { return ensureCategoryDirectory("Layouts"); }
 bool ensureSoundsDirectory() { return ensureCategoryDirectory("Sounds"); }
-bool ensureFontsDirectory() { return ensureCategoryDirectory("Fonts"); }
+// bool ensureFontsDirectory() { return ensureCategoryDirectory("Fonts"); }
 bool ensureImagesDirectory() { return ensureCategoryDirectory("Images"); }
 
 void openConfigDirectory() { openCategoryDirectory("Configs"); }

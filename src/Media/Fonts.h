@@ -14,10 +14,10 @@ namespace Keyboard {
 using KeyBitSet = std::bitset<Consts::VK_COUNT>;
 }
 
-namespace Icons{
-	constexpr char arrowUp{'n'};
-	constexpr char arrowDown{'k'};
-}
+namespace Icons {
+constexpr char arrowUp{'n'};
+constexpr char arrowDown{'k'};
+} // namespace Icons
 
 namespace Fonts {
 extern const std::string defaultFontName;
@@ -53,7 +53,7 @@ bool loadFont(const Font &font, ImFont *&activeFont);
 // void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
 //                 float explicitSize);
 void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
-                const Font &requestedFont);
+                Font &requestedFont);
 
 bool installDefaultFonts();
 void refreshFonts();
@@ -62,5 +62,7 @@ std::string applyLetterCase(const std::string &label, LetterCaseMode mode);
 
 std::string handleLetterCase(const Keyboard::KeyBitSet &currentFullKeysDown,
                              Font &font, const Layouts::Key &key);
+
+bool canLoad(const std::string &name);
 
 } // namespace Fonts

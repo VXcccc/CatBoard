@@ -15,13 +15,13 @@ struct AppState;
 
 namespace Layouts {
 
-enum class KeyProp { X, Y, W, H, gapX, gapY, maxProps };
-constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::maxProps)>
+enum class KeyProp { X, Y, W, H, gapX, gapY, MaxProps };
+constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::MaxProps)>
     KeyPropName{"X", "Y", "W", "H", "gapX", "gapY"};
-static_assert(KeyPropName.size() == static_cast<std::size_t>(KeyProp::maxProps),
+static_assert(KeyPropName.size() == static_cast<std::size_t>(KeyProp::MaxProps),
               "Key prop array is out of sync with enum");
 
-enum class KeyType { Keyboard, Wheel, ScrollUpDown, ScrollUp, ScrollDown, Max };
+enum class KeyType { Keyboard, Wheel, ScrollUpDown, ScrollUp, ScrollDown, MaxKeyTypes };
 
 struct SpecialKey {
   KeyType type;
@@ -61,6 +61,8 @@ struct Layout {
   Mouse mouse{};
   std::vector<Key> keys;
 };
+
+
 
 struct LayoutEditState {
   Layout layout{230, 230};

@@ -42,6 +42,7 @@ add_executable(${PROJECT_NAME} WIN32
 				${imgui_SOURCE_DIR}/imgui_tables.cpp
 				${imgui_SOURCE_DIR}/imgui_widgets.cpp
 				${imgui_SOURCE_DIR}/imgui_demo.cpp
+				${imgui_SOURCE_DIR}/imsearch.cpp
 				${imgui_SOURCE_DIR}/backends/imgui_impl_win32.cpp
 				${imgui_SOURCE_DIR}/backends/imgui_impl_dx11.cpp
 				${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
@@ -50,10 +51,6 @@ add_executable(${PROJECT_NAME} WIN32
 				${MINIAUDIO_VORBIS_DIR}/miniaudio_libvorbis.c
 )
 
-option(CATBOARD_PORTABLE "Portable build" OFF)
-if(CATBOARD_PORTABLE)
-	target_compile_definitions(${PROJECT_NAME} PRIVATE CATBOARD_PORTABLE)
-endif()
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 		UNICODE
@@ -89,22 +86,24 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 				winmm
 )
 
+set(ASSETS_DEST Assets)
+
 add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 				COMMAND ${CMAKE_COMMAND} -E copy_directory
 				"${CMAKE_SOURCE_DIR}/Assets/Layouts"
-		"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Layouts"
+				"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Layouts"
 				COMMAND ${CMAKE_COMMAND} -E copy_directory
 								"${CMAKE_SOURCE_DIR}/Assets/Sounds"
-								"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Sounds"
+								"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Sounds"
 				COMMAND ${CMAKE_COMMAND} -E copy_directory
 						"${CMAKE_SOURCE_DIR}/Assets/Fonts"
-						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Fonts"
+						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Fonts"
 				COMMAND ${CMAKE_COMMAND} -E copy_directory
 						"${CMAKE_SOURCE_DIR}/Assets/Images"
-						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Images"
+						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Images"
 				COMMAND ${CMAKE_COMMAND} -E copy_directory
 				"${CMAKE_SOURCE_DIR}/Assets/Configs"
-				"$<TARGET_FILE_DIR:${PROJECT_NAME}>/Assets/Configs"
+				"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Configs"
 )
 
 if(MINGW)
@@ -116,17 +115,18 @@ endif()
 
 
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .)
+
 install(DIRECTORY
-    ${CMAKE_SOURCE_DIR}/Assets/Layouts
-    ${CMAKE_SOURCE_DIR}/Assets/Sounds
-    ${CMAKE_SOURCE_DIR}/Assets/Fonts
-    ${CMAKE_SOURCE_DIR}/Assets/Images
+				${CMAKE_SOURCE_DIR}/Assets/Layouts
+				${CMAKE_SOURCE_DIR}/Assets/Sounds
+				${CMAKE_SOURCE_DIR}/Assets/Fonts
+				${CMAKE_SOURCE_DIR}/Assets/Images
 		${CMAKE_SOURCE_DIR}/Assets/Configs
-		DESTINATION Assets
+		DESTINATION ${ASSETS_DEST}
 )
 set(CPACK_PACKAGE_NAME "CatBoard")
 set(CPACK_PACKAGE_VENDOR "VXcccc")
-set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})          
+set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
 set(CPACK_PACKAGE_FILE_NAME "CatBoard-${PROJECT_VERSION}-windows-x64")
 set(CPACK_PACKAGE_INSTALL_DIRECTORY "CatBoard")
 set(CPACK_STRIP_FILES ON)
@@ -139,7 +139,7 @@ set(CPACK_NSIS_PACKAGE_NAME "CatBoard")
 set(CPACK_NSIS_INSTALLED_ICON_NAME "CatBoard.exe")
 set(CPACK_NSIS_EXECUTABLES_DIRECTORY ".")
 set(CPACK_PACKAGE_EXECUTABLES "CatBoard" "CatBoard")
-set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON) 
+set(CPACK_NSIS_ENABLE_UNINSTALL_BEFORE_INSTALL ON)
 set(CPACK_NSIS_MODIFY_PATH OFF)
 set(CPACK_NSIS_MANIFEST_DPI_AWARE ON)
 
@@ -151,11 +151,11 @@ set(CPACK_NSIS_MUI_UNIICON "${_ico}")
 set(CPACK_NSIS_MUI_FINISHPAGE_RUN "CatBoard.exe")
 
 set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
-  MessageBox MB_YESNO|MB_ICONQUESTION 'Create a desktop shortcut?' /SD IDNO IDNO +2
-  CreateShortCut '$DESKTOP\\\\CatBoard.lnk' '$INSTDIR\\\\CatBoard.exe'
+		MessageBox MB_YESNO|MB_ICONQUESTION 'Create a desktop shortcut?' /SD IDNO IDNO +2
+		CreateShortCut '$DESKTOP\\\\CatBoard.lnk' '$INSTDIR\\\\CatBoard.exe'
 ")
 set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
-  Delete '$DESKTOP\\\\CatBoard.lnk'
+		Delete '$DESKTOP\\\\CatBoard.lnk'
 ")
 
 include(CPack)

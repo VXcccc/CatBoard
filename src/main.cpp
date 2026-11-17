@@ -168,7 +168,7 @@ int main(int, char **) {
     Helper::fatalError(L"Program already running");
 
   // debug
-  // initDebugConsole();
+  initDebugConsole();
 
   // the state holding all active variables;
   AppState app;
@@ -189,7 +189,7 @@ int main(int, char **) {
   Layouts::refreshLayouts();
 
   if (!(Layouts::loadLayout(app.config.selectedLayout, app))) {
-    Helper::fatalError(L"Failed to load keyboard layout");
+    Helper::errorMesBox(L"Failed to load keyboard layout");
   }
 
   if (!(Sound::installDefaultSoundPacks())) {
@@ -204,7 +204,7 @@ int main(int, char **) {
   }
 
   if (!(Sound::loadSoundPack(app.config.soundPack.name, app.soundPack))) {
-    Helper::fatalError(L"Failed to load sound pack");
+    Helper::errorMesBox(L"Failed to load config sound pack");
   }
 
   if (!(Images::installDefaultImagePacks())) {
@@ -213,7 +213,7 @@ int main(int, char **) {
 
   if (!(Images::Load(app.config.imagePack.name, app.imagePack))) {
     if (!(Images::Load(Images::defaultPack.name, app.imagePack)))
-      Helper::fatalError(L"Failed to load image pack");
+      Helper::errorMesBox(L"Failed to load image pack");
   }
   app.config.imagePack = app.imagePack;
   Images::refreshImagePacks();
@@ -269,7 +269,7 @@ int main(int, char **) {
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO &io = ImGui::GetIO();
-	io.IniFilename = nullptr;
+  io.IniFilename = nullptr;
   (void)io;
   io.ConfigFlags |=
       ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
@@ -301,7 +301,7 @@ int main(int, char **) {
   Fonts::refreshFonts();
   if (!(Fonts::loadFont(app.config.font, Fonts::overlayFont))) {
     if (!(Fonts::loadFont(Fonts::Font{}, Fonts::overlayFont))) {
-      Helper::fatalError(
+      Helper::errorMesBox(
           L"Failed to load any fonts, check your fonts directory");
     }
   }
@@ -405,7 +405,7 @@ int main(int, char **) {
     }
 
     if (app.config.theme.mouse.highlightM1)
-      app.mouse.setM1Highlighted(app.keyboard.pressed(VK_LBUTTON));
+      app.mouse.setM1Highlighted(app.keyboard.down[VK_LBUTTON]);
     else
       app.mouse.setM1Highlighted(false);
 

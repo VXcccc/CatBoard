@@ -1,5 +1,4 @@
-#ifndef CONFIG_JSON_H
-#define CONFIG_JSON_H
+#pragma once
 
 #include "Config.h"
 #include <nlohmann/json.hpp>
@@ -105,4 +104,3 @@ void to_json(json &j, const Bind &bind);
 void from_json(const json &j, Bind &bind);
 
 } // namespace Binds
-#endif // CONFIG_JSON_H

@@ -1,4 +1,5 @@
 
+#define STB_TRUETYPE_IMPLEMENTATION
 #include "Config.h"
 #include "Constants.h"
 #include "Helpers.h"
@@ -6,7 +7,9 @@
 #include "Paths.h"
 #include "Resource/PreInstalledFonts.h"
 #include "imgui.h"
+#include "imstb_truetype.h"
 #include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 #include <windows.h>
@@ -34,34 +37,60 @@ bool loadIconFont(float overlayFontSize) {
   return true;
 }
 
+static bool canImGuiLoad(const std::filesystem::path &path) {
+  std::ifstream file{path, std::ios::binary};
+  if (!file)
+    return false;
+
+  std::vector<unsigned char> data{(std::istreambuf_iterator<char>(file)),
+                                  std::istreambuf_iterator<char>()};
+  if (data.empty())
+    return false;
+
+  const int offset{stbtt_GetFontOffsetForIndex(data.data(), 0)};
+  stbtt_fontinfo info;
+  return offset >= 0 && stbtt_InitFont(&info, data.data(), offset) != 0;
+}
+
+bool canLoad(const std::string &name) {
+  const auto path{Paths::getFontPath(name)};
+  return std::filesystem::exists(path) && canImGuiLoad(path);
+}
+
 bool loadFont(const Font &font, ImFont *&activeFont) {
   ImGuiIO &io{ImGui::GetIO()};
   const auto path{Paths::getFontPath(font.name)};
-  if (!std::filesystem::exists(path)) {
+  if (!std::filesystem::exists(path) || !canImGuiLoad(path)) {
     return false;
   }
 
   io.Fonts->ClearFonts();
   activeFont =
       io.Fonts->AddFontFromFileTTF(path.string().c_str(), font.sizePixels);
-  if (!activeFont)
+  if (!activeFont) {
     return false;
+  }
 
-  if (!loadIconFont(font.sizePixels))
+  if (!loadIconFont(font.sizePixels)) {
+    Helper::errorMesBox(L"Failed to Load icon font");
     return false;
+  }
 
   return true;
 }
 
-void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
-                const Font &font) {
+void updateFont(Font &outLastAppliedFont, ImFont *&activeFont, Font &font) {
   if (font.name != outLastAppliedFont.name ||
       font.sizePixels != outLastAppliedFont.sizePixels) {
-    if (loadFont(font, activeFont)) {
-      outLastAppliedFont = font;
-    } else {
+    if (!loadFont(font, activeFont)) {
+      const std::wstring failedName{Helper::strToWide(font.name)};
+      font.name = defaultFontName;
+			font.sizePixels = defaultPixelsSize;
       loadFont(Fonts::Font{}, activeFont);
+      // Helper::errorMesBox((L"Failed to load font \"" + failedName +
+      //                      L"\".\nReset to default font.").c_str());
     }
+    outLastAppliedFont = font;
   }
 }
 

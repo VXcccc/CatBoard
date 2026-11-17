@@ -41,6 +41,7 @@ bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
     // caps handle
     if (key.code == VK_CAPITAL && capsDisplay)
       return GetAsyncKeyState(VK_CAPITAL) & 1;
+
     // other keys
     return kb.down[key.code];
   case Layouts::KeyType::Wheel:

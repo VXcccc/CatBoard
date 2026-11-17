@@ -1,5 +1,4 @@
-#ifndef INPUTHANDLE_H
-#define INPUTHANDLE_H
+#pragma once
 
 #include "Constants.h"
 #include <array>
@@ -24,7 +23,7 @@ enum class BindType {
   toggleOverlay,
   toggleSettings,
   exit,
-  max_bindTypes
+  MaxbindTypes
 };
 
 struct Bind {
@@ -44,7 +43,7 @@ struct RecordingState {
 };
 
 using BindsArray =
-    std::array<Bind, static_cast<std::size_t>(BindType::max_bindTypes)>;
+    std::array<Bind, static_cast<std::size_t>(BindType::MaxbindTypes)>;
 
 using BindsVector = std::vector<Bind>;
 
@@ -57,4 +56,3 @@ void handleBinds(HWND hWnd, AppState &app);
 BindsVector syncBindsOrder(const BindsVector &prevBinds);
 } // namespace Binds
 
-#endif // !INPUTHANDLE_H

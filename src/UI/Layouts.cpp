@@ -60,6 +60,7 @@ bool loadLayoutFile(std::string_view name, AppState &app) {
 bool loadLayout(std::string_view name, AppState &app) {
   if (loadLayoutFile(name, app)) {
     app.keyboard.resyncVisuals(app.layout, app.config.theme);
+
     return true;
   } else if (name != defaultLayoutName)
     if (loadLayoutFile(defaultLayoutName, app)) {

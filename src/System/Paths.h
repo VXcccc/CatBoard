@@ -33,7 +33,7 @@ std::filesystem::path getImagePackJson(std::string_view name);
 bool ensureConfigDirectory();
 bool ensureLayoutDirectory();
 bool ensureSoundsDirectory();
-bool ensureFontsDirectory();
+// bool ensureFontsDirectory();
 bool ensureImagesDirectory();
 
 void openConfigDirectory();

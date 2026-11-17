@@ -1,5 +1,4 @@
-#ifndef SETTINGSWINDOW_H
-#define SETTINGSWINDOW_H
+#pragma once
 
 #include "AppState.h"
 #include <windows.h>
@@ -24,4 +23,3 @@ void ForceForeground(HWND hwnd);
 
 } // namespace SettingsWindow
 
-#endif // !SETTINGSWINDOW_H

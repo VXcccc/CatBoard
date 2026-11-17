@@ -23,7 +23,7 @@ const BindsArray defaultBinds{
     Bind{"Exit", VK_F12, "...", true, BindType::exit, {}}};
 
 static_assert(defaultBinds.size() ==
-                  static_cast<std::size_t>(BindType::max_bindTypes),
+                  static_cast<std::size_t>(BindType::MaxbindTypes),
               "default binds array out of sync with bind type enum");
 
 void handleBindType(const BindType type, HWND hWnd, AppState &app) {

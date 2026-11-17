@@ -1,6 +1,5 @@
 // shoutout mechvibes https://github.com/hainguyents13/mechvibes
-#ifndef SOUND_H
-#define SOUND_H
+#pragma once
 
 #include <array>
 #include <filesystem>
@@ -57,4 +56,3 @@ extern std::vector<std::string> sounds;
 extern const std::string defaultSoundPack;
 } // namespace Sound
 
-#endif // !SOUND_H

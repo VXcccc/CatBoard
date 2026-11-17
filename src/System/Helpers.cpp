@@ -20,13 +20,16 @@ namespace Helper {
   std::exit(EXIT_FAILURE);
 }
 
+std::wstring strToWide(const std::string &str) {
+  return std::wstring(str.begin(), str.end());
+}
+
 void errorMesBox(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Error", MB_OK | MB_ICONERROR);
 }
 
 void errorMesBox(const std::string &str) {
-  std::wstring widestr = std::wstring(str.begin(), str.end());
-  Helper::errorMesBox(widestr.c_str());
+  Helper::errorMesBox(strToWide(str).c_str());
 }
 
 void openReleasesPage() {
@@ -126,15 +129,15 @@ void directoryRefresh(std::vector<std::string> &category,
   }
 }
 
-void refresh(std::vector<std::string> &category,
+void refresh(std::vector<std::string> &outCategory,
              const std::filesystem::path &folder, std::string_view ext) {
-  category.clear();
+  outCategory.clear();
 
   if (!std::filesystem::exists(folder))
     return;
 
   if (ext == "dir")
-    directoryRefresh(category, folder);
+    directoryRefresh(outCategory, folder);
 
   for (const auto &entry : std::filesystem::directory_iterator(folder)) {
     if (!entry.is_regular_file())
@@ -143,7 +146,7 @@ void refresh(std::vector<std::string> &category,
     if (entry.path().extension() != ext)
       continue;
 
-    category.push_back(entry.path().stem().string());
+    outCategory.push_back(entry.path().stem().string());
   }
 }
 
