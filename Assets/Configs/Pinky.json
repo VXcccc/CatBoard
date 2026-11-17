@@ -1,24 +1,4 @@
 {
-    "binds": [
-        {
-            "bindName": "Drag mode",
-            "keyName": "F4",
-            "type": 0,
-            "vkCode": 115
-        },
-        {
-            "bindName": "Hide overlay",
-            "keyName": "F6",
-            "type": 1,
-            "vkCode": 117
-        },
-        {
-            "bindName": "Open settings",
-            "keyName": "F9",
-            "type": 2,
-            "vkCode": 120
-        }
-    ],
     "configName": "Pinky",
     "font": {
         "letterCase": {

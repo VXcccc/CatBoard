@@ -17,10 +17,20 @@ namespace Binds {
 // to this Array and finally add functionality that you want your bind execute
 // in handleBindType() switch statement
 const BindsArray defaultBinds{
-    Bind{"Drag mode", VK_F4, "F4", false, BindType::dragMode, {}},
+    Bind{"Drag mode",
+         VK_F4,
+         Consts::EMPTY_HOTKEY_NAME,
+         true,
+         BindType::dragMode,
+         {}},
     Bind{"Toggle overlay", VK_F6, "F6", false, BindType::toggleOverlay, {}},
-    Bind{"Toggle settings", VK_F9, "F9", false, BindType::toggleSettings, {}},
-    Bind{"Exit", VK_F12, "...", true, BindType::exit, {}}};
+    Bind{"Toggle settings",
+         VK_F9,
+         Consts::EMPTY_HOTKEY_NAME,
+         true,
+         BindType::toggleSettings,
+         {}},
+    Bind{"Exit", VK_F12, Consts::EMPTY_HOTKEY_NAME, true, BindType::exit, {}}};
 
 static_assert(defaultBinds.size() ==
                   static_cast<std::size_t>(BindType::MaxbindTypes),

@@ -27,6 +27,7 @@ extern ImFont *overlayFont;
 extern ImFont *iconFont;
 
 extern std::vector<std::string> fonts;
+extern std::unordered_map<std::string, std::filesystem::path> fontFiles;
 
 enum class LetterCaseMode { DefaultMode, AllCapital, AllLower, maxLetterCase };
 
@@ -55,8 +56,7 @@ bool loadFont(const Font &font, ImFont *&activeFont);
 void updateFont(Font &outLastAppliedFont, ImFont *&activeFont,
                 Font &requestedFont);
 
-bool installDefaultFonts();
-void refreshFonts();
+bool refreshFonts();
 
 std::string applyLetterCase(const std::string &label, LetterCaseMode mode);
 

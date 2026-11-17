@@ -13,6 +13,8 @@
 //
 // See LICENSE for the full license text.
 
+#include "Paths.h"
+#include <filesystem>
 #include <minwindef.h>
 #ifndef DEBUG_CATBOARD
 // #define DEBUG_CATBOARD
@@ -176,24 +178,18 @@ int main(int, char **) {
   Config::LoadActiveConfig(app.config);
   app.previousObsMode = app.config.misc.obsMode;
 
-  if (!(Config::installDefaultConfigs())) {
-    Helper::errorMesBox(L"Failed to install default configs");
-  }
+	if(!std::filesystem::exists(Paths::getAssetsDir())){
+		Helper::errorMesBox(L"Missing assets folder");
+		Paths::createAssetsDirectory();
+	}
 
   Config::refreshConfigs();
-
-  if (!(Layouts::installDefaultLayouts())) {
-    Helper::fatalError(L"Failed to install default layouts");
-  }
 
   Layouts::refreshLayouts();
 
   if (!(Layouts::loadLayout(app.config.selectedLayout, app))) {
-    Helper::errorMesBox(L"Failed to load keyboard layout");
-  }
-
-  if (!(Sound::installDefaultSoundPacks())) {
-    Helper::fatalError(L"Failed to install default sound packs");
+    Helper::errorMesBox(std::string("Missing layout: ") +
+                        app.config.selectedLayout);
   }
 
   Sound::refreshSounds();
@@ -204,16 +200,13 @@ int main(int, char **) {
   }
 
   if (!(Sound::loadSoundPack(app.config.soundPack.name, app.soundPack))) {
-    Helper::errorMesBox(L"Failed to load config sound pack");
-  }
-
-  if (!(Images::installDefaultImagePacks())) {
-    Helper::fatalError(L"Failed to install default image packs");
+    Helper::errorMesBox(std::string("Missing sound pack: ") +
+                        app.config.soundPack.name);
   }
 
   if (!(Images::Load(app.config.imagePack.name, app.imagePack))) {
-    if (!(Images::Load(Images::defaultPack.name, app.imagePack)))
-      Helper::errorMesBox(L"Failed to load image pack");
+    Helper::errorMesBox(std::string("Missing image pack: ") +
+                        app.config.imagePack.name);
   }
   app.config.imagePack = app.imagePack;
   Images::refreshImagePacks();
@@ -295,10 +288,10 @@ int main(int, char **) {
   ImGui_ImplWin32_Init(s_hwnd);
   ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-  if (!(Fonts::installDefaultFonts())) {
-    Helper::fatalError(L"Failed to install default fonts");
-  }
-  Fonts::refreshFonts();
+  if (!Fonts::refreshFonts()) {
+    Helper::errorMesBox(L"Failed to get system fonts folder");
+  };
+
   if (!(Fonts::loadFont(app.config.font, Fonts::overlayFont))) {
     if (!(Fonts::loadFont(Fonts::Font{}, Fonts::overlayFont))) {
       Helper::errorMesBox(

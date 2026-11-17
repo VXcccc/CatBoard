@@ -150,19 +150,19 @@ void refresh(std::vector<std::string> &outCategory,
   }
 }
 
-bool installDefault(const std::filesystem::path &source,
-                    const std::filesystem::path &destination) {
-  std::error_code ec;
-
-  if (std::filesystem::exists(destination, ec)) {
-    return true;
-  }
-
-  std::filesystem::copy(source, destination,
-                        std::filesystem::copy_options::recursive, ec);
-
-  return !ec;
-}
+// bool installDefault(const std::filesystem::path &source,
+//                     const std::filesystem::path &destination) {
+//   std::error_code ec;
+//
+//   if (std::filesystem::exists(destination, ec)) {
+//     return true;
+//   }
+//
+//   std::filesystem::copy(source, destination,
+//                         std::filesystem::copy_options::recursive, ec);
+//
+//   return !ec;
+// }
 
 bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
                ImGuiColorEditFlags flags) {

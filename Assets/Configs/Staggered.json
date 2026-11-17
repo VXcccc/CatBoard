@@ -1,30 +1,4 @@
 {
-    "binds": [
-        {
-            "keyName": "F4",
-            "name": "Drag mode",
-            "type": 0,
-            "vkCode": 115
-        },
-        {
-            "keyName": "F6",
-            "name": "Hide overlay",
-            "type": 1,
-            "vkCode": 117
-        },
-        {
-            "keyName": "F9",
-            "name": "Open settings",
-            "type": 2,
-            "vkCode": 120
-        },
-        {
-            "keyName": "F10",
-            "name": "Resize mode",
-            "type": 3,
-            "vkCode": 121
-        }
-    ],
     "configName": "Staggered",
     "font": {
         "letterCase": {

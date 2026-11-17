@@ -1,24 +1,4 @@
 {
-    "binds": [
-        {
-            "keyName": "F4",
-            "name": "",
-            "type": 0,
-            "vkCode": 115
-        },
-        {
-            "keyName": "F6",
-            "name": "",
-            "type": 1,
-            "vkCode": 117
-        },
-        {
-            "keyName": "F9",
-            "name": "",
-            "type": 2,
-            "vkCode": 120
-        }
-    ],
     "configName": "CoolPack",
     "font": {
         "letterCase": {

@@ -48,10 +48,6 @@ std::vector<std::string> packs{};
 // static
 static std::unordered_map<std::string, Texture> g_textureCache;
 
-bool installDefaultImagePacks() {
-  return Helper::installDefault(Paths::getAssetsDir() / "Images",
-                                Paths::imagesDirectory());
-}
 
 bool operator==(const MouseButton &mb1, const MouseButton &mb2) {
   return (mb1.x == mb2.x && mb1.y == mb2.y && mb1.w == mb2.w &&

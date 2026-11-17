@@ -1,4 +1,7 @@
 
+#include "Fonts.h"
+#include <optional>
+#include <unordered_map>
 #define STB_TRUETYPE_IMPLEMENTATION
 #include "Config.h"
 #include "Constants.h"
@@ -17,6 +20,8 @@
 
 namespace Fonts {
 std::vector<std::string> fonts{};
+std::unordered_map<std::string, std::filesystem::path> fontFiles{};
+
 ImFont *overlayFont{nullptr};
 ImFont *iconFont{nullptr};
 const std::string defaultFontName{"courbd"};
@@ -53,13 +58,20 @@ static bool canImGuiLoad(const std::filesystem::path &path) {
 }
 
 bool canLoad(const std::string &name) {
-  const auto path{Paths::getFontPath(name)};
-  return std::filesystem::exists(path) && canImGuiLoad(path);
+  if (const auto path{Paths::getFontPath(name)}) {
+    return std::filesystem::exists(path.value()) && canImGuiLoad(path.value());
+  };
+  return false;
 }
 
 bool loadFont(const Font &font, ImFont *&activeFont) {
   ImGuiIO &io{ImGui::GetIO()};
-  const auto path{Paths::getFontPath(font.name)};
+  std::filesystem::path path{};
+  if (Paths::getFontPath(font.name)) {
+    path = Paths::getFontPath(font.name).value();
+  } else {
+    return false;
+  }
   if (!std::filesystem::exists(path) || !canImGuiLoad(path)) {
     return false;
   }
@@ -85,18 +97,13 @@ void updateFont(Font &outLastAppliedFont, ImFont *&activeFont, Font &font) {
     if (!loadFont(font, activeFont)) {
       const std::wstring failedName{Helper::strToWide(font.name)};
       font.name = defaultFontName;
-			font.sizePixels = defaultPixelsSize;
+      font.sizePixels = defaultPixelsSize;
       loadFont(Fonts::Font{}, activeFont);
       // Helper::errorMesBox((L"Failed to load font \"" + failedName +
       //                      L"\".\nReset to default font.").c_str());
     }
     outLastAppliedFont = font;
   }
-}
-
-bool installDefaultFonts() {
-  return Helper::installDefault(Paths::getAssetsDir() / "Fonts",
-                                Paths::fontsDirectory());
 }
 
 // bool isLetterKey(const Layouts::Key &key) {
@@ -228,6 +235,36 @@ std::string handleLetterCase(const Keyboard::KeyBitSet &keysDown, Font &font,
   return result;
 }
 
-void refreshFonts() { Helper::refresh(fonts, Paths::fontsDirectory(), ".ttf"); }
+bool refreshFonts() {
+  fonts.clear();
+
+  for (const auto &dir : Paths::fontsDirectories()) {
+    if (!std::filesystem::exists(dir))
+      continue;
+
+    std::error_code ec{};
+
+    for (const auto &entry : std::filesystem::directory_iterator(dir, ec)) {
+      if (!entry.is_regular_file(ec))
+        continue;
+
+      std::string ext{entry.path().extension().string()};
+      std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+      if (ext != ".ttf" && ext != ".otf")
+        continue;
+      fontFiles[entry.path().stem().string()] = entry.path();
+    }
+  }
+
+  if (std::empty(fontFiles))
+    return false;
+
+  for (const auto &[name, path] : fontFiles) {
+    fonts.push_back(name);
+    std::sort(fonts.begin(), fonts.end());
+  }
+
+  return true;
+}
 
 } // namespace Fonts

@@ -64,8 +64,9 @@ ImU32 ToImU32(const Config::ColorRGBA &c);
 
 std::string getFileCreateError(Helper::FileCreateResult result);
 
-bool installDefault(const std::filesystem::path &source,
-                    const std::filesystem::path &destination);
+// deprecated
+// bool installDefault(const std::filesystem::path &source,
+//                     const std::filesystem::path &destination);
 
 bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
                ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoInputs);

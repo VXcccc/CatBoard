@@ -96,9 +96,6 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 								"${CMAKE_SOURCE_DIR}/Assets/Sounds"
 								"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Sounds"
 				COMMAND ${CMAKE_COMMAND} -E copy_directory
-						"${CMAKE_SOURCE_DIR}/Assets/Fonts"
-						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Fonts"
-				COMMAND ${CMAKE_COMMAND} -E copy_directory
 						"${CMAKE_SOURCE_DIR}/Assets/Images"
 						"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Images"
 				COMMAND ${CMAKE_COMMAND} -E copy_directory

@@ -22,10 +22,6 @@ void refreshConfigs() {
   Helper::refresh(configs, Paths::configDirectory(), ".json");
 }
 
-bool installDefaultConfigs() {
-  return Helper::installDefault(Paths::getAssetsDir() / "Configs",
-                                Paths::configDirectory());
-}
 
 void LoadActiveConfig(Settings &outConfig) {
   const auto path{Paths::getActiveConfigPath()};

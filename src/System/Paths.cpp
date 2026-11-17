@@ -1,7 +1,12 @@
 #include "Paths.h"
+#include "Fonts.h"
+#include <algorithm>
+#include <array>
 #include <filesystem>
+#include <optional>
 #include <shlobj.h>
 #include <string_view>
+#include <vector>
 #include <windows.h>
 
 namespace Paths {
@@ -28,25 +33,39 @@ void openCategoryDirectory(std::string_view category) {
 }
 } // namespace
 
-std::filesystem::path getAppDataDir() {
+static std::filesystem::path
+getKnownFolder(const KNOWNFOLDERID &id,
+               const std::filesystem::path &subDir = {}) {
   PWSTR path{nullptr};
-  if (SUCCEEDED(
-          SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, NULL, &path))) {
-    std::filesystem::path result{std::filesystem::path{path} / "CatBoard"};
-    CoTaskMemFree(path);
-    return result;
+  std::filesystem::path folderPath{};
+
+  if (SUCCEEDED(SHGetKnownFolderPath(id, 0, NULL, &path))) {
+    std::filesystem::path result{path};
+    if (!subDir.empty()) {
+      result /= subDir;
+    }
+    folderPath = result;
   }
-  return std::filesystem::current_path();
+  CoTaskMemFree(path);
+  return folderPath;
 }
 
-std::filesystem::path fontsDirectory() {
-  PWSTR path{nullptr};
-  if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Fonts, 0, NULL, &path))) {
-    std::filesystem::path result{std::filesystem::path{path}};
-    CoTaskMemFree(path);
-    return result;
-  }
-  // return categoryDirectory("Fonts");
+std::filesystem::path getAppDataDir() {
+  return getKnownFolder(FOLDERID_RoamingAppData, L"CatBoard");
+}
+std::filesystem::path getUserFontsFolder() {
+  return getKnownFolder(FOLDERID_LocalAppData, L"Microsoft\\Windows\\Fonts");
+}
+
+std::filesystem::path getSystemFontsFolder() {
+  return getKnownFolder(FOLDERID_Fonts);
+}
+
+std::vector<std::filesystem::path> fontsDirectories() {
+  std::vector<std::filesystem::path> dirs{};
+  dirs.push_back(getUserFontsFolder());
+  dirs.push_back(getSystemFontsFolder());
+  return dirs;
 }
 
 std::filesystem::path getExecutableDir() {
@@ -64,7 +83,6 @@ std::filesystem::path getExecutableDir() {
 
 std::filesystem::path getAssetsDir() { return getExecutableDir() / ("Assets"); }
 
-// ActiveConfig is always in appdata
 std::filesystem::path getActiveConfigPath() {
   return getExecutableDir() / "ActiveConfig.json";
 }
@@ -104,8 +122,12 @@ static std::filesystem::path windowsFontsDir() {
   return result;
 }
 
-std::filesystem::path getFontPath(std::string_view name) {
-  return fontsDirectory() / (std::string{name} + ".ttf");
+std::optional<std::filesystem::path> getFontPath(const std::string &name) {
+  const auto &it{Fonts::fontFiles.find(name)};
+  if (it == Fonts::fontFiles.end())
+    return std::nullopt;
+
+  return it->second;
 }
 
 std::filesystem::path getImagePackPath(std::string_view name) {
@@ -125,7 +147,24 @@ bool ensureImagesDirectory() { return ensureCategoryDirectory("Images"); }
 void openConfigDirectory() { openCategoryDirectory("Configs"); }
 void openLayoutDirectory() { openCategoryDirectory("Layouts"); }
 void openSoundsDirectory() { openCategoryDirectory("Sounds"); }
-void openFontsDirectory() { openCategoryDirectory("Fonts"); }
 void openImagesDirectory() { openCategoryDirectory("Images"); }
+
+void openFontsDirectory() {
+  if (std::filesystem::exists(getSystemFontsFolder())) {
+    ShellExecute(NULL, L"open", getSystemFontsFolder().c_str(), NULL, NULL,
+                 SW_SHOWDEFAULT);
+  }
+}
+
+static constexpr std::array<std::string, 4> subDirs{"Configs", "Images",
+                                                    "Layouts", "Sounds"};
+void createAssetsDirectory() {
+  const auto assetsDir{getAssetsDir()};
+
+  std::filesystem::create_directories(assetsDir);
+  for (const auto &sDir : subDirs) {
+    std::filesystem::create_directories(assetsDir / sDir);
+  }
+}
 
 } // namespace Paths

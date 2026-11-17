@@ -65,7 +65,6 @@ struct Texture {
   int h{};
 };
 
-bool installDefaultImagePacks();
 // bool LoadTextureFromFile(const char *file_name,
 //                          ID3D11ShaderResourceView **out_srv, int *out_width,
 //                          int *out_height);

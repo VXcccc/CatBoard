@@ -151,6 +151,5 @@ void refreshConfigs();
 void LoadActiveConfig(Settings &outConfig);
 bool Apply(const Settings &settings);
 
-bool installDefaultConfigs();
 } // namespace Config
 

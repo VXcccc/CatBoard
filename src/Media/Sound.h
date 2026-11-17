@@ -40,7 +40,6 @@ struct PackVK {
 
 void refreshSounds();
 bool loadSoundPack(std::string_view name, PackVK &outPack);
-bool installDefaultSoundPacks();
 
 bool initAudio();
 void ShutdownAudio();

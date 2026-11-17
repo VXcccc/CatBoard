@@ -14,7 +14,7 @@
 
 namespace Sound {
 std::vector<std::string> sounds;
-const std::string defaultSoundPack{"cherrymx-red-abs"};
+const std::string defaultSoundPack{"eg-oreo"};
 
 static ma_resource_manager g_resourceManager;
 static ma_engine g_engine;
@@ -185,10 +185,6 @@ void playKey(int keyCode, bool is_down, const PackVK &pack) {
 
 void setMasterVolume(float volume) { ma_engine_set_volume(&g_engine, volume); }
 
-bool installDefaultSoundPacks() {
-  return Helper::installDefault(Paths::getAssetsDir() / "Sounds",
-                                Paths::soundsDirectory());
-}
 
 // the difference between Helper::VkToName function is that function uses code
 // from sound json file (these code names are used in mechvibes)

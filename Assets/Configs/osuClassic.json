@@ -1,34 +1,4 @@
 {
-    "binds": [
-        {
-            "empty": false,
-            "keyName": "F4",
-            "name": "Drag mode",
-            "type": 0,
-            "vkCode": 115
-        },
-        {
-            "empty": false,
-            "keyName": "F6",
-            "name": "Hide overlay",
-            "type": 1,
-            "vkCode": 117
-        },
-        {
-            "empty": false,
-            "keyName": "F9",
-            "name": "Open settings",
-            "type": 2,
-            "vkCode": 120
-        },
-        {
-            "empty": false,
-            "keyName": "F10",
-            "name": "Resize mode",
-            "type": 3,
-            "vkCode": 121
-        }
-    ],
     "configName": "osuClassic",
     "font": {
         "letterCase": {
