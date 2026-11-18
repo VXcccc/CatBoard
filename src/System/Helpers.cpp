@@ -1,15 +1,20 @@
 #include "Helpers.h"
 #include "Config.h"
 #include "Constants.h"
+#include "Resource/ResourceConstants.h"
 #include "imgui.h"
 #include <algorithm>
 #include <cmath>
 #include <cstdlib>
+#include <dwmapi.h>
 #include <filesystem>
+#include <libloaderapi.h>
+#include <minwindef.h>
 #include <string>
 #include <string_view>
 #include <unordered_map>
 #include <vector>
+#include <windef.h>
 #include <windows.h>
 #include <winuser.h>
 
@@ -58,8 +63,13 @@ void drawErrorInSettings(std::string &error) {
   }
 
   ImVec4 redColor{1, 0.2f, 0.2f, 1};
-  ImGui::PushStyleColor(ImGuiCol_Text, redColor);
-  ImGui::TextUnformatted(error.c_str());
+  ImGui::PushStyleColor(ImGuiCol_TextLink, redColor);
+  if (ImGui::TextLink(error.c_str())) {
+    std::string clipboardErrorStr{error};
+    // removing last '\n' char
+    clipboardErrorStr.pop_back();
+    ImGui::SetClipboardText(clipboardErrorStr.c_str());
+  }
   ImGui::PopStyleColor();
 }
 
@@ -244,6 +254,30 @@ std::string VkToName(int vk) {
     return std::string{static_cast<char>(vk)};
 
   return "Unknown";
+}
+
+bool isWindowsThemeLight() {
+  auto buffer{std::vector<char>(4)};
+  auto cbData{static_cast<DWORD>(buffer.size() * sizeof(char))};
+  auto res = RegGetValueW(
+      HKEY_CURRENT_USER,
+      L"Software\\Microsoft\\Windows\\CurrentVersion\\Themes\\Personalize",
+      L"AppsUseLightTheme", RRF_RT_REG_DWORD, nullptr, buffer.data(), &cbData);
+
+  if (res != ERROR_SUCCESS) {
+    return false;
+  }
+
+  auto i = int(buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0]);
+
+  return i == 1;
+}
+
+void applyDarkMode(HWND hwnd) {
+  BOOL useDarkMode{!Helper::isWindowsThemeLight()};
+
+  DwmSetWindowAttribute(hwnd, DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE,
+                        &useDarkMode, sizeof(useDarkMode));
 }
 
 std::string VkToShiftLabel(int vk) {

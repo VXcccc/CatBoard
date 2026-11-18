@@ -81,6 +81,12 @@ static LRESULT CALLBACK WndProc(HWND hWnd, UINT msg, WPARAM wParam,
 
   if (!handled) {
     switch (msg) {
+    case WM_SETTINGCHANGE:
+      if (lParam && (wcsstr((LPCWSTR)lParam, L"ImmersiveColorSet") ||
+                     wcsstr((LPCWSTR)lParam, L"WindowsThemeElement"))) {
+        Helper::applyDarkMode(hWnd);
+      }
+      break;
     case WM_SIZE:
       if (wParam != SIZE_MINIMIZED) {
         s_resizeWidth = LOWORD(lParam);
@@ -133,10 +139,7 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
                              WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT,
                              900, 600, nullptr, nullptr, hInstance, nullptr);
 
-  BOOL useDarkMode{true};
-  DwmSetWindowAttribute(s_hwnd,
-                        DWMWINDOWATTRIBUTE::DWMWA_USE_IMMERSIVE_DARK_MODE,
-                        &useDarkMode, sizeof(useDarkMode));
+  Helper::applyDarkMode(s_hwnd);
   RECT rc;
 
   GetWindowRect(s_hwnd, &rc);
@@ -253,28 +256,18 @@ void toggleWindow() {
 }
 
 // Tabs handling
-enum class SettingsTab {
-  Visuals,
-  Layouts,
-  Sounds,
-  Misc,
-  Binds,
-  Configs,
-  MaxSettingsTabs
-};
+enum class SettingsTab { Visuals, Layouts, Misc, MaxSettingsTabs };
 
 struct Tab {
   const char *label;
   SettingsTab type;
 };
 
-std::array<Tab, static_cast<std::size_t>(SettingsTab::MaxSettingsTabs)> tabs{
-    {{"Visuals", SettingsTab::Visuals},
-     {"Layouts", SettingsTab::Layouts},
-     {"Sounds", SettingsTab::Sounds},
-     {"Misc", SettingsTab::Misc},
-     {"Binds", SettingsTab::Binds},
-     {"Configs", SettingsTab::Configs}}};
+std::array<Tab, static_cast<std::size_t>(SettingsTab::MaxSettingsTabs)> tabs{{
+    {"Visuals", SettingsTab::Visuals},
+    {"Layouts", SettingsTab::Layouts},
+    {"Misc", SettingsTab::Misc},
+}};
 
 static_assert(tabs.size() ==
                   static_cast<std::size_t>(SettingsTab::MaxSettingsTabs),
@@ -361,9 +354,10 @@ void restoreFromConfig(SettingsEditState &state,
     state.selectedLayout = Layouts::defaultLayoutName;
   }
 
-  if(!Sound::loadSoundPack(prevSettings.soundPack.name, app.soundPack)){
-		state.loadConfigError += "Missing soundPack: " + prevSettings.soundPack.name + '\n';
-	}
+  if (!Sound::loadSoundPack(prevSettings.soundPack.name, app.soundPack)) {
+    state.loadConfigError +=
+        "Missing soundPack: " + prevSettings.soundPack.name + '\n';
+  }
   Sound::setMasterVolume(prevSettings.soundPack.volume);
 
   // image pack
@@ -374,7 +368,6 @@ void restoreFromConfig(SettingsEditState &state,
   }
   state.imagePack = app.imagePack;
   app.config.imagePack = app.imagePack;
-
 }
 
 Config::Settings buildSettings(const SettingsEditState &state) {
@@ -931,7 +924,35 @@ void drawLayoutsTab(SettingsEditState &state,
   }
 }
 
-void drawMiscTab(SettingsEditState &state, AppState &app) {
+void drawSoundsSection(SettingsEditState &state, AppState &app) {
+  ImGui::SeparatorText("Sounds");
+
+  ImGui::Checkbox("Enable asmr sounds", &state.soundPack.enable);
+  if (state.soundPack.enable) {
+    ImGui::Checkbox("Sounds only for keys in layout",
+                    &state.soundPack.layoutKeysOnlySound);
+
+    if (Helper::SliderInt("Volume", state.volumePercent, 0, 100)) {
+      Sound::setMasterVolume(static_cast<float>(state.volumePercent / 100.0f));
+    }
+
+    drawSoundCombo(state, app);
+
+    if (ImGui::Button("Open sounds folder")) {
+      Paths::openSoundsDirectory();
+    }
+
+    ImGui::SameLine();
+
+    if (ImGui::Button("Refresh sounds")) {
+      Sound::refreshSounds();
+      validateCurrentIndex(state.currentSound, std::size(Sound::sounds));
+    }
+  }
+}
+
+void drawMiscSection(SettingsEditState &state, AppState &app) {
+  ImGui::SeparatorText("Misc");
   app.config.theme = state.theme;
   app.config.misc = state.misc;
   app.config.overlay = state.overlay;
@@ -947,7 +968,9 @@ void drawMiscTab(SettingsEditState &state, AppState &app) {
   Helper::SliderInt("FPS", state.misc.fps, 5, 360, 5, 2000);
 
   drawThemeCombo(state, app);
+}
 
+void drawOverlayPropertiesSection(SettingsEditState &state, AppState &app) {
   ImGui::SeparatorText("Overlay Properties");
 
   Helper::HelpMarker(
@@ -976,7 +999,8 @@ void drawMiscTab(SettingsEditState &state, AppState &app) {
   }
 }
 
-void drawBindsTab(SettingsEditState &state, AppState &app) {
+void drawBindsSection(SettingsEditState &state, AppState &app) {
+  ImGui::SeparatorText("Hotkeys");
   if (ImGui::BeginTable("Binds", state.binds.size(),
                         ImGuiTableFlags_SizingFixedFit)) {
     for (auto &bind : state.binds) {
@@ -999,32 +1023,9 @@ void drawBindsTab(SettingsEditState &state, AppState &app) {
   }
 }
 
-void drawSoundsTab(SettingsEditState &state, AppState &app) {
-  ImGui::Checkbox("Enable asmr sounds", &state.soundPack.enable);
-  if (state.soundPack.enable) {
-    ImGui::Checkbox("Sounds only for keys in layout",
-                    &state.soundPack.layoutKeysOnlySound);
+void drawConfigsSection(SettingsEditState &state, AppState &app) {
+  ImGui::SeparatorText("Config");
 
-    if (Helper::SliderInt("Volume", state.volumePercent, 0, 100)) {
-      Sound::setMasterVolume(static_cast<float>(state.volumePercent / 100.0f));
-    }
-
-    drawSoundCombo(state, app);
-
-    if (ImGui::Button("Open sounds folder")) {
-      Paths::openSoundsDirectory();
-    }
-
-    ImGui::SameLine();
-
-    if (ImGui::Button("Refresh sounds")) {
-      Sound::refreshSounds();
-      validateCurrentIndex(state.currentSound, std::size(Sound::sounds));
-    }
-  }
-}
-
-void drawConfigsTab(SettingsEditState &state, AppState &app) {
   drawConfigCombo(state);
 
   const bool hasConfigs{!Config::configs.empty()};
@@ -1132,6 +1133,14 @@ void drawConfigsTab(SettingsEditState &state, AppState &app) {
   }
 }
 
+void drawMiscTab(SettingsEditState &state, AppState &app) {
+  drawConfigsSection(state, app);
+  drawBindsSection(state, app);
+  drawMiscSection(state, app);
+  drawOverlayPropertiesSection(state, app);
+  drawSoundsSection(state, app);
+}
+
 void drawApplyCancel(SettingsEditState &state,
                      const Config::Settings &newSettings, AppState &app) {
 
@@ -1152,7 +1161,7 @@ void drawApplyCancel(SettingsEditState &state,
 void drawSettingsTabs(SettingsTab &outCurrentTab) {
   for (size_t i{0}; i < std::size(tabs); ++i) {
     if (ImGui::Button(tabs[i].label,
-                      ImVec2(ImGui::GetWindowSize().x / std::size(tabs) - 12.0f,
+                      ImVec2(ImGui::GetWindowSize().x / std::size(tabs) - 15.0f,
                              25.0f))) // todo remove magic numbers
       outCurrentTab = tabs[i].type;
 
@@ -1227,17 +1236,8 @@ void RenderFrame(AppState &app) {
   case SettingsTab::Layouts:
     drawLayoutsTab(editState, layoutEditState, app);
     break;
-  case SettingsTab::Sounds:
-    drawSoundsTab(editState, app);
-    break;
   case SettingsTab::Misc:
     drawMiscTab(editState, app);
-    break;
-  case SettingsTab::Binds:
-    drawBindsTab(editState, app);
-    break;
-  case SettingsTab::Configs:
-    drawConfigsTab(editState, app);
     break;
   default:
     break;
@@ -1257,8 +1257,7 @@ void RenderFrame(AppState &app) {
     lastCommitted = newSettings;
   }
 
-  if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Sounds ||
-      currentTab == SettingsTab::Binds || currentTab == SettingsTab::Misc) {
+  if (currentTab == SettingsTab::Visuals || currentTab == SettingsTab::Misc) {
     drawApplyCancel(editState, newSettings, app);
   }
 

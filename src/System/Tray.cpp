@@ -42,16 +42,20 @@ private:
   HMENU m_hMenu;
 };
 
+static HICON loadTrayIcon(HINSTANCE hInstance) {
+  const bool dark{!Helper::isWindowsThemeLight()};
+  return static_cast<HICON>(LoadImage(GetModuleHandle(nullptr),
+                                      MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0,
+                                      0, LR_DEFAULTSIZE | LR_SHARED));
+}
+
 NOTIFYICONDATA init(HWND hwnd, HINSTANCE hInstance) {
-  NOTIFYICONDATA nid{};
+  NOTIFYICONDATA nid = {};
   nid.cbSize = sizeof(nid);
   nid.hWnd = hwnd;
   nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
-
   nid.uCallbackMessage = Consts::WM_TRAYICON;
-  nid.hIcon = static_cast<HICON>(
-      LoadImage(hInstance, MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0, 0,
-                LR_DEFAULTSIZE | LR_SHARED));
+  nid.hIcon = loadTrayIcon(hInstance);
 
   StringCchCopy(nid.szTip, ARRAYSIZE(nid.szTip), L"CatBoard");
 
@@ -59,6 +63,19 @@ NOTIFYICONDATA init(HWND hwnd, HINSTANCE hInstance) {
 
   return nid;
 }
+
+void updateIcon(HINSTANCE hInstance) {
+  HICON icon = loadTrayIcon(hInstance);
+  if (!icon)
+    return;
+
+  g_nid.hIcon = icon;
+  g_nid.uFlags = NIF_ICON;
+  Shell_NotifyIcon(NIM_MODIFY, &g_nid);
+  g_nid.uFlags = NIF_MESSAGE | NIF_ICON | NIF_TIP;
+}
+
+void remove() { Shell_NotifyIcon(NIM_DELETE, &g_nid); }
 
 VOID APIENTRY DisplayContextMenu(HWND hWnd, const AppState &app) {
   POINT pt{};
@@ -94,7 +111,6 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd,
   return;
 }
 
-
 void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
   UINT uId{static_cast<UINT>(LOWORD(wParam))};
 
@@ -107,7 +123,7 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
     MainWindow::SetDragMode(hWnd, app.dragMode);
     return;
   case Consts::ID_EXIT:
-		PostMessageW(hWnd, WM_CLOSE, 0, 0);
+    PostMessageW(hWnd, WM_CLOSE, 0, 0);
     return;
   }
 }

@@ -15,6 +15,7 @@
 
 #include "Paths.h"
 #include <filesystem>
+#include <libloaderapi.h>
 #include <minwindef.h>
 #ifndef DEBUG_CATBOARD
 // #define DEBUG_CATBOARD
@@ -170,7 +171,7 @@ int main(int, char **) {
     Helper::fatalError(L"Program already running");
 
   // debug
-  initDebugConsole();
+  // initDebugConsole();
 
   // the state holding all active variables;
   AppState app;
@@ -178,10 +179,10 @@ int main(int, char **) {
   Config::LoadActiveConfig(app.config);
   app.previousObsMode = app.config.misc.obsMode;
 
-	if(!std::filesystem::exists(Paths::getAssetsDir())){
-		Helper::errorMesBox(L"Missing assets folder");
-		Paths::createAssetsDirectory();
-	}
+  if (!std::filesystem::exists(Paths::getAssetsDir())) {
+    Helper::errorMesBox(L"Missing assets folder");
+    Paths::createAssetsDirectory();
+  }
 
   Config::refreshConfigs();
 
@@ -514,7 +515,7 @@ int main(int, char **) {
   ::DestroyWindow(s_hwnd);
   ::UnregisterClassW(wc.lpszClassName, wc.hInstance);
 
-  Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
+  Tray::remove();
 
   // applying config before quit
   Config::Apply(app.config);
@@ -821,7 +822,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     if (app->config.misc.saveOnClose) {
       Config::Apply(app->config);
     }
-    Shell_NotifyIcon(NIM_DELETE, &Tray::g_nid);
+    Tray::remove();
     ::PostQuitMessage(0);
     return 0;
   }

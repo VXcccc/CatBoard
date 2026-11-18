@@ -120,7 +120,7 @@ struct Overlay {
 };
 
 struct Misc {
-  bool vsync{false};
+  bool vsync{true};
   bool obsMode{false};
   int fps{60};
 	bool saveOnClose{true};

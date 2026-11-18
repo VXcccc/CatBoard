@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <windows.h>
 
 namespace Config {
 using ColorRGBA = std::array<int, 4>;
@@ -32,7 +33,6 @@ public:
 private:
   std::string m_message;
 };
-
 
 std::wstring strToWide(const std::string &str);
 
@@ -63,6 +63,9 @@ ImVec4 fromConfigColor(const Config::ColorRGBA &color);
 ImU32 ToImU32(const Config::ColorRGBA &c);
 
 std::string getFileCreateError(Helper::FileCreateResult result);
+
+bool isWindowsThemeLight();
+void applyDarkMode(HWND hwnd);
 
 // deprecated
 // bool installDefault(const std::filesystem::path &source,
@@ -151,4 +154,3 @@ inline bool operator>(const ImVec2 &a, const ImVec2 &b) {
 }
 
 inline bool operator<(const ImVec2 &a, const ImVec2 &b) { return !(a > b); }
-

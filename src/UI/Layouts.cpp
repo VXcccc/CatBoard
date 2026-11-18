@@ -17,6 +17,7 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdio>
+#include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <optional>
@@ -34,6 +35,9 @@ namespace Layouts {
 std::vector<std::string> layouts{};
 const std::string defaultLayoutName{"layout7t"};
 const Layout defaultLayout{makeDefaultLayout()};
+
+// float epsilon
+static constexpr float s_eps{0.001f};
 
 constexpr std::array<Key, 25> defaultKeysArr{
     Key{KeyType::Keyboard, 9, "Tab", "", 9.0f, 53.0f, 67.0f, 43.0f},
@@ -76,7 +80,6 @@ Layout makeDefaultLayout() {
 void refreshLayouts() {
   Helper::refresh(layouts, Paths::layoutDirectory(), ".json");
 }
-
 
 bool loadLayoutFile(std::string_view name, AppState &app) {
   try {
@@ -233,14 +236,14 @@ static KeysMatrix buildRows(std::vector<Key *> keys) {
     return rows;
 
   std::sort(keys.begin(), keys.end(), [](const Key *a, const Key *b) {
-    if (a->y != b->y)
+    if (std::abs(a->y - b->y) > s_eps)
       return a->y < b->y;
     return a->x < b->x;
   });
 
   int startIdx{0};
   for (std::size_t i{1}; i < keys.size(); ++i) {
-    if (keys[i - 1]->y != keys[i]->y) {
+    if (std::abs(keys[i - 1]->y - keys[i]->y) > s_eps) {
       rows.emplace_back(keys.begin() + startIdx, keys.begin() + i);
       startIdx = i;
     }
@@ -286,7 +289,7 @@ std::optional<float> getGap(const KeysMatrix &rows, KeyProp prop) {
       common = gap;
       return false;
     }
-    return gap != common;
+    return std::abs(gap - *common) > s_eps;
   };
 
   if (prop == KeyProp::gapX) {

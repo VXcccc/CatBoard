@@ -116,11 +116,12 @@ install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .)
 install(DIRECTORY
 				${CMAKE_SOURCE_DIR}/Assets/Layouts
 				${CMAKE_SOURCE_DIR}/Assets/Sounds
-				${CMAKE_SOURCE_DIR}/Assets/Fonts
 				${CMAKE_SOURCE_DIR}/Assets/Images
-		${CMAKE_SOURCE_DIR}/Assets/Configs
-		DESTINATION ${ASSETS_DEST}
+				${CMAKE_SOURCE_DIR}/Assets/Configs
+				DESTINATION ${ASSETS_DEST}
 )
+install(DIRECTORY ${CMAKE_SOURCE_DIR}/Fonts DESTINATION .)
+
 set(CPACK_PACKAGE_NAME "CatBoard")
 set(CPACK_PACKAGE_VENDOR "VXcccc")
 set(CPACK_PACKAGE_VERSION ${PROJECT_VERSION})
@@ -153,6 +154,8 @@ set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
 ")
 set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
 		Delete '$DESKTOP\\\\CatBoard.lnk'
+		Delete '$INSTDIR\\\\ActiveConfig.json'
+		Delete '$INSTDIR\\\\UI.json'
 ")
 
 include(CPack)
