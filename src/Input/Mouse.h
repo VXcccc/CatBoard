@@ -25,7 +25,8 @@ struct MouseStyle {
   Type type{Type::CatBoard};
 };
 
-extern const std::array<MouseStyle, static_cast<std::size_t>(Type::maxMouseStyles)>
+extern const std::array<MouseStyle,
+                        static_cast<std::size_t>(Type::maxMouseStyles)>
     mouseStyles;
 
 enum class TrailType { Circle, Catmull, maxTrailStyles };
@@ -70,7 +71,7 @@ struct TrailClip {
 
 class State {
 public:
-	State() = default;
+  State() = default;
 
   State(float sensitivity, float decayRate, float fadeTime)
       : m_sensitivity(sensitivity), m_decayRate(decayRate),
@@ -89,9 +90,9 @@ public:
   bool isM1Highlighted() const { return m_m1Highlighted; }
 
   void updateMouseState(float deltaTime, float radius,
-                        const Config::MouseTheme &mouse);
+                        const Config::MouseTheme &mouse, float ovScale);
   void updateMouseState(float deltaTime, float halfWidth, float halfHeight,
-                        const Config::MouseTheme &mouse);
+                        const Config::MouseTheme &mouse, float ovScale);
 
   float getDistance() const;
 
@@ -101,7 +102,8 @@ public:
   void addRawDelta(int dx, int dy);
   void consumePendingDelta();
 
-  void updateTrail(float deltaTime, const Config::MouseTheme &mouse);
+  void updateTrail(float deltaTime, const Config::MouseTheme &mouse,
+                   float ovScale);
   const std::deque<TrailPoint> &getTrailPoints() const { return m_trail; }
 
   void registerScroll(int wheelDelta);
@@ -125,9 +127,18 @@ public:
   bool isScrollingUp() const { return dominantScroll() == ScrollDir::Up; }
   bool isScrollingDown() const { return dominantScroll() == ScrollDir::Down; }
 
+  float getTrailMinWidth() const { return m_trailMinWidth; }
+  float getTrailMaxWidth() const { return m_trailMaxWidth; }
+  RoundedRect getShape() const { return m_shape; }
+  float getSmallRadius() const { return m_smallRadius; }
+	//for Circle types
+  float getCircleRadius() const { return m_circleRadius; }
+
 private:
-  void updateCatmullTrail(float deltaTime, const Config::MouseTheme &mouse);
-  void updateCircleTrail(float deltaTime, const Config::MouseTheme &mouse);
+  void updateCatmullTrail(float deltaTime, const Config::MouseTheme &mouse,
+                          float ovScale);
+  void updateCircleTrail(float deltaTime, const Config::MouseTheme &mouse,
+                         float ovScale);
 
   void ageTrail(float deltaTime, const Config::MouseTheme &mouse);
   void appendTrailPoint(const ImVec2 &pos, bool breakLine);
@@ -156,8 +167,13 @@ private:
   bool m_justWrapped{false};
   ImVec2 m_wrapExit;
 
+	float m_circleRadius{37.0f};
+	float m_smallRadius{7.4f};
+
   std::deque<TrailPoint> m_trail;
   float m_trailTotalDist{0.0f};
+  float m_trailMinWidth{1.0f};
+  float m_trailMaxWidth{3.0f};
 
   int m_pendingScroll{0};
   int m_scrollUpValue{0};

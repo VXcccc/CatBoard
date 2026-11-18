@@ -15,7 +15,7 @@
 #include <windows.h>
 
 namespace Config {
-static const Settings defaultConfig{};
+const Settings defaultConfig{};
 std::vector<std::string> configs{};
 
 void refreshConfigs() {

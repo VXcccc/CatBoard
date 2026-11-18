@@ -389,13 +389,15 @@ int main(int, char **) {
 
     const Mouse::Type &curType{app.config.theme.mouse.style.type};
 
+    const auto &ovScale{app.config.overlay.scale};
+
     if (Mouse::isTypeCircle(curType)) {
       app.mouse.updateMouseState(deltaTime, app.layout.mouse.radius,
-                                 app.config.theme.mouse);
+                                 app.config.theme.mouse, ovScale);
     } else if (Mouse::isTypeRect(curType)) {
       app.mouse.updateMouseState(deltaTime, (app.layout.mouse.width / 2),
                                  (app.layout.mouse.height / 2),
-                                 app.config.theme.mouse);
+                                 app.config.theme.mouse, ovScale);
     }
 
     if (app.config.theme.mouse.highlightM1)
@@ -404,7 +406,7 @@ int main(int, char **) {
       app.mouse.setM1Highlighted(false);
 
     app.mouse.updateScroll(deltaTime);
-    app.mouse.updateTrail(deltaTime, app.config.theme.mouse);
+    app.mouse.updateTrail(deltaTime, app.config.theme.mouse, ovScale);
 
     bool anyKeyChanged{app.keyboard.anyChanged()};
 
@@ -456,7 +458,6 @@ int main(int, char **) {
 
     Keyboard::renderKeyboard(app);
 
-    const auto &ovScale{app.config.overlay.scale};
     ImVec2 mouseCenter(app.layout.mouse.centerX * ovScale,
                        app.layout.mouse.centerY * ovScale);
     if (app.config.theme.mouse.imagesDisplay) {

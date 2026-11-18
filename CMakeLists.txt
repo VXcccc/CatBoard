@@ -159,3 +159,4 @@ set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
 ")
 
 include(CPack)
+

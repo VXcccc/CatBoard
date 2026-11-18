@@ -15,7 +15,7 @@ std::filesystem::path getUIJsonPath();
 namespace Themes {
 
 enum Style { Dark, White, RoseQuartz, GruvBox, Catppuccin, Dracula, MaxStyles };
-constexpr std::array<std::string, MaxStyles> styles{
+inline const std::array<std::string, MaxStyles> styles{
     "Dark", "White", "RoseQuartz", "GruvBox", "Catppuccin", "Dracula",
 };
 

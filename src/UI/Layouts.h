@@ -16,7 +16,7 @@ struct AppState;
 namespace Layouts {
 
 enum class KeyProp { X, Y, W, H, gapX, gapY, MaxProps };
-constexpr std::array<std::string, static_cast<std::size_t>(KeyProp::MaxProps)>
+inline const std::array<std::string, static_cast<std::size_t>(KeyProp::MaxProps)>
     KeyPropName{"X", "Y", "W", "H", "gapX", "gapY"};
 static_assert(KeyPropName.size() == static_cast<std::size_t>(KeyProp::MaxProps),
               "Key prop array is out of sync with enum");
@@ -34,7 +34,7 @@ struct SpecialKey {
   KeyType type;
   std::string name;
 };
-inline constexpr std::array<SpecialKey, 4> sKeysInfo{
+inline const std::array<SpecialKey, 4> sKeysInfo{
     SpecialKey{KeyType::Wheel, "Wheel"},
     SpecialKey{KeyType::ScrollUpDown, "ScrollUpDown"},
     SpecialKey{KeyType::ScrollUp, "ScrollUp"},

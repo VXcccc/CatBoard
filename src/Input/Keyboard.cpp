@@ -60,8 +60,7 @@ bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
 }
 
 void updateActive(const Layouts::Layout &layout, Keyboard::State &kb,
-                  const Mouse::State &mouse,
-                  const Config::Settings &settings) {
+                  const Mouse::State &mouse, const Config::Settings &settings) {
   if (kb.visuals.size() != layout.keys.size())
     kb.resyncVisuals(layout, settings.theme);
   for (std::size_t i = 0; i < layout.keys.size(); ++i)
@@ -136,12 +135,20 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
                      const Keyboard::State &kb, const KeyVisual &v,
                      ImVec2 center, Config::Settings &settings,
                      const Mouse::State &mouse) {
-  ImGui::PushFont(Fonts::overlayFont);
+  const auto &theme{settings.theme};
+  const auto &imStyle{ImGui::GetStyle()};
+  const float &ovScale{settings.overlay.scale};
+
+  const bool applyScaleToFont{v.scale > 0.01f && theme.animation &&
+                              theme.animType == Config::AnimType::Scale};
+  const float fontSizePx{applyScaleToFont ? imStyle.FontSizeBase * v.scale * ovScale
+                                          : imStyle.FontSizeBase * ovScale};
+  ImGui::PushFont(Fonts::overlayFont, fontSizePx);
 
   using ScrollDir = Mouse::State::ScrollDir;
 
   const ImU32 textColor{Helper::ToImU32(Helper::toConfigColor(v.colors.text))};
-  const float &ovScale{settings.overlay.scale};
+  const float keyScale{v.scale};
 
   std::string displayLabel{getDisplayLabel(key, kb, settings.font, mouse)};
 
@@ -157,15 +164,15 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
     const auto curDir(mouse.dominantScroll());
 
     if (!(curDir == ScrollDir::None)) {
-      ImGui::PushFont(Fonts::iconFont);
+      ImGui::PushFont(Fonts::iconFont, fontSizePx);
       const std::string curIcon{getScrollIcon(curDir, key)};
       const ImVec2 iconSize{ImGui::CalcTextSize(curIcon.c_str())};
-      printf("%s iconSize: x: %.2f, y: %.2f ", curIcon.c_str(), textSize.x,
-             iconSize.y);
-      printf("textPos: x: %.2f, y: %.2f\n", textPos.x, textPos.y);
-      const ImVec2 iconPos{(curDir == ScrollDir::Up ? (textPos.x + textSize.x)
-                                                    : (textPos.x - iconSize.x)),
-                           (center.y - (iconSize.y * 0.5f))};
+      // printf("%s iconSize: x: %.2f, y: %.2f ", curIcon.c_str(), textSize.x,
+      //        iconSize.y);
+      // printf("textPos: x: %.2f, y: %.2f\n", textPos.x, textPos.y);
+      const ImVec2 iconPos{(curDir == ScrollDir::Up ? (textPos.x + textSize.x) 
+                                                    : (textPos.x - iconSize.x) ),
+                           ((center.y * ovScale) - (iconSize.y * 0.5f))};
 
       draw->AddText(iconPos, textColor, curIcon.c_str());
       ImGui::PopFont();
@@ -173,7 +180,13 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
   }
 }
 
-void renderKeyboard( AppState &app) {
+static void updateFontSize(const Layouts::Key &key, const KeyVisual &v) {
+  auto style{ImGui::GetStyle()};
+  style.FontScaleMain = v.scale;
+  style.FontSizeBase *= v.scale;
+}
+
+void renderKeyboard(AppState &app) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   const auto &layout{app.layout};
   const auto &kb{app.keyboard};
@@ -213,6 +226,7 @@ void renderKeyboard( AppState &app) {
       float thickness{theme.keyOutline.thickness};
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
+    // updateFontSize(key, v);
     drawText(draw, key, kb, v, center, app.config, app.mouse);
   }
 }

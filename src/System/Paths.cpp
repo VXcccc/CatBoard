@@ -156,8 +156,8 @@ void openFontsDirectory() {
   }
 }
 
-static constexpr std::array<std::string, 4> subDirs{"Configs", "Images",
-                                                    "Layouts", "Sounds"};
+static inline const std::array<std::string, 4> subDirs{"Configs", "Images",
+                                                       "Layouts", "Sounds"};
 void createAssetsDirectory() {
   const auto assetsDir{getAssetsDir()};
 

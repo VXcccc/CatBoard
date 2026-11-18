@@ -27,21 +27,6 @@ ImFont *iconFont{nullptr};
 const std::string defaultFontName{"courbd"};
 const float defaultPixelsSize{20.0f};
 
-bool loadIconFont(float overlayFontSize) {
-  ImGuiIO &io{ImGui::GetIO()};
-
-  ImFontConfig cfg;
-  cfg.PixelSnapH = true;
-  cfg.FontDataOwnedByAtlas = false;
-  iconFont = io.Fonts->AddFontFromMemoryTTF(_dripIcons, _dripIconsSize,
-                                            overlayFontSize, &cfg);
-
-  if (!iconFont)
-    return false;
-
-  return true;
-}
-
 static bool canImGuiLoad(const std::filesystem::path &path) {
   std::ifstream file{path, std::ios::binary};
   if (!file)
@@ -64,6 +49,21 @@ bool canLoad(const std::string &name) {
   return false;
 }
 
+bool loadIconFont(float overlayFontSize) {
+  ImGuiIO &io{ImGui::GetIO()};
+
+  ImFontConfig cfg;
+  cfg.PixelSnapH = true;
+  cfg.FontDataOwnedByAtlas = false;
+  iconFont = io.Fonts->AddFontFromMemoryTTF(_dripIcons, _dripIconsSize,
+                                            overlayFontSize, &cfg);
+
+  if (!iconFont)
+    return false;
+
+  return true;
+}
+
 bool loadFont(const Font &font, ImFont *&activeFont) {
   ImGuiIO &io{ImGui::GetIO()};
   std::filesystem::path path{};
@@ -77,6 +77,7 @@ bool loadFont(const Font &font, ImFont *&activeFont) {
   }
 
   io.Fonts->ClearFonts();
+	ImFontConfig cfg;
   activeFont =
       io.Fonts->AddFontFromFileTTF(path.string().c_str(), font.sizePixels);
   if (!activeFont) {

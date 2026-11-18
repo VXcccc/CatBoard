@@ -123,7 +123,7 @@ struct Misc {
   bool vsync{true};
   bool obsMode{false};
   int fps{60};
-	bool saveOnClose{true};
+  bool saveOnClose{true};
 };
 
 struct Settings {
@@ -141,6 +141,7 @@ struct Settings {
 
 // available config file names
 extern std::vector<std::string> configs;
+extern const Settings defaultConfig;
 
 bool Load(std::string_view name, Settings &outConfig);
 bool Save(std::string_view name, const Config::Settings &settings);
@@ -152,4 +153,3 @@ void LoadActiveConfig(Settings &outConfig);
 bool Apply(const Settings &settings);
 
 } // namespace Config
-

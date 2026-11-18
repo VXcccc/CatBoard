@@ -989,7 +989,7 @@ void drawOverlayPropertiesSection(SettingsEditState &state, AppState &app) {
 
   if (!state.misc.obsMode) {
     if (Helper::SliderFloat("Overlay Scale", state.overlay.scale, 0.0f, 3.0f,
-                            0.0f, 10.0f)) {
+                            0.00f, 10.0f)) {
       app.config.overlay = state.overlay;
       MainWindow::ApplyOverlaySize(app);
     }

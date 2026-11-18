@@ -43,7 +43,6 @@ private:
 };
 
 static HICON loadTrayIcon(HINSTANCE hInstance) {
-  const bool dark{!Helper::isWindowsThemeLight()};
   return static_cast<HICON>(LoadImage(GetModuleHandle(nullptr),
                                       MAKEINTRESOURCE(IDI_ICON1), IMAGE_ICON, 0,
                                       0, LR_DEFAULTSIZE | LR_SHARED));
@@ -64,6 +63,7 @@ NOTIFYICONDATA init(HWND hwnd, HINSTANCE hInstance) {
   return nid;
 }
 
+// unused function right now
 void updateIcon(HINSTANCE hInstance) {
   HICON icon = loadTrayIcon(hInstance);
   if (!icon)

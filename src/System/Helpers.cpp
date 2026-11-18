@@ -266,7 +266,7 @@ bool isWindowsThemeLight() {
 
   if (res != ERROR_SUCCESS) {
     return false;
-  }
+ }
 
   auto i = int(buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0]);
 

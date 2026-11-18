@@ -39,7 +39,7 @@ const Layout defaultLayout{makeDefaultLayout()};
 // float epsilon
 static constexpr float s_eps{0.001f};
 
-constexpr std::array<Key, 25> defaultKeysArr{
+inline const std::array<Key, 25> defaultKeysArr{
     Key{KeyType::Keyboard, 9, "Tab", "", 9.0f, 53.0f, 67.0f, 43.0f},
     Key{KeyType::Keyboard, 49, "1", "!", 53.0f, 9.0f, 43.0f, 43.0f},
     Key{KeyType::Keyboard, 50, "2", "@", 97.0f, 9.0f, 43.0f, 43.0f},
@@ -274,8 +274,8 @@ struct RowSpan {
 static RowSpan rowSpan(const std::vector<Key *> &row) {
   RowSpan rs{row.front()->y, (row.front()->y + row.front()->h)};
   for (const Key *k : row) {
-    rs.top = std::min(rs.top, k->y);
-    rs.bottom = std::max(rs.bottom, k->y + k->h);
+    rs.top = (std::min)(rs.top, k->y);
+    rs.bottom = (std::max)(rs.bottom, k->y + k->h);
   }
   return rs;
 }
@@ -1516,8 +1516,8 @@ static void drawKeysGeneralOptions(LayoutEditState &state) {
   Helper::SliderFloat("Key height", state.defaultKeyHeight, 10.0f, 200.0f,
                       "%.0f", 260);
 
-  Helper::SliderFloat("Zoom", state.zoom, Consts::EDITOR_MINZOOM,
-                      Consts::EDITOR_MAXZOOM, "%.2f", 260);
+  // Helper::SliderFloat("Zoom", state.zoom, Consts::EDITOR_MINZOOM,
+  //                     Consts::EDITOR_MAXZOOM, "%.2f", 260);
 
   ImGui::EndChild();
 }
