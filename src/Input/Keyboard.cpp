@@ -64,11 +64,11 @@ bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
 }
 
 void updateActive(const Layouts::Layout &layout, Keyboard::State &kb,
-                  const Mouse::State &mouse, const Config::Settings &settings) {
+                  const Mouse::State &mouse, const Config::Settings &config) {
   if (kb.visuals.size() != layout.keys.size())
-    kb.resyncVisuals(layout, settings.theme);
+    kb.resyncVisuals(layout, config.theme);
   for (std::size_t i = 0; i < layout.keys.size(); ++i) {
-    kb.visuals[i].active = isActive(layout.keys[i], kb, mouse, settings);
+    kb.visuals[i].active = isActive(layout.keys[i], kb, mouse, config);
   }
 }
 
@@ -137,26 +137,25 @@ static std::string getDisplayLabel(const Layouts::Key &key,
 }
 
 static void drawText(ImDrawList *draw, const Layouts::Key &key,
-                     const Keyboard::State &kb, const KeyVisual &v,
-                     ImVec2 center, Config::Settings &settings,
-                     const Mouse::State &mouse) {
-  const auto &theme{settings.theme};
+                     const Keyboard::State &kb, float vScale, ImVec2 center,
+                     Config::Settings &config, const Mouse::State &mouse,
+                     const ImVec4 &color) {
+  const auto &theme{config.theme};
   const auto &imStyle{ImGui::GetStyle()};
-  const float &ovScale{settings.overlay.scale};
+  const float &ovScale{config.overlay.scale};
 
-  const bool applyScaleToFont{v.scale > 0.01f && theme.animation &&
+  const bool applyScaleToFont{vScale > 0.01f && theme.animation &&
                               theme.animType == Config::AnimType::Scale};
   const float fontSizePx{applyScaleToFont
-                             ? settings.font.sizePixels * v.scale * ovScale
-                             : settings.font.sizePixels * ovScale};
+                             ? config.font.sizePixels * vScale * ovScale
+                             : config.font.sizePixels * ovScale};
   ImGui::PushFont(Fonts::overlayFont, fontSizePx);
 
   using ScrollDir = Mouse::State::ScrollDir;
 
-  const ImU32 textColor{Helper::ToImU32(Helper::toConfigColor(v.colors.text))};
-  const float keyScale{v.scale};
+  const ImU32 textColor{Helper::ToImU32(Helper::toConfigColor(color))};
 
-  std::string displayLabel{getDisplayLabel(key, kb, settings.font, mouse)};
+  std::string displayLabel{getDisplayLabel(key, kb, config.font, mouse)};
 
   ImVec2 textSize{ImGui::CalcTextSize(displayLabel.c_str())};
   ImVec2 textPos{(center.x * ovScale) - (textSize.x * 0.5f),
@@ -192,6 +191,63 @@ static void updateFontSize(const Layouts::Key &key, const KeyVisual &v) {
   style.FontSizeBase *= v.scale;
 }
 
+static void drawAnalogKey(ImDrawList *draw, const KeyVisual &v,
+                          const Config::Theme &theme, const ImVec2 &topLeft,
+                          const ImVec2 &bottomRight, float ovScale,
+                          float rounding) {
+  if (!theme.analog.enabled)
+    return;
+
+  const bool up{theme.analog.animType == Analog::AnimType::Up};
+
+  const float cutY{up ? v.analog.getCutY(bottomRight.y, topLeft.y)
+                      : v.analog.getCutY(topLeft.y, bottomRight.y)};
+
+  const ImVec2 clipMin{topLeft.x, up ? cutY : topLeft.y};
+  const ImVec2 clipMax{bottomRight.x, up ? bottomRight.y : cutY};
+
+  const ImU32 color{v.active ? Helper::ToImU32(theme.analog.pressedColor)
+                             : Helper::ToImU32(theme.analog.color)};
+
+  if (clipMax.y > clipMin.y) {
+    draw->PushClipRect(clipMin, clipMax, true);
+    draw->AddRectFilled(topLeft, bottomRight, color, rounding);
+    draw->PopClipRect();
+  }
+}
+
+// basically applying hall effect to the text using active and idletext
+static void drawAnalogText(ImDrawList *draw, const Layouts::Key &key,
+                           const Keyboard::State &kb, const KeyVisual &v,
+                           ImVec2 center, Config::Settings &config,
+                           const Mouse::State &mouse, const ImVec2 &topLeft,
+                           const ImVec2 &bottomRight) {
+  const auto &theme{config.theme};
+  const float &ovScale{config.overlay.scale};
+
+  const bool up{theme.analog.animType == Analog::AnimType::Up};
+
+  const float cutY{up ? v.analog.getCutY(topLeft.y, bottomRight.y)
+                      : v.analog.getCutY(bottomRight.y, topLeft.y)};
+  constexpr float big{100000.0f};
+
+  const ImVec2 coveredMin{-big, up ? cutY : -big};
+  const ImVec2 coveredMax{big, up ? big : cutY};
+
+  const ImVec2 freeMin{-big, up ? -big : cutY};
+  const ImVec2 freeMax{big, up ? cutY : big};
+
+  draw->PushClipRect(freeMin, freeMax, true);
+  drawText(draw, key, kb, v.scale, center, config, mouse,
+           Helper::fromConfigColor(theme.idleText));
+  draw->PopClipRect();
+
+  draw->PushClipRect(coveredMin, coveredMax, true);
+  drawText(draw, key, kb, v.scale, center, config, mouse,
+           Helper::fromConfigColor(theme.activeText));
+  draw->PopClipRect();
+}
+
 void renderKeyboard(AppState &app) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   const auto &layout{app.layout};
@@ -208,7 +264,7 @@ void renderKeyboard(AppState &app) {
     bool down{v.active};
 
     const float scale{v.scale};
-    std::pair<ImVec2, ImVec2> keyCenterHalfSize{
+    const std::pair<ImVec2, ImVec2> keyCenterHalfSize{
         getCenterAndHalfSize(key, scale, theme.animType)};
 
     const ImVec2 center{keyCenterHalfSize.first};
@@ -225,10 +281,9 @@ void renderKeyboard(AppState &app) {
     float rounding{theme.keyRounding * ovScale};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-    if (theme.analogAnimations) {
-      draw->AddRectFilled(v.analog.drawAnimation(key).first,
-                          v.analog.drawAnimation(key).second,
-                          Helper::ToImU32(theme.analogColor), rounding);
+
+    if (theme.analog.enabled) {
+      drawAnalogKey(draw, v, theme, topLeft, bottomRight, ovScale, rounding);
     }
 
     if (theme.keyOutline.enable) {
@@ -238,7 +293,14 @@ void renderKeyboard(AppState &app) {
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
     // updateFontSize(key, v);
-    drawText(draw, key, kb, v, center, app.config, app.mouse);
+    if (theme.analog.enabled && v.analog.value > 0.0f &&
+        theme.analog.enableHallText) {
+      drawAnalogText(draw, key, kb, v, center, app.config, app.mouse,
+                     bottomRight, topLeft);
+    } else {
+      drawText(draw, key, kb, v.scale, center, app.config, app.mouse,
+               v.colors.text);
+    }
   }
 }
 
@@ -357,25 +419,16 @@ bool updateScale(const Layouts::Layout &layout, Keyboard::State &kb,
 
 bool updateAnalogAnimations(const Layouts::Layout &layout, Keyboard::State &kb,
                             const Config::Theme &theme) {
-  if (!theme.analogAnimations) {
+  if (!theme.analog.enabled)
     return false;
-  }
 
-  // float rounding{theme.keyRounding * ovScale};
-  bool animationActive{false};
-
+  bool active{false};
   for (std::size_t i{0}; i < layout.keys.size(); ++i) {
     auto &v{kb.visuals[i]};
-    const auto &key{layout.keys[i]};
-    const float t{Analog::readKey(key.code)};
-
-    float target{v.analog.getTargets(key).first};
-    float drawY{v.analog.getTargets(key).second};
-
-    animationActive |= animate(drawY, target, t);
-    v.analog.drawY = drawY;
+    v.analog.value =
+        std::clamp(Analog::readKey(layout.keys[i].code), 0.0f, 1.0f);
+    active |= v.analog.value > 0.0f;
   }
-
-  return animationActive;
+  return active;
 }
 } // namespace Keyboard

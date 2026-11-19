@@ -16,7 +16,7 @@ This helps avoid wasted work on something that doesnt fit the project.
 
 You are free to use AI tools, but please be transparent about it:
 
-- **Disclose AI-generated code.** If AI wrote or significantly helped with your changes, say so in the PR or in commit description, and mention which model you used example: `Assisted-by: <model name>`
+- **Disclose AI-generated code.** If AI wrote or significantly helped with your changes, say so in the PR or in commit description, and mention which model you used, example: `Assisted-by: <model name>`
 - **You are responsible for your code.** Read, understand, and test everything before submitting. Code you cant explain wont be merged
 - **No AI-written communication** PR descriptions, issues, and comments must be written by you, in your own words. AI-generated text in them will be ignored or closed
 

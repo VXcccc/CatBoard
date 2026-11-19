@@ -153,6 +153,32 @@ void from_json(const json &j, AnimType &animType) {
   animType = static_cast<AnimType>(j.get<int>());
 }
 
+void to_json(json &j, const AnalogTheme &analogTheme) {
+  j = {
+      {"enabled", analogTheme.enabled},
+      {"color", analogTheme.color},
+      {"animType", analogTheme.animType},
+      {"pressedColor", analogTheme.pressedColor},
+      {"enableHallText", analogTheme.enableHallText},
+  };
+}
+void from_json(const json &j, AnalogTheme &analogTheme) {
+  if (j.contains("enabled"))
+    j.at("enabled").get_to(analogTheme.enabled);
+
+  if (j.contains("color"))
+    j.at("color").get_to(analogTheme.color);
+
+  if (j.contains("animType"))
+    j.at("animType").get_to(analogTheme.animType);
+
+  if (j.contains("pressedColor"))
+    j.at("pressedColor").get_to(analogTheme.pressedColor);
+
+  if (j.contains("enableHallText"))
+    j.at("enableHallText").get_to(analogTheme.enableHallText);
+}
+
 void to_json(json &j, const Theme &theme) {
   j = {
       {"idleFill", theme.idleFill},
@@ -170,8 +196,7 @@ void to_json(json &j, const Theme &theme) {
       {"animationSpeed", theme.animationSpeed},
       {"animateColors", theme.animateColors},
       {"animType", theme.animType},
-      {"analogAnimations", theme.analogAnimations},
-      {"analogColor", theme.analogColor},
+      {"analog", theme.analog},
   };
 }
 
@@ -221,11 +246,8 @@ void from_json(const json &j, Theme &theme) {
   if (j.contains("animType"))
     j.at("animType").get_to(theme.animType);
 
-  if (j.contains("analogAnimations"))
-    j.at("analogAnimations").get_to(theme.analogAnimations);
-
-  if (j.contains("analogColor"))
-    j.at("analogColor").get_to(theme.analogColor);
+  if (j.contains("analog"))
+    j.at("analog").get_to(theme.analog);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {

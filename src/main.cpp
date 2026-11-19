@@ -177,6 +177,8 @@ int main(int, char **) {
   // the state holding all active variables;
   AppState app;
 
+  Analog::init();
+
   Config::LoadActiveConfig(app.config);
   app.previousObsMode = app.config.misc.obsMode;
 
@@ -196,7 +198,6 @@ int main(int, char **) {
 
   Sound::refreshSounds();
 
-  Analog::init();
 
   if (!(Sound::initAudio())) {
     Helper::fatalError(L"Failed to init audio backends\nTry: vcpkg install "

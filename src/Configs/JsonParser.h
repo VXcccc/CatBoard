@@ -16,6 +16,9 @@ void from_json(const json &j, Trail &trail);
 void to_json(json &j, const MouseTheme &mouseTheme);
 void from_json(const json &j, MouseTheme &mouseTheme);
 
+void to_json(json &j, const AnalogTheme &analogTheme);
+void from_json(const json &j, AnalogTheme &analogTheme);
+
 void to_json(json &j, const AnimType &animType);
 void from_json(const json &j, AnimType &animType);
 

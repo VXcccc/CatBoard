@@ -1,5 +1,6 @@
 #pragma once
 
+#include "AnalogKeyboard.h"
 #include "Constants.h"
 #include "Fonts.h"
 #include "Helpers.h"
@@ -50,7 +51,7 @@ struct MouseTheme {
   ColorRGBA outer{255, 255, 255, 255};
   ColorRGBA inner{255, 255, 255, 255};
 
-  ColorRGBA fill{26, 26, 26, 200};
+  ColorRGBA fill{26, 26, 26, 0};
 
   bool lerpColor{false};
 
@@ -78,6 +79,15 @@ struct MouseTheme {
   ColorRGBA scrollCounter{0, 0, 0, 255};
 };
 
+struct AnalogTheme {
+  bool enabled{false};
+  ColorRGBA color{255, 255, 255, 255};
+  ColorRGBA pressedColor{255, 0, 0, 255};
+	bool enableHallText{false};
+  ColorRGBA textColor{255, 0, 0, 255};
+  Analog::AnimType animType{Analog::AnimType::Up};
+};
+
 enum class AnimType { Scale, Lift, MaxAnimTypes };
 
 struct Theme {
@@ -103,8 +113,7 @@ struct Theme {
   bool animateColors{false};
   AnimType animType{AnimType::Scale};
 
-  bool analogAnimations{false};
-  ColorRGBA analogColor{255, 255, 255, 255};
+	AnalogTheme analog{};
 };
 
 struct SoundPackSelection {

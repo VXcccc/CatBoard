@@ -874,14 +874,23 @@ void drawFontSection(SettingsEditState &state, AppState &app) {
 
 // Draw. functions
 void drawAnalogSection(SettingsEditState &state, AppState &app) {
-  auto &theme{state.theme};
+  auto &analog{state.theme.analog};
   ImGui::SeparatorText("Analog keyboard");
   if (!Analog::isInited()) {
     ImGui::TextUnformatted("Analog keyboard is not initialized");
+    analog.enabled = false;
   } else {
-    ImGui::Checkbox("Analog animation", &theme.analogAnimations);
-    if (theme.analogAnimations) {
-      Helper::ColorEdit("Color", theme.analogColor);
+    ImGui::Checkbox("Analog animation", &analog.enabled);
+    if (analog.enabled) {
+      Helper::RadioEnum("Up", &analog.animType, Analog::AnimType::Up);
+      ImGui::SameLine();
+      Helper::RadioEnum("Down", &analog.animType, Analog::AnimType::Down);
+
+      Helper::ColorEdit("Color", analog.color);
+      ImGui::SameLine();
+      Helper::ColorEdit("Pressed color", analog.pressedColor);
+
+      ImGui::Checkbox("Enable text hall effect", &analog.enableHallText);
     }
   }
 }

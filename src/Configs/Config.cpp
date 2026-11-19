@@ -1,4 +1,5 @@
 #include "Config.h"
+#include "AnalogKeyboard.h"
 #include "Helpers.h"
 #include "Hotkeys.h"
 #include "JsonParser.h"
@@ -22,7 +23,6 @@ void refreshConfigs() {
   Helper::refresh(configs, Paths::configDirectory(), ".json");
 }
 
-
 void LoadActiveConfig(Settings &outConfig) {
   const auto path{Paths::getActiveConfigPath()};
 
@@ -39,6 +39,9 @@ void LoadActiveConfig(Settings &outConfig) {
 
     // checking for all hotkeys defined to be loaded
     outConfig.binds = Binds::syncBindsOrder(outConfig.binds);
+    if (!Analog::isInited()) {
+      outConfig.theme.analog.enabled = false;
+    }
 
     // silently reseting config to defaults(except name)
   } catch (const std::exception &) {

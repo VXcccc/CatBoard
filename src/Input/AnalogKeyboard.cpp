@@ -38,7 +38,7 @@ bool init() {
   wooting_analog_set_keycode_mode(WootingAnalog_KeycodeType_VirtualKey);
 
   int result{wooting_analog_initialise()};
-  std::cout << result << '\n';
+  // std::cout << result << '\n';
   return result >= 0;
 }
 
@@ -48,8 +48,8 @@ float readKey(unsigned short vk) {
   wooting_analog_set_keycode_mode(WootingAnalog_KeycodeType_VirtualKey);
 
   float result{wooting_analog_read_analog(vk)};
-  if (result > 0)
-    std::cout << vk << ": " << result << '\n';
+  // if (result > 0)
+  //   std::cout << vk << ": " << result << '\n';
   return result;
 }
 
@@ -57,5 +57,4 @@ bool shutdown() {
   WootingAnalogResult res{wooting_analog_uninitialise()};
   return res == WootingAnalogResult_Ok;
 }
-
 } // namespace Analog
