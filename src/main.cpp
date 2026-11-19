@@ -21,6 +21,7 @@
 // #define DEBUG_CATBOARD
 #endif
 
+#include "AnalogKeyboard.h"
 #include "AppState.h"
 #include "Config.h"
 #include "Constants.h"
@@ -34,7 +35,6 @@
 #include "SettingsWindow.h"
 #include "Sound.h"
 #include "Tray.h"
-#include "AnalogKeyboard.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -423,7 +423,10 @@ int main(int, char **) {
     bool colorAnimating{Keyboard::updateKeyColors(app.layout, app.keyboard,
                                                   deltaTime, app.config.theme)};
 
-    bool animationActive{scaleAnimating || colorAnimating};
+    bool analogAnimating{Keyboard::updateAnalogAnimations(
+        app.layout, app.keyboard, app.config.theme)};
+
+    bool animationActive{scaleAnimating || colorAnimating || analogAnimating};
 
     Binds::handleBinds(s_hwnd, app);
 

@@ -1,4 +1,5 @@
 #pragma once
+#include "AnalogKeyboard.h"
 #include "Constants.h"
 #include "imgui.h"
 #include <bitset>
@@ -14,7 +15,7 @@ class State;
 namespace Config {
 struct Theme;
 struct Settings;
-}
+} // namespace Config
 namespace Sound {
 struct PackVK;
 }
@@ -32,7 +33,7 @@ struct KeyVisual {
   bool active{false};
   float scale{1.0f};
   KeyColors colors{};
-	float analogValue{0.0f};
+  Analog::State analog{};
 };
 
 struct State {
@@ -47,8 +48,7 @@ struct State {
   bool inRange(int vk) const { return vk > 0 && vk < Consts::VK_COUNT; }
 
   // visuals vector is synced with layout indicies
-  void resyncVisuals(const Layouts::Layout &layout,
-                     const Config::Theme &theme);
+  void resyncVisuals(const Layouts::Layout &layout, const Config::Theme &theme);
 };
 
 // bool detectAnyMouseKeyChanged(Keyboard::State &state);
@@ -63,8 +63,7 @@ void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
                      const Sound::PackVK &soundPack);
 
 void updateActive(const Layouts::Layout &layout, Keyboard::State &state,
-                  const Mouse::State &mouse,
-                  const Config::Settings &settings);
+                  const Mouse::State &mouse, const Config::Settings &settings);
 
 bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &state,
                      float deltaTime, const Config::Theme &theme);
@@ -72,5 +71,8 @@ bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &state,
 bool updateScale(const Layouts::Layout &layout, Keyboard::State &state,
                  float deltaTime, const Config::Theme &theme);
 
-void renderKeyboard( AppState &app);
+bool updateAnalogAnimations(const Layouts::Layout &layout,
+                            Keyboard::State &kb, const Config::Theme &theme);
+
+void renderKeyboard(AppState &app);
 } // namespace Keyboard

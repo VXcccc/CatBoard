@@ -69,9 +69,6 @@ void updateActive(const Layouts::Layout &layout, Keyboard::State &kb,
     kb.resyncVisuals(layout, settings.theme);
   for (std::size_t i = 0; i < layout.keys.size(); ++i) {
     kb.visuals[i].active = isActive(layout.keys[i], kb, mouse, settings);
-    if (Analog::isInited()) {
-      kb.visuals[i].analogValue = Analog::readKey(layout.keys[i].code);
-    }
   }
 }
 
@@ -195,30 +192,6 @@ static void updateFontSize(const Layouts::Key &key, const KeyVisual &v) {
   style.FontSizeBase *= v.scale;
 }
 
-static bool drawAnalogAnimation(ImDrawList *draw, const Layouts::Key &key,
-                                const Config::Theme &theme, float ovScale) {
-  if (!theme.analogAnimations) {
-    return false;
-  }
-
-  float rounding{theme.keyRounding * ovScale};
-  bool animationActive{false};
-
-  const float t{Analog::readKey(key.code)};
-  float target{key.y};
-
-  float drawY{key.y + key.h};
-  animationActive |= animate(drawY, target, t);
-
-  ImVec2 topLeft(key.x, drawY);
-  ImVec2 bottomRight(key.x + key.w, key.y + key.h);
-
-  draw->AddRectFilled(topLeft, bottomRight, Helper::ToImU32(theme.analogColor),
-                      rounding);
-
-  return animationActive;
-}
-
 void renderKeyboard(AppState &app) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
   const auto &layout{app.layout};
@@ -252,7 +225,11 @@ void renderKeyboard(AppState &app) {
     float rounding{theme.keyRounding * ovScale};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
-    drawAnalogAnimation(draw, key, theme, ovScale);
+    if (theme.analogAnimations) {
+      draw->AddRectFilled(v.analog.drawAnimation(key).first,
+                          v.analog.drawAnimation(key).second,
+                          Helper::ToImU32(theme.analogColor), rounding);
+    }
 
     if (theme.keyOutline.enable) {
       ImU32 outlineColor{
@@ -375,6 +352,30 @@ bool updateScale(const Layouts::Layout &layout, Keyboard::State &kb,
     float targetScale{(down) ? theme.pressScale : 1.0f};
     animationActive |= animate(v.scale, targetScale, t);
   }
+  return animationActive;
+}
+
+bool updateAnalogAnimations(const Layouts::Layout &layout, Keyboard::State &kb,
+                            const Config::Theme &theme) {
+  if (!theme.analogAnimations) {
+    return false;
+  }
+
+  // float rounding{theme.keyRounding * ovScale};
+  bool animationActive{false};
+
+  for (std::size_t i{0}; i < layout.keys.size(); ++i) {
+    auto &v{kb.visuals[i]};
+    const auto &key{layout.keys[i]};
+    const float t{Analog::readKey(key.code)};
+
+    float target{v.analog.getTargets(key).first};
+    float drawY{v.analog.getTargets(key).second};
+
+    animationActive |= animate(drawY, target, t);
+    v.analog.drawY = drawY;
+  }
+
   return animationActive;
 }
 } // namespace Keyboard
