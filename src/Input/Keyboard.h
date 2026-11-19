@@ -32,6 +32,7 @@ struct KeyVisual {
   bool active{false};
   float scale{1.0f};
   KeyColors colors{};
+	float analogValue{0.0f};
 };
 
 struct State {

@@ -1,4 +1,5 @@
 #include "SettingsWindow.h"
+#include "AnalogKeyboard.h"
 #include "AppState.h"
 #include "Config.h"
 #include "Constants.h"
@@ -872,6 +873,18 @@ void drawFontSection(SettingsEditState &state, AppState &app) {
 }
 
 // Draw. functions
+void drawAnalogSection(SettingsEditState &state, AppState &app) {
+  auto &theme{state.theme};
+  ImGui::SeparatorText("Analog keyboard");
+  if (!Analog::isInited()) {
+    ImGui::TextUnformatted("Analog keyboard is not initialized");
+  } else {
+    ImGui::Checkbox("Analog animation", &theme.analogAnimations);
+    if (theme.analogAnimations) {
+      Helper::ColorEdit("Color", theme.analogColor);
+    }
+  }
+}
 
 void drawVisualsTab(SettingsEditState &state, AppState &app) {
   drawKeyboardSection(state);
@@ -880,6 +893,7 @@ void drawVisualsTab(SettingsEditState &state, AppState &app) {
   drawImageSection(state, app);
 
   drawFontSection(state, app);
+  drawAnalogSection(state, app);
 }
 
 void drawLayoutsTab(SettingsEditState &state,

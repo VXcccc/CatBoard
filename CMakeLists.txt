@@ -25,6 +25,7 @@ add_executable(${PROJECT_NAME} WIN32
 				src/Input/Hotkeys.cpp
 				src/Input/Mouse.cpp
 				src/Input/Keyboard.cpp
+				src/Input/AnalogKeyboard.cpp
 
 				src/Media/Sound.cpp
 				src/Media/Fonts.cpp
@@ -79,11 +80,20 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 				${MINIAUDIO_VORBIS_DIR}
 )
 
+set(WOOTING_DIR  ${CMAKE_SOURCE_DIR}/ThirdParty/wooting-sdk)
 
+
+add_library(WootingAnalog SHARED IMPORTED)
+set_target_properties(WootingAnalog PROPERTIES
+				IMPORTED_LOCATION "${WOOTING_DIR}/debug/wooting_analog_sdk_dist.dll"
+				IMPORTED_IMPLIB   "${WOOTING_DIR}/debug/wooting_analog_sdk_dist.dll"
+				INTERFACE_INCLUDE_DIRECTORIES "${WOOTING_DIR}/includes"
+)
 target_link_libraries(${PROJECT_NAME} PRIVATE
 				d3d11 dxgi d3dcompiler dwmapi dcomp
 				Vorbis::vorbisfile
 				winmm
+				WootingAnalog
 )
 
 set(ASSETS_DEST Assets)

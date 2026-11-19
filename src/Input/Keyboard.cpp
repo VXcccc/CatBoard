@@ -1,4 +1,5 @@
 #include "Keyboard.h"
+#include "AnalogKeyboard.h"
 #include "AppState.h"
 #include "Config.h"
 #include "Fonts.h"
@@ -14,6 +15,8 @@
 #include <windows.h>
 
 namespace Keyboard {
+// forward declaration
+static bool animate(float &cur, float target, float t);
 
 void Keyboard::State::pollFullKeyboard() {
   prevDown = down;
@@ -43,6 +46,7 @@ bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
       return GetAsyncKeyState(VK_CAPITAL) & 1;
 
     // other keys
+
     return kb.down[key.code];
   case Layouts::KeyType::Wheel:
     return (kb.down[VK_MBUTTON] || m.isScrollDownActive() ||
@@ -63,8 +67,12 @@ void updateActive(const Layouts::Layout &layout, Keyboard::State &kb,
                   const Mouse::State &mouse, const Config::Settings &settings) {
   if (kb.visuals.size() != layout.keys.size())
     kb.resyncVisuals(layout, settings.theme);
-  for (std::size_t i = 0; i < layout.keys.size(); ++i)
+  for (std::size_t i = 0; i < layout.keys.size(); ++i) {
     kb.visuals[i].active = isActive(layout.keys[i], kb, mouse, settings);
+    if (Analog::isInited()) {
+      kb.visuals[i].analogValue = Analog::readKey(layout.keys[i].code);
+    }
+  }
 }
 
 static std::pair<ImVec2, ImVec2>
@@ -141,8 +149,9 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
 
   const bool applyScaleToFont{v.scale > 0.01f && theme.animation &&
                               theme.animType == Config::AnimType::Scale};
-  const float fontSizePx{applyScaleToFont ? imStyle.FontSizeBase * v.scale * ovScale
-                                          : imStyle.FontSizeBase * ovScale};
+  const float fontSizePx{applyScaleToFont
+                             ? settings.font.sizePixels * v.scale * ovScale
+                             : settings.font.sizePixels * ovScale};
   ImGui::PushFont(Fonts::overlayFont, fontSizePx);
 
   using ScrollDir = Mouse::State::ScrollDir;
@@ -170,8 +179,8 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
       // printf("%s iconSize: x: %.2f, y: %.2f ", curIcon.c_str(), textSize.x,
       //        iconSize.y);
       // printf("textPos: x: %.2f, y: %.2f\n", textPos.x, textPos.y);
-      const ImVec2 iconPos{(curDir == ScrollDir::Up ? (textPos.x + textSize.x) 
-                                                    : (textPos.x - iconSize.x) ),
+      const ImVec2 iconPos{(curDir == ScrollDir::Up ? (textPos.x + textSize.x)
+                                                    : (textPos.x - iconSize.x)),
                            ((center.y * ovScale) - (iconSize.y * 0.5f))};
 
       draw->AddText(iconPos, textColor, curIcon.c_str());
@@ -184,6 +193,30 @@ static void updateFontSize(const Layouts::Key &key, const KeyVisual &v) {
   auto style{ImGui::GetStyle()};
   style.FontScaleMain = v.scale;
   style.FontSizeBase *= v.scale;
+}
+
+static bool drawAnalogAnimation(ImDrawList *draw, const Layouts::Key &key,
+                                const Config::Theme &theme, float ovScale) {
+  if (!theme.analogAnimations) {
+    return false;
+  }
+
+  float rounding{theme.keyRounding * ovScale};
+  bool animationActive{false};
+
+  const float t{Analog::readKey(key.code)};
+  float target{key.y};
+
+  float drawY{key.y + key.h};
+  animationActive |= animate(drawY, target, t);
+
+  ImVec2 topLeft(key.x, drawY);
+  ImVec2 bottomRight(key.x + key.w, key.y + key.h);
+
+  draw->AddRectFilled(topLeft, bottomRight, Helper::ToImU32(theme.analogColor),
+                      rounding);
+
+  return animationActive;
 }
 
 void renderKeyboard(AppState &app) {
@@ -216,9 +249,10 @@ void renderKeyboard(AppState &app) {
 
     ImU32 fill{Helper::ToImU32(Helper::toConfigColor(v.colors.fill))};
 
-    float rounding{theme.keyRounding};
+    float rounding{theme.keyRounding * ovScale};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
+    drawAnalogAnimation(draw, key, theme, ovScale);
 
     if (theme.keyOutline.enable) {
       ImU32 outlineColor{

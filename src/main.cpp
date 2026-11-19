@@ -34,6 +34,7 @@
 #include "SettingsWindow.h"
 #include "Sound.h"
 #include "Tray.h"
+#include "AnalogKeyboard.h"
 #include "imgui.h"
 #include "imgui_impl_dx11.h"
 #include "imgui_impl_win32.h"
@@ -171,7 +172,7 @@ int main(int, char **) {
     Helper::fatalError(L"Program already running");
 
   // debug
-  // initDebugConsole();
+  initDebugConsole();
 
   // the state holding all active variables;
   AppState app;
@@ -194,6 +195,8 @@ int main(int, char **) {
   }
 
   Sound::refreshSounds();
+
+  Analog::init();
 
   if (!(Sound::initAudio())) {
     Helper::fatalError(L"Failed to init audio backends\nTry: vcpkg install "
@@ -232,8 +235,10 @@ int main(int, char **) {
                     nullptr};
   ::RegisterClassExW(&wc);
 
-  int windowWidth{(int)(app.layout.windowWidth * g_main_scale)};
-  int windowHeight{(int)(app.layout.windowHeight * g_main_scale)};
+  int windowWidth{(int)((app.layout.windowWidth * g_main_scale) *
+                        app.config.overlay.scale)};
+  int windowHeight{(int)((app.layout.windowHeight * g_main_scale) *
+                         app.config.overlay.scale)};
 
   POINT pos = getOverlayPosition(windowWidth, windowHeight, app.config);
 
@@ -369,6 +374,10 @@ int main(int, char **) {
     }
     g_SwapChainOccluded = false;
 
+    float deltaTime{getDeltaTime(freq, lastDeltaTime)};
+
+    bool overlayPropertiesChanged{MainWindow::overlayChanged(prevOverlay, app)};
+
     // Handle window resize (we don't resize directly in the WM_SIZE handler)
     if (g_ResizeWidth != 0 && g_ResizeHeight != 0) {
       CleanupRenderTarget();
@@ -377,10 +386,6 @@ int main(int, char **) {
       g_ResizeWidth = g_ResizeHeight = 0;
       CreateRenderTarget();
     }
-
-    float deltaTime{getDeltaTime(freq, lastDeltaTime)};
-
-    bool overlayPropertiesChanged{MainWindow::overlayChanged(prevOverlay, app)};
 
     app.keyboard.pollFullKeyboard();
 
@@ -391,6 +396,11 @@ int main(int, char **) {
 
     const auto &ovScale{app.config.overlay.scale};
 
+    if (app.config.theme.mouse.highlightM1)
+      app.mouse.setM1Highlighted(app.keyboard.down[VK_LBUTTON]);
+    else
+      app.mouse.setM1Highlighted(false);
+
     if (Mouse::isTypeCircle(curType)) {
       app.mouse.updateMouseState(deltaTime, app.layout.mouse.radius,
                                  app.config.theme.mouse, ovScale);
@@ -399,11 +409,6 @@ int main(int, char **) {
                                  (app.layout.mouse.height / 2),
                                  app.config.theme.mouse, ovScale);
     }
-
-    if (app.config.theme.mouse.highlightM1)
-      app.mouse.setM1Highlighted(app.keyboard.down[VK_LBUTTON]);
-    else
-      app.mouse.setM1Highlighted(false);
 
     app.mouse.updateScroll(deltaTime);
     app.mouse.updateTrail(deltaTime, app.config.theme.mouse, ovScale);
@@ -510,6 +515,7 @@ int main(int, char **) {
   ImGui_ImplWin32_Shutdown();
   SettingsWindow::Shutdown();
   Sound::ShutdownAudio();
+  Analog::shutdown();
   ImGui::DestroyContext();
 
   CleanupDeviceD3D();

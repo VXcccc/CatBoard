@@ -170,6 +170,8 @@ void to_json(json &j, const Theme &theme) {
       {"animationSpeed", theme.animationSpeed},
       {"animateColors", theme.animateColors},
       {"animType", theme.animType},
+      {"analogAnimations", theme.analogAnimations},
+      {"analogColor", theme.analogColor},
   };
 }
 
@@ -218,6 +220,12 @@ void from_json(const json &j, Theme &theme) {
 
   if (j.contains("animType"))
     j.at("animType").get_to(theme.animType);
+
+  if (j.contains("analogAnimations"))
+    j.at("analogAnimations").get_to(theme.analogAnimations);
+
+  if (j.contains("analogColor"))
+    j.at("analogColor").get_to(theme.analogColor);
 }
 
 void to_json(json &j, const SoundPackSelection &soundPack) {

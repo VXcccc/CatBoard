@@ -48,7 +48,6 @@ std::vector<std::string> packs{};
 // static
 static std::unordered_map<std::string, Texture> g_textureCache;
 
-
 bool operator==(const MouseButton &mb1, const MouseButton &mb2) {
   return (mb1.x == mb2.x && mb1.y == mb2.y && mb1.w == mb2.w &&
           mb1.h == mb2.h && mb1.buttonIdle == mb2.buttonIdle &&
@@ -197,7 +196,8 @@ const Image *findImageForKey(int vkCode, const Pack &pack) {
 
 void drawSizeOfImages(const Pack &pack, const Layouts::Layout &layout) {
   ImGui::PushStyleColor(ImGuiCol_Header, ImVec4(0.0f, 0.0f, 0.0f, 0.00f));
-  ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImVec4(0.0f, 0.0f, 0.0f, 0.00f));
+  ImGui::PushStyleColor(ImGuiCol_HeaderHovered,
+                        ImVec4(0.0f, 0.0f, 0.0f, 0.00f));
   ImGui::PushStyleColor(ImGuiCol_HeaderActive, ImVec4(0.0f, 0.0f, 0.0f, 0.00f));
   const bool open{ImGui::CollapsingHeader("Images Size")};
   ImGui::PopStyleColor();
@@ -260,8 +260,11 @@ void drawKeyboardImages(ImDrawList *draw, const AppState &app) {
 void handleScroll(ImDrawList *draw, const MouseButton &scroll,
                   const ImVec2 &partCenter, bool up,
                   const ::Mouse::State &mouseState,
-                  const Config::MouseTheme &mouseTheme) {
-  ImGui::PushFont(Fonts::overlayFont);
+                  const Config::Settings &config) {
+  const auto &mouseTheme{config.theme.mouse};
+  ImGui::PushFont(Fonts::overlayFont,
+                  config.font.sizePixels * config.overlay.scale);
+
   int counter{up ? mouseState.getScrollUpTimes()
                  : mouseState.getScrollDownTimes()};
   if (counter > 0) {
@@ -304,9 +307,9 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
                  ImVec2(0, 0), ImVec2(1, 1),
                  IM_COL32(255, 255, 255, app.config.theme.mouse.imageOpacity));
   if (part == pack.mouse.scrollUp) {
-    handleScroll(draw, part, partCenter, true, app.mouse, mouse);
+    handleScroll(draw, part, partCenter, true, app.mouse, app.config);
   } else if (part == pack.mouse.scrollDown) {
-    handleScroll(draw, part, partCenter, false, app.mouse, mouse);
+    handleScroll(draw, part, partCenter, false, app.mouse, app.config);
   }
 }
 

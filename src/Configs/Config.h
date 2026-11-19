@@ -102,6 +102,9 @@ struct Theme {
   int animationSpeed{100};
   bool animateColors{false};
   AnimType animType{AnimType::Scale};
+
+  bool analogAnimations{false};
+  ColorRGBA analogColor{255, 255, 255, 255};
 };
 
 struct SoundPackSelection {
