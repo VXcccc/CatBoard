@@ -478,6 +478,7 @@ int main(int, char **) {
     }
 
     // debug
+		ImGui::ShowMetricsWindow();
 #ifdef DEBUG_CATBOARD
     // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
     //             1000.0f / io.Framerate, io.Framerate);

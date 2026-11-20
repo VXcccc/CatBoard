@@ -22,6 +22,8 @@ namespace Fonts {
 std::vector<std::string> fonts{};
 std::unordered_map<std::string, std::filesystem::path> fontFiles{};
 
+
+ImFont *settingsFont{nullptr};
 ImFont *overlayFont{nullptr};
 ImFont *iconFont{nullptr};
 const std::string defaultFontName{"courbd"};

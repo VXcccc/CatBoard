@@ -35,7 +35,6 @@
 #include <vector>
 #include <winuser.h>
 
-static ImFont *s_settingsFont{};
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
@@ -195,10 +194,9 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
 
   ImGuiIO &io = ImGui::GetIO();
 
-  constexpr float settingsFontSizePixels{18.0f};
-  s_settingsFont = io.Fonts->AddFontFromMemoryTTF(
-      _jetBrainsMonoBold, _jetBrainsMonoBoldSize, settingsFontSizePixels);
-  io.FontDefault = s_settingsFont;
+	Fonts::settingsFont = io.Fonts->AddFontFromMemoryTTF(
+      _jetBrainsMonoBold, _jetBrainsMonoBoldSize, Fonts::settingsFontSizePixels);
+  io.FontDefault = Fonts::settingsFont;
 
   io.IniFilename = nullptr; // .ini for settings
   Themes::LoadUiSettings(app.uiTheme);
@@ -1235,7 +1233,7 @@ void RenderFrame(AppState &app) {
   ImGui_ImplWin32_NewFrame();
   ImGui::NewFrame();
 
-  ImGui::PushFont(s_settingsFont);
+  ImGui::PushFont(Fonts::settingsFont);
 
   // maybe destroy the win titlebar and use imgui but idk rn
   ImGui::SetNextWindowPos(ImVec2(0, 0));

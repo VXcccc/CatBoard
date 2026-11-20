@@ -16,7 +16,8 @@ struct AppState;
 namespace Layouts {
 
 enum class KeyProp { X, Y, W, H, gapX, gapY, MaxProps };
-inline const std::array<std::string, static_cast<std::size_t>(KeyProp::MaxProps)>
+inline const std::array<std::string,
+                        static_cast<std::size_t>(KeyProp::MaxProps)>
     KeyPropName{"X", "Y", "W", "H", "gapX", "gapY"};
 static_assert(KeyPropName.size() == static_cast<std::size_t>(KeyProp::MaxProps),
               "Key prop array is out of sync with enum");
@@ -70,34 +71,20 @@ struct Layout {
 };
 
 struct LayoutEditState {
+  // Editor layhout
   Layout layout{230, 230};
-  bool recordingKeyCode{false};
-  std::string layoutNameInput;
+
+  // Buffers
+  std::vector<Key> copyBuffer{};
+
+  ImGuiSelectionBasicStorage selection;
 
   std::vector<Layouts::Layout> undoLayouts{};
   std::vector<ImGuiSelectionBasicStorage> undoSelections{};
   std::vector<Layouts::Layout> redoLayouts{};
   std::vector<ImGuiSelectionBasicStorage> redoSelections{};
 
-  bool mouseCenterSelected{false};
-  std::string layoutNameError{};
-
-  float gap{1.0f};
-  float step{1.0f};
-  float defaultKeyWidth{40.0f};
-  float defaultKeyHeight{40.0f};
-
-  bool focusLabelInput{false};
-
-  ImGuiSelectionBasicStorage selection;
-  bool applyGapWithMultiResize{true};
-  bool showAdvancedLabelButtons{false};
-
-  bool gridEnabled{true};
-  bool snapToGrid{true};
-  float gridSize{1.0f};
-  float zoom{1.0f};
-
+  // Editor states
   ImVec2 ViewOffset{0.0f, 0.0f};
   void resetViewOffset() { ViewOffset = {0.0f, 0.0f}; }
 
@@ -106,6 +93,32 @@ struct LayoutEditState {
 
   ImVec2 moveRaw{};
   ImVec2 moveAnchor{};
+
+  bool mouseCenterSelected{false};
+
+  bool recordingKeyCode{false};
+  bool focusLabelInput{false};
+
+  std::string layoutNameInput;
+  std::string layoutNameError{};
+
+  bool keysDragged{false};
+
+  // User settings
+  bool applyGapWithMultiResize{true};
+  bool showAdvancedLabelButtons{false};
+  bool recordAfterAdding{true};
+  bool focusLabelAfterRecord{false};
+
+  bool gridEnabled{true};
+  bool snapToGrid{true};
+  float gridSize{1.0f};
+  float zoom{1.0f};
+
+  float gap{1.0f};
+  float step{1.0f};
+  float defaultKeyWidth{40.0f};
+  float defaultKeyHeight{40.0f};
 };
 
 extern std::vector<std::string> layouts;

@@ -220,6 +220,25 @@ void redo(LayoutEditState &state) {
   state.mouseCenterSelected = false;
 }
 
+static void copySelected(LayoutEditState &state) {
+  state.copyBuffer.clear();
+
+  void *it = nullptr;
+  ImGuiID id;
+  while (state.selection.GetNextSelectedItem(&it, &id)) {
+    if (id < state.layout.keys.size())
+      state.copyBuffer.push_back(state.layout.keys[id]);
+  }
+}
+
+static void pasteBuffer(LayoutEditState &state) {
+  state.selection.Clear();
+  for (const auto &key : state.copyBuffer) {
+    state.layout.keys.push_back(key);
+    state.selection.SetItemSelected(state.layout.keys.size() - 1, true);
+  }
+}
+
 // debug
 static void printKeysMatrix(std::vector<Key *> &vec, std::string_view str) {
   std::cout << str;
@@ -579,7 +598,7 @@ void recordKeyCode(LayoutEditState &state, Key &key) {
         break;
       }
     }
-    if (!state.recordingKeyCode)
+    if (!state.recordingKeyCode && state.focusLabelAfterRecord)
       state.focusLabelInput = true;
   }
 }
@@ -615,7 +634,7 @@ void addKey(LayoutEditState &state, KeyType type = KeyType::Keyboard) {
   state.mouseCenterSelected = false;
 
   // insta record after adding key
-  if (type == KeyType::Keyboard)
+  if (type == KeyType::Keyboard && state.recordAfterAdding)
     state.recordingKeyCode = true;
 }
 
@@ -750,6 +769,16 @@ void handleEditorShortcuts(LayoutEditState &state) {
 
   if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_Z)) {
     undo(state);
+    return;
+  }
+
+  if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_C)) {
+    copySelected(state);
+    return;
+  }
+
+  if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_V)) {
+    pasteBuffer(state);
     return;
   }
 
@@ -1054,7 +1083,7 @@ static void drawLayoutEditorCanvas(LayoutEditState &state,
 
   // static Fonts::Font lastAppliedFont{};
   // Fonts::updateFont(lastAppliedFont, Fonts::editorFont);
-  ImGui::PushFont(Fonts::overlayFont);
+  ImGui::PushFont(Fonts::settingsFont, Fonts::settingsFontSizePixels * zoom);
 
   const ImVec2 cursor{ImGui::GetCursorScreenPos()};
   const ImVec2 origin{cursor.x + state.ViewOffset.x * state.zoom,
@@ -1135,6 +1164,8 @@ static void drawLayoutEditorCanvas(LayoutEditState &state,
   ImGuiMultiSelectIO *msIo{ImGui::BeginMultiSelect(
       msFlags, state.selection.Size, (int)state.layout.keys.size())};
   state.selection.ApplyRequests(msIo);
+  if (ImGui::IsMouseClicked(ImGuiMouseButton_Left))
+    state.keysDragged = false;
 
   for (int i{0}; i < static_cast<int>(state.layout.keys.size()); ++i) {
     Key &key{state.layout.keys[i]};
@@ -1162,6 +1193,8 @@ static void drawLayoutEditorCanvas(LayoutEditState &state,
 
     if (ImGui::IsItemActive() &&
         ImGui::IsMouseDragging(ImGuiMouseButton_Left)) {
+      state.keysDragged = true;
+
       const ImVec2 mouseDelta{ImGui::GetIO().MouseDelta.x / zoom,
                               ImGui::GetIO().MouseDelta.y / zoom};
       const ImVec2 delta{computeDragDelta(state, mouseDelta)};
@@ -1190,7 +1223,11 @@ static void drawLayoutEditorCanvas(LayoutEditState &state,
   }
 
   msIo = ImGui::EndMultiSelect();
-  state.selection.ApplyRequests(msIo);
+
+  const bool releasedAfterDrag{state.keysDragged &&
+                               ImGui::IsMouseReleased(ImGuiMouseButton_Left)};
+  if (!releasedAfterDrag)
+    state.selection.ApplyRequests(msIo);
 
   // const ::Mouse::Type
   if (state.selection.Size == 1 && !state.mouseCenterSelected) {
@@ -1493,6 +1530,9 @@ static void drawKeysGeneralOptions(LayoutEditState &state) {
   ImGui::Checkbox("Show advanced label buttons",
                   &state.showAdvancedLabelButtons);
 
+  ImGui::Checkbox("Record after adding key", &state.recordAfterAdding);
+  ImGui::Checkbox("Focus label after recording", &state.focusLabelAfterRecord);
+
   ImGui::Checkbox("Enable grid", &state.gridEnabled);
 
   if (state.gridEnabled) {
@@ -1534,7 +1574,6 @@ void drawLayoutEditorTab(LayoutEditState &state, AppState &app) {
   drawLayoutEditorOptions(state, app);
 
   ImGui::SeparatorText("");
-
   ImGui::BeginChild("canvas", ImGui::GetContentRegionAvail(), false,
                     ImGuiWindowFlags_HorizontalScrollbar);
   drawLayoutEditorCanvas(state, app);

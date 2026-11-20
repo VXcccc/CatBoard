@@ -26,6 +26,9 @@ extern const float defaultPixelsSize;
 extern ImFont *overlayFont;
 extern ImFont *iconFont;
 
+extern ImFont *settingsFont;
+constexpr float settingsFontSizePixels{18.0f};
+
 extern std::vector<std::string> fonts;
 extern std::unordered_map<std::string, std::filesystem::path> fontFiles;
 
