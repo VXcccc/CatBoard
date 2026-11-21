@@ -360,10 +360,13 @@ void Mouse::State::updateCatmullTrail(float deltaTime,
   m_trailMinWidth = mouse.trail.minWidth * ovScale;
   m_trailMaxWidth = mouse.trail.maxWidth * ovScale;
 
-  if (m_deltaX == 0 && m_deltaY == 0)
-    return;
-
   const ImVec2 current{trailPos()};
+  if (m_trail.empty()) {
+    if (m_offsetX == 0.0f && m_offsetY == 0.0f)
+      return;
+  } else if (distance(m_trail.back().pos, current) < 0.01f) {
+    return;
+  }
 
   if (m_justWrapped && !m_trail.empty())
     appendWrapSegment(current);
@@ -381,9 +384,14 @@ void Mouse::State::updateCircleTrail(float deltaTime,
   m_trailMinWidth = mouse.trail.minWidth * ovScale;
   m_trailMaxWidth = mouse.trail.maxWidth * ovScale;
 
-  if (m_deltaX != 0 || m_deltaY != 0)
+  const ImVec2 current{trailPos()};
+  const bool moved{m_trail.empty()
+                       ? (m_offsetX != 0.0f || m_offsetY != 0.0f)
+                       : distance(m_trail.back().pos, current) >= 0.01f};
+
+  if (moved)
     m_trail.emplace_back(
-        TrailPoint{trailPos(), 0.0f, 0.0f, false, m_m1Highlighted});
+        TrailPoint{current, 0.0f, 0.0f, false, m_m1Highlighted});
 }
 
 void Mouse::State::registerScroll(int wheelDelta) {
@@ -434,7 +442,7 @@ float getFade(const Mouse::State &mouseState) {
 
 ImU32 applyFade(const ImVec4 &initColor, const float fade) {
   ImVec4 res{initColor};
-  res.w = fade;
+  res.w *= fade;
 
   return Helper::ToImU32(res);
 }
@@ -540,29 +548,26 @@ static void renderCircleTrail(const ImVec2 &center,
                               const TrailClip *clip = nullptr) {
   ImDrawList *draw = ImGui::GetBackgroundDrawList();
   const auto &trail{mouse.trail};
-
   const auto &trailPts{mouseState.getTrailPoints()};
 
-  if (trailPts.empty())
+  if (trailPts.empty() || trail.duration <= 0.0f)
     return;
 
   float fade{getFade(mouseState)};
   if (fade <= 0.0f)
     return;
 
-  const ImU32 normalColor{applyFade(mouseState.getTrailCol(), fade)};
-  const ImU32 hlColor{applyFade(mouseState.getHighlightCol(), fade)};
+  const ImVec4 normalColor{mouseState.getTrailCol()};
+  const ImVec4 hlColor{mouseState.getHighlightCol()};
 
   for (const auto &pt : trailPts) {
     if (!isVisible(clip, pt.pos))
       continue;
 
-    float t = std::clamp(1.0f - (pt.age / trail.duration), 0.0f, 1.0f);
-    float alpha = fade * t;
+    float t{std::clamp(1.0f - (pt.age / trail.duration), 0.0f, 1.0f)};
 
-    const ImU32 baseColor{pt.highlighted ? hlColor : normalColor};
-    ImU32 color =
-        (baseColor & 0x00FFFFFF) | (static_cast<ImU32>(alpha * 255) << 24);
+    ImVec4 color{pt.highlighted ? hlColor : normalColor};
+    color.w *= fade * t;
 
     float radius{std::lerp(mouseState.getTrailMinWidth(),
                            mouseState.getTrailMaxWidth(), t)};
@@ -570,7 +575,7 @@ static void renderCircleTrail(const ImVec2 &center,
       radius *= mouse.higlightScale;
 
     ImVec2 circlePos{(center.x + pt.pos.x), (center.y + pt.pos.y)};
-    draw->AddCircleFilled(circlePos, radius, color);
+    draw->AddCircleFilled(circlePos, radius, Helper::ToImU32(color));
   }
 }
 

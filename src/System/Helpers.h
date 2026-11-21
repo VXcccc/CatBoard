@@ -70,6 +70,7 @@ std::string getFileCreateError(Helper::FileCreateResult result);
 bool isWindowsThemeLight();
 void applyDarkMode(HWND hwnd);
 
+
 // deprecated
 // bool installDefault(const std::filesystem::path &source,
 //                     const std::filesystem::path &destination);

@@ -79,4 +79,6 @@ bool updateAnalogAnimations(const Layouts::Layout &layout, Keyboard::State &kb,
                             const Config::Theme &theme, float ovScale);
 
 void renderKeyboard(AppState &app);
+
+bool isKeyDown(int vk);
 } // namespace Keyboard

@@ -578,28 +578,48 @@ static float snapValue(float v, float gridSize) {
   return (std::round(v / gridSize) * gridSize);
 }
 
-void recordKeyCode(LayoutEditState &state, Key &key) {
-  if (!state.recordingKeyCode)
+static bool isKeyDown(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
+
+void recordKeyCode(LayoutEditState &state, Key &key,
+                   const Keyboard::State &kb) {
+  static Keyboard::KeyBitSet wasDown{};
+  static bool snapshotTaken{false};
+
+  if (!state.recordingKeyCode) {
+    snapshotTaken = false;
     return;
+  }
+
+  if (!snapshotTaken) {
+    wasDown = kb.down;
+    snapshotTaken = true;
+  }
 
   if (state.recordingKeyCode) {
     for (int vk{1}; vk < 256; ++vk) {
       if (vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU) {
         continue;
       }
-      if (GetAsyncKeyState(vk) & 0x8000) {
+      const bool down{kb.down[vk]};
+      if (wasDown[vk]) {
+        if (!down) {
+          wasDown[vk] = false;
+        }
+        continue;
+      }
+
+      if (down) {
         saveUndoClearRedo(state);
         key.code = vk;
-        // if (key.label.empty()) {
-        //   key.label = Helper::VkToName(vk);
-        // }
         state.recordingKeyCode = false;
+        snapshotTaken = false;
+
+        if (state.focusLabelAfterRecord)
+          state.focusLabelInput = true;
 
         break;
       }
     }
-    if (!state.recordingKeyCode && state.focusLabelAfterRecord)
-      state.focusLabelInput = true;
   }
 }
 
@@ -758,6 +778,12 @@ void handleEditorShortcuts(LayoutEditState &state) {
       {ImGuiKey_LeftArrow, {-stepSize, 0.0f}},
       {ImGuiKey_RightArrow, {stepSize, 0.0f}},
   }};
+
+  if (state.selection.Size == 1 && !state.recordingKeyCode &&
+      ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_R)) {
+    state.recordingKeyCode = true;
+    return;
+  }
 
   if (ImGui::GetIO().WantTextInput)
     return;
@@ -1329,6 +1355,7 @@ void drawLayoutEditorProperties(LayoutEditState &state, const AppState &app) {
 
   if (state.selection.Size == 1) {
     if (state.focusLabelInput) {
+      ImGui::SetWindowFocus("Properties##overlay");
       ImGui::SetKeyboardFocusHere();
       state.focusLabelInput = false;
     }
@@ -1361,7 +1388,7 @@ void drawLayoutEditorProperties(LayoutEditState &state, const AppState &app) {
                                   ->name.c_str());
     }
 
-    recordKeyCode(state, key);
+    recordKeyCode(state, key, app.keyboard);
 
   } else if (state.selection.Size > 1) {
     ImGui::Text("%d keys selected", state.selection.Size);

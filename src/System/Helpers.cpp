@@ -20,6 +20,7 @@
 
 namespace Helper {
 
+
 [[noreturn]] void fatalError(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Fatal Error", MB_OK | MB_ICONERROR);
   std::exit(EXIT_FAILURE);

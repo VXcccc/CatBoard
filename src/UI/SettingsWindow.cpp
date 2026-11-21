@@ -745,19 +745,23 @@ void drawMouseSection(SettingsEditState &state) {
       Helper::SliderFloat("Decay rate", state.theme.mouse.decayRate, 0.0f,
                           100.0f, "%.2f");
 
-    Helper::SliderFloat("Fade time", state.theme.mouse.fadeTime, 0.0f, 3.0f);
-
-    if (rectType)
+    if (rectType) {
+      Helper::SliderFloat("Fade time", state.theme.mouse.fadeTime, 0.0f, 3.0f);
       Helper::SliderFloat("Outline rounding", state.theme.mouse.rounding, 0.0f,
                           20.0f, 0.0f, 1000.0f);
+    }
 
-    // wip
     ImGui::Checkbox("Trail", &state.theme.mouse.trail.enable);
     if (state.theme.mouse.trail.enable) {
       ImGui::SameLine();
       Helper::ColorEdit("Trail color", trail.color);
 
       drawTrailStyleCombo(state, Helper::extractNames(Mouse::trailStyles));
+
+      if (mouse.style.type == Mouse::Type::CatBoard) {
+        Helper::SliderFloat("Trail fade time", state.theme.mouse.fadeTime, 0.0f,
+                            3.0f);
+      }
 
       if (mouse.trail.style.type == Mouse::TrailType::Circle) {
         Helper::SliderFloat("Trail duration", state.theme.mouse.trail.duration,

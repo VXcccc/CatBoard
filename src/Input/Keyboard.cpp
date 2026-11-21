@@ -15,7 +15,9 @@
 #include <windows.h>
 
 namespace Keyboard {
-// forward declaration
+
+// raw value
+bool isKeyDown(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
 
 void Keyboard::State::pollFullKeyboard() {
   prevDown = down;

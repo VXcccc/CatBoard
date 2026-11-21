@@ -120,7 +120,6 @@ static void makeEmpty(Bind &outBind) {
   outBind.keyName = Consts::EMPTY_HOTKEY_NAME;
 }
 
-static bool isKeyDown(int vk) { return (GetAsyncKeyState(vk) & 0x8000) != 0; }
 
 static bool isModifierVk(int vk) {
   return vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU ||
@@ -148,7 +147,7 @@ bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
     }
 
     for (int vk{0}; vk < 256; ++vk) {
-      bool down = isKeyDown(vk);
+      bool down = Keyboard::isKeyDown(vk);
 
       if (wasDown[vk]) {
         if (!down) {
@@ -170,7 +169,7 @@ bool recordBind(Bind &outBind, const BindsVector &binds, AppState &app) {
         // record all pressed modifierKeys
         std::vector<int> recordedMKeys{};
         for (const int mKey : modifierKeys) {
-          if (isKeyDown(mKey))
+          if (Keyboard::isKeyDown(mKey))
             recordedMKeys.push_back(mKey);
         }
 

@@ -342,8 +342,8 @@
         }
     ],
     "mouse": {
-        "centerX": 10.0,
-        "centerY": 10.0,
+        "centerX": 785.0,
+        "centerY": 120.0,
         "height": 75.0,
         "radius": 37.0,
         "width": 100.0
