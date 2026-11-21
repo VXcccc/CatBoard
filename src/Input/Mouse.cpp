@@ -1,13 +1,15 @@
+#include "Constants.h"
 #define _USE_MATH_DEFINES
 
-#include "Mouse.h"
 #include "AppState.h"
 #include "Config.h"
 #include "Helpers.h"
 #include "Layouts.h"
+#include "Mouse.h"
 #include "imgui.h"
 #include <algorithm>
 #include <cmath>
+#include <utility>
 #include <vector>
 
 #include <cstdio>
@@ -184,6 +186,38 @@ void Mouse::State::consumePendingDelta() {
 static float highlightScale(const Config::MouseTheme &mouse,
                             const Mouse::State &mouseState) {
   return mouseState.isM1Highlighted() ? mouse.higlightScale : 1.0f;
+}
+
+bool Mouse::State::updateColors(float deltaTime,
+                                const Config::MouseTheme &theme,
+                                bool hideOverlay, int hideAnimSpeed) {
+  const std::array<std::pair<ImVec4 *, const Config::ColorRGBA *>, 6> colors{{
+      {&m_outerCol, &theme.outer},
+      {&m_innerCol, &theme.inner},
+      {&m_fillCol, &theme.fill},
+      {&m_highlightCol, &theme.highlightColor},
+      {&m_scrollCol, &theme.scrollCounter},
+      {&m_trailCol, &theme.trail.color},
+  }};
+
+  const float hideSpeed{static_cast<float>(hideAnimSpeed) / 10.0f};
+
+  float t{1.0f - std::exp(-hideSpeed * deltaTime)};
+  bool animationActive{false};
+
+  for (const auto &[cur, src] : colors) {
+    ImVec4 target{Helper::fromConfigColor(*src)};
+    if (hideOverlay)
+      target.w = 0.0f;
+
+    if (!m_colorsInited)
+      *cur = target;
+    else
+      animationActive |= Helper::animateColor(*cur, target, t);
+  }
+
+  m_colorsInited = true;
+  return animationActive;
 }
 
 // round
@@ -398,16 +432,16 @@ float getFade(const Mouse::State &mouseState) {
   return std::clamp(1.0f - mouseState.getIdleTime() / fadeDuration, 0.0f, 1.0f);
 }
 
-ImU32 applyFade(const Config::ColorRGBA &initColor, const float fade) {
-  ImVec4 initColorImVec{Helper::fromConfigColor(initColor)};
-  initColorImVec.w = fade;
+ImU32 applyFade(const ImVec4 &initColor, const float fade) {
+  ImVec4 res{initColor};
+  res.w = fade;
 
-  return Helper::ToImU32(Helper::toConfigColor(initColorImVec));
+  return Helper::ToImU32(res);
 }
 
-static const Config::ColorRGBA &inner(const Config::MouseTheme &mouse,
-                                      const Mouse::State &mouseState) {
-  return mouseState.isM1Highlighted() ? mouse.highlightColor : mouse.inner;
+static const ImVec4 inner(const Mouse::State &mouse) {
+  return mouse.isM1Highlighted() ? mouse.getHighlightCol()
+                                 : mouse.getInnerCol();
 }
 
 static bool isVisible(const TrailClip *clip, const ImVec2 &trailPoint) {
@@ -467,8 +501,8 @@ static void renderCatmullTrail(const ImVec2 &center,
   if (points.empty() || 0.0f >= fade)
     return;
 
-  const ImU32 normalColor{applyFade(trail.color, fade)};
-  const ImU32 highlightColor{applyFade(mouse.highlightColor, fade)};
+  const ImU32 normalColor{applyFade(mouseState.getTrailCol(), fade)};
+  const ImU32 highlightColor{applyFade(mouseState.getHighlightCol(), fade)};
 
   if (points.size() == 1) {
     const ImVec2 &only{points.front().pos};
@@ -516,8 +550,8 @@ static void renderCircleTrail(const ImVec2 &center,
   if (fade <= 0.0f)
     return;
 
-  const ImU32 normalColor{applyFade(trail.color, fade)};
-  const ImU32 hlColor{applyFade(mouse.highlightColor, fade)};
+  const ImU32 normalColor{applyFade(mouseState.getTrailCol(), fade)};
+  const ImU32 hlColor{applyFade(mouseState.getHighlightCol(), fade)};
 
   for (const auto &pt : trailPts) {
     if (!isVisible(clip, pt.pos))
@@ -571,15 +605,16 @@ static RectBounds rectBoundsAround(const ImVec2 &center,
 }
 
 static void drawRectFill(ImDrawList *draw, const RectBounds &bounds,
-                         const Config::MouseTheme &mouse, float rounding) {
+                         const Mouse::State &mouseState, float rounding) {
   draw->AddRectFilled(bounds.topLeft, bounds.bottomRight,
-                      Helper::ToImU32(mouse.fill), rounding);
+                      Helper::ToImU32(mouseState.getFillCol()), rounding);
 }
 
 static void drawRectOutline(ImDrawList *draw, const RectBounds &bounds,
-                            const Config::MouseTheme &mouse, float rounding) {
+                            const Config::MouseTheme &mouse, float rounding,
+                            const Mouse::State &mouseState) {
   draw->AddRect(bounds.topLeft, bounds.bottomRight,
-                Helper::ToImU32(mouse.outer), rounding, 0,
+                Helper::ToImU32(mouseState.getOuterCol()), rounding, 0,
                 mouse.outerThickness);
 }
 
@@ -588,11 +623,12 @@ static void renderNohBoardIndicator(const ImVec2 &center,
                                     const Mouse::State &mouseState) {
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
 
-  const ImU32 innerColor{Helper::ToImU32(inner(mouse, mouseState))};
-  const ImU32 outerColor{Helper::ToImU32(mouse.outer)};
+  const ImU32 innerColor{Helper::ToImU32(inner(mouseState))};
+  const ImU32 outerColor{Helper::ToImU32(mouseState.getOuterCol())};
   const float radius{mouseState.getCircleRadius()};
 
-  draw->AddCircleFilled(center, radius, Helper::ToImU32(mouse.fill));
+  draw->AddCircleFilled(center, radius,
+                        Helper::ToImU32(mouseState.getFillCol()));
   draw->AddCircle(center, radius, outerColor, 64, mouse.outerThickness);
 
   const float offsetX{mouseState.getOffsetX()};
@@ -640,15 +676,16 @@ static void renderDefaultIndicator(const ImVec2 &center,
   const float radius{mouseState.getCircleRadius()};
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
 
-  const ImU32 innerColor{Helper::ToImU32(inner(mouse, mouseState))};
-  const ImU32 outerColor{Helper::ToImU32(mouse.outer)};
+  const ImU32 innerColor{Helper::ToImU32(inner(mouseState))};
+  const ImU32 outerColor{Helper::ToImU32(mouseState.getOuterCol())};
   const float indicatorLength{(std::min)(mouseState.getDistance(), radius)};
   const float colorMultiplier{std::clamp(indicatorLength / radius, 0.0f, 1.0f)};
   const ImU32 indicatorColor{
       mouse.lerpColor ? lerpColor(innerColor, outerColor, colorMultiplier)
                       : innerColor};
 
-  draw->AddCircleFilled(center, radius, Helper::ToImU32(mouse.fill));
+  draw->AddCircleFilled(center, radius,
+                        Helper::ToImU32(mouseState.getFillCol()));
   draw->AddCircle(center, radius, outerColor, 64, mouse.outerThickness);
 
   renderTrail(center, mouse.trail.style.type, mouse, mouseState);
@@ -665,8 +702,8 @@ static void renderWrapIndicator(const ImVec2 &center,
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
 
   const float fade{getFade(mouseState)};
-  const ImU32 innerColor{applyFade(inner(mouse, mouseState), fade)};
-  const ImU32 outerColor{applyFade(mouse.outer, fade)};
+  const ImU32 innerColor{applyFade(inner(mouseState), fade)};
+  const ImU32 outerColor{applyFade(mouseState.getOuterCol(), fade)};
   const float colorMultiplier{std::clamp(
       (std::max)(std::abs(mouseState.getOffsetX()) / bounds.halfWidth,
                  std::abs(mouseState.getOffsetY()) / bounds.halfHeight),
@@ -680,12 +717,12 @@ static void renderWrapIndicator(const ImVec2 &center,
   const TrailClip clip{
       RoundedRect::make(bounds.halfWidth, bounds.halfHeight, shape.radius)};
 
-  drawRectFill(draw, bounds, mouse, shape.radius);
+  drawRectFill(draw, bounds, mouseState, shape.radius);
   draw->PushClipRect(bounds.topLeft, bounds.bottomRight, true);
   renderTrail(center, mouse.trail.style.type, mouse, mouseState, &clip);
   draw->AddCircleFilled(dotPos, mouseState.getSmallRadius(), indicatorColor);
   draw->PopClipRect();
-  drawRectOutline(draw, bounds, mouse, shape.radius);
+  drawRectOutline(draw, bounds, mouse, shape.radius, mouseState);
 }
 
 static void renderPanIndicator(const ImVec2 &center,
@@ -694,8 +731,7 @@ static void renderPanIndicator(const ImVec2 &center,
   const RoundedRect &shape{mouseState.getShape()};
   const RectBounds bounds{rectBoundsAround(center, shape)};
   ImDrawList *draw{ImGui::GetBackgroundDrawList()};
-  const ImU32 innerColor{
-      applyFade(inner(mouse, mouseState), getFade(mouseState))};
+  const ImU32 innerColor{applyFade(inner(mouseState), getFade(mouseState))};
 
   const ImVec2 trailOrigin{center.x - mouseState.getOffsetX(),
                            center.y - mouseState.getOffsetY()};
@@ -703,13 +739,13 @@ static void renderPanIndicator(const ImVec2 &center,
       RoundedRect::make(bounds.halfWidth, bounds.halfHeight, shape.radius),
       {-mouseState.getOffsetX(), -mouseState.getOffsetY()}};
 
-  drawRectFill(draw, bounds, mouse, shape.radius);
+  drawRectFill(draw, bounds, mouseState, shape.radius);
   draw->PushClipRect(bounds.topLeft, bounds.bottomRight, true);
   renderTrail(trailOrigin, mouse.trail.style.type, mouse, mouseState, &clip);
   draw->PopClipRect();
 
   draw->AddCircleFilled(center, mouseState.getSmallRadius(), innerColor);
-  drawRectOutline(draw, bounds, mouse, shape.radius);
+  drawRectOutline(draw, bounds, mouse, shape.radius, mouseState);
 }
 
 void renderMouseIndicator(const ImVec2 &center,

@@ -37,7 +37,7 @@ struct Trail {
   float maxLength{150.0f};
 
   ColorRGBA color{255, 255, 255, 255};
-  Mouse::TrailStyle style{};
+  ::Mouse::TrailStyle style{};
 
   float minWidth{1.0f};
   float maxWidth{3.0f};
@@ -47,11 +47,14 @@ struct Trail {
 struct MouseTheme {
   bool enabled{true};
 
-  Mouse::MouseStyle style{};
+  ::Mouse::MouseStyle style{};
   ColorRGBA outer{255, 255, 255, 255};
   ColorRGBA inner{255, 255, 255, 255};
 
   ColorRGBA fill{26, 26, 26, 0};
+
+  ColorRGBA highlightColor{255, 255, 255, 255};
+  ColorRGBA scrollCounter{0, 0, 0, 255};
 
   bool lerpColor{false};
 
@@ -73,17 +76,14 @@ struct MouseTheme {
   Trail trail{};
 
   bool highlightM1{true};
-  ColorRGBA highlightColor{255, 255, 255, 255};
   float higlightScale{1.25f};
-
-  ColorRGBA scrollCounter{0, 0, 0, 255};
 };
 
 struct AnalogTheme {
   bool enabled{false};
   ColorRGBA color{255, 255, 255, 255};
   ColorRGBA pressedColor{255, 0, 0, 255};
-	bool enableHallText{false};
+  bool enableHallText{false};
   ColorRGBA textColor{255, 0, 0, 255};
   Analog::AnimType animType{Analog::AnimType::Up};
 };
@@ -113,7 +113,7 @@ struct Theme {
   bool animateColors{false};
   AnimType animType{AnimType::Scale};
 
-	AnalogTheme analog{};
+  AnalogTheme analog{};
 };
 
 struct SoundPackSelection {
@@ -127,6 +127,10 @@ struct Overlay {
   int x{0};
   int y{600};
   float scale{1.0f};
+
+  bool autoHide{false};
+	float hideAtTime{1.0f};
+	int hideAnimSpeed{100};
 
   bool operator==(const Overlay &) const = default;
 };

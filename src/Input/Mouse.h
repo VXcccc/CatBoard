@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Config.h"
 #include "imgui.h"
 #include <array>
 #include <deque>
@@ -12,9 +13,9 @@ struct MouseTheme;
 }
 
 namespace Config {
-
 using ColorRGBA = std::array<int, 4>;
-}
+struct Overlay;
+} // namespace Config
 
 namespace Mouse {
 
@@ -94,6 +95,9 @@ public:
   void updateMouseState(float deltaTime, float halfWidth, float halfHeight,
                         const Config::MouseTheme &mouse, float ovScale);
 
+  bool updateColors(float deltaTime, const Config::MouseTheme &theme,
+                    bool hideOverlay, int hideAnimSpeed);
+
   float getDistance() const;
 
   float getIdleTime() const { return m_idleTime; }
@@ -131,8 +135,15 @@ public:
   float getTrailMaxWidth() const { return m_trailMaxWidth; }
   RoundedRect getShape() const { return m_shape; }
   float getSmallRadius() const { return m_smallRadius; }
-	//for Circle types
+  // for Circle types
   float getCircleRadius() const { return m_circleRadius; }
+
+  ImVec4 getOuterCol() const { return m_outerCol; }
+  ImVec4 getInnerCol() const { return m_innerCol; }
+  ImVec4 getFillCol() const { return m_fillCol; }
+  ImVec4 getHighlightCol() const { return m_highlightCol; }
+  ImVec4 getScrollCol() const { return m_scrollCol; }
+  ImVec4 getTrailCol() const { return m_trailCol; }
 
 private:
   void updateCatmullTrail(float deltaTime, const Config::MouseTheme &mouse,
@@ -167,8 +178,8 @@ private:
   bool m_justWrapped{false};
   ImVec2 m_wrapExit;
 
-	float m_circleRadius{37.0f};
-	float m_smallRadius{7.4f};
+  float m_circleRadius{37.0f};
+  float m_smallRadius{7.4f};
 
   std::deque<TrailPoint> m_trail;
   float m_trailTotalDist{0.0f};
@@ -180,6 +191,14 @@ private:
   int m_scrollDownValue{0};
   float m_scrollDownTimer{0.0f};
   float m_scrollUpTimer{0.0f};
+
+  ImVec4 m_outerCol{};
+  ImVec4 m_innerCol{};
+  ImVec4 m_fillCol{};
+  ImVec4 m_highlightCol{};
+  ImVec4 m_scrollCol{};
+  ImVec4 m_trailCol{};
+  bool m_colorsInited{false};
 };
 
 void renderMouseIndicator(const ImVec2 &center,

@@ -22,6 +22,7 @@ enum class BindType {
   dragMode,
   toggleOverlay,
   toggleSettings,
+  autoHide,
   exit,
   MaxbindTypes
 };

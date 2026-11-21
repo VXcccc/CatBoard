@@ -108,6 +108,29 @@ ImU32 ToImU32(const Config::ColorRGBA &c) {
   return IM_COL32(c[0], c[1], c[2], c[3]);
 }
 
+ImU32 ToImU32(const ImVec4 &c) {
+  return IM_COL32(Helper::toColorRGB(c.x), Helper::toColorRGB(c.y),
+                  Helper::toColorRGB(c.z), Helper::toColorRGB(c.w));
+}
+
+bool animate(float &cur, float target, float t) {
+  cur = std::lerp(cur, target, t);
+  if (std::abs(target - cur) < Consts::MIN_ANIM_STEP) {
+    cur = target;
+    return false;
+  }
+  return true;
+}
+
+bool animateColor(ImVec4 &cur, const ImVec4 &target, float t) {
+  bool moving = false;
+  moving |= animate(cur.x, target.x, t);
+  moving |= animate(cur.y, target.y, t);
+  moving |= animate(cur.z, target.z, t);
+  moving |= animate(cur.w, target.w, t);
+  return moving;
+}
+
 bool SliderInt(const std::string &label, int &v, int v_min, int v_max,
                int c_min, int c_max, const char *format, float sliderWidth,
                ImGuiSliderFlags flags) {
@@ -266,7 +289,7 @@ bool isWindowsThemeLight() {
 
   if (res != ERROR_SUCCESS) {
     return false;
- }
+  }
 
   auto i = int(buffer[3] << 24 | buffer[2] << 16 | buffer[1] << 8 | buffer[0]);
 

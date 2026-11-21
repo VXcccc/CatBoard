@@ -83,6 +83,8 @@ VOID APIENTRY DisplayContextMenu(HWND hWnd, const AppState &app) {
 
   TrayMenu menu;
   menu.addItem(Consts::ID_DRAGMODE, L"Drag mode", true, app.dragMode);
+  menu.addItem(Consts::ID_AUTOHIDE, L"Auto hide", true,
+               app.config.overlay.autoHide);
   menu.addItem(Consts::ID_SETTINGS, L"Settings");
   menu.addItem(Consts::ID_EXIT, L"Exit");
   menu.showAt(hWnd, pt);
@@ -101,7 +103,7 @@ void On_TrayWM_NOTIFYICON(WPARAM wParam, LPARAM lParam, HWND hWnd,
 
   switch (uMouseMsg) {
   case WM_LBUTTONUP:
-    MainWindow::toogleOverlay();
+    MainWindow::toggleOverlay(app);
     return;
   case WM_RBUTTONUP:
     DisplayContextMenu(hWnd, app);
@@ -122,6 +124,9 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
     app.dragMode = !app.dragMode;
     MainWindow::SetDragMode(hWnd, app.dragMode);
     return;
+	case Consts::ID_AUTOHIDE:
+    MainWindow::toggleAutoHide(app);
+		return;
   case Consts::ID_EXIT:
     PostMessageW(hWnd, WM_CLOSE, 0, 0);
     return;

@@ -30,7 +30,14 @@ const BindsArray defaultBinds{
          true,
          BindType::toggleSettings,
          {}},
-    Bind{"Exit", VK_F12, Consts::EMPTY_HOTKEY_NAME, true, BindType::exit, {}}};
+    Bind{"AutoHide",
+         VK_F2,
+         Consts::EMPTY_HOTKEY_NAME,
+         true,
+         BindType::autoHide,
+         {}},
+    Bind{"Exit", VK_F12, Consts::EMPTY_HOTKEY_NAME, true, BindType::exit, {}},
+};
 
 static_assert(defaultBinds.size() ==
                   static_cast<std::size_t>(BindType::MaxbindTypes),
@@ -43,7 +50,7 @@ void handleBindType(const BindType type, HWND hWnd, AppState &app) {
     MainWindow::SetDragMode(hWnd, app.dragMode);
     break;
   case BindType::toggleOverlay:
-    MainWindow::toogleOverlay();
+    MainWindow::toggleOverlay(app);
     break;
   case BindType::toggleSettings:
     SettingsWindow::toggleWindow();
@@ -51,11 +58,15 @@ void handleBindType(const BindType type, HWND hWnd, AppState &app) {
   case BindType::exit:
     PostMessageW(hWnd, WM_CLOSE, 0, 0);
     break;
+  case BindType::autoHide:
+    MainWindow::toggleAutoHide(app);
+    break;
+
     // case BindType::resizeMode:
     //   app.resizeMode = !app.resizeMode;
     //   MainWindow::SetResizeMode(hWnd, app.resizeMode);
 
-  default:
+  case BindType::MaxbindTypes:
     break;
   }
 }

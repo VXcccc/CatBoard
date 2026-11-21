@@ -35,7 +35,6 @@
 #include <vector>
 #include <winuser.h>
 
-
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd,
                                                              UINT msg,
                                                              WPARAM wParam,
@@ -194,8 +193,9 @@ bool Create(HINSTANCE hInstance, ID3D11Device *device,
 
   ImGuiIO &io = ImGui::GetIO();
 
-	Fonts::settingsFont = io.Fonts->AddFontFromMemoryTTF(
-      _jetBrainsMonoBold, _jetBrainsMonoBoldSize, Fonts::settingsFontSizePixels);
+  Fonts::settingsFont =
+      io.Fonts->AddFontFromMemoryTTF(_jetBrainsMonoBold, _jetBrainsMonoBoldSize,
+                                     Fonts::settingsFontSizePixels);
   io.FontDefault = Fonts::settingsFont;
 
   io.IniFilename = nullptr; // .ini for settings
@@ -978,13 +978,14 @@ void drawMiscSection(SettingsEditState &state, AppState &app) {
   app.config.misc = state.misc;
   app.config.overlay = state.overlay;
 
-  ImGui::Checkbox("Enable V-Sync", &state.misc.vsync);
   ImGui::Checkbox("Enable ObsMode", &state.misc.obsMode);
-  ImGui::Checkbox("Auto save on close", &state.misc.saveOnClose);
-
   if (state.misc.obsMode) {
     Helper::ColorEdit("Background Color", state.theme.obsBackground);
   }
+
+  ImGui::Checkbox("Auto save on close", &state.misc.saveOnClose);
+
+  ImGui::Checkbox("Enable V-Sync", &state.misc.vsync);
 
   Helper::SliderInt("FPS", state.misc.fps, 5, 360, 5, 2000);
 
@@ -993,6 +994,15 @@ void drawMiscSection(SettingsEditState &state, AppState &app) {
 
 void drawOverlayPropertiesSection(SettingsEditState &state, AppState &app) {
   ImGui::SeparatorText("Overlay Properties");
+
+  ImGui::Checkbox("Auto hide", &state.overlay.autoHide);
+  if (state.overlay.autoHide) {
+    Helper::SliderFloat("Hide after", state.overlay.hideAtTime, 0.0f, 10.0f,
+                        0.0f, 120.0f);
+    ImGui::SameLine();
+    Helper::HelpMarker("Seconds");
+    Helper::SliderInt("Anim speed", state.overlay.hideAnimSpeed, 0, 1000);
+  }
 
   Helper::HelpMarker(
       "Overlay position that you select here saves into config,\n"
@@ -1192,8 +1202,11 @@ void drawSettingsTabs(SettingsTab &outCurrentTab) {
 }
 
 void RenderFrame(AppState &app) {
-  if (!IsVisible())
+  static bool wasVisibleLastFrame = false;
+  if (!IsVisible()) {
+    wasVisibleLastFrame = false;
     return;
+  }
 
   ImGuiContext *prev = ImGui::GetCurrentContext();
   ImGui::SetCurrentContext(s_imguiContext);
@@ -1208,7 +1221,6 @@ void RenderFrame(AppState &app) {
   // Draw functions
 
   // Main Loop Variables
-  static bool wasVisibleLastFrame = false;
   bool visibleNow = SettingsWindow::IsVisible();
 
   static SettingsEditState editState{};
@@ -1264,6 +1276,17 @@ void RenderFrame(AppState &app) {
     break;
   }
   ImGui::PopItemWidth();
+
+  // I used this because when you change the Config settings defined in
+  // settingswindow outside of settingswindow(for example from Tray, or from
+  // Hotkeys) the setting window just gonna overwrite it
+  // later if we add more functions to the tray, hotkeys, that uses
+  // Config::Settings variables, im gonna do a separate struct for this, and
+  // maybe handler
+  if (app.toggleAutoHideRequested) {
+    editState.overlay.autoHide = !editState.overlay.autoHide;
+    app.toggleAutoHideRequested = false;
+  }
 
   Config::Settings newSettings = buildSettings(editState);
   // Passing new settings but dont saving them

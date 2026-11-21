@@ -21,6 +21,14 @@ void SetDragMode(HWND hWnd, bool enabled) {
                SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
 }
 
+void toggleAutoHide(AppState &app) {
+  if (SettingsWindow::IsVisible()) {
+    app.toggleAutoHideRequested = true;
+  } else {
+    app.config.overlay.autoHide = !app.config.overlay.autoHide;
+  }
+}
+
 // maybe in future ill finish this function
 //
 //  void SetResizeMode(HWND hWnd, bool enabled) {
@@ -90,10 +98,12 @@ bool overlayChanged(Config::Overlay &outPrevOv, const AppState &app) {
   return changed;
 }
 
-void toogleOverlay() {
+void toggleOverlay(AppState &app) {
   if (!MainWindow::IsVisible()) {
+    // app.hideOverlay = false;
     MainWindow::Show();
   } else {
+    // app.hideOverlay = true;
     MainWindow::Hide();
   }
 }

@@ -57,10 +57,13 @@ int toColorRGB(float value);
 float fromColorRGB(int value);
 
 Config::ColorRGBA toConfigColor(const ImVec4 &color);
-
 ImVec4 fromConfigColor(const Config::ColorRGBA &color);
 
 ImU32 ToImU32(const Config::ColorRGBA &c);
+ImU32 ToImU32(const ImVec4 &c);
+
+bool animate(float &cur, float target, float t);
+bool animateColor(ImVec4 &cur, const ImVec4 &target, float t);
 
 std::string getFileCreateError(Helper::FileCreateResult result);
 

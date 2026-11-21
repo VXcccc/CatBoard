@@ -1081,8 +1081,8 @@ static void drawLayoutEditorCanvas(LayoutEditState &state,
   ImGui::PushStyleColor(ImGuiCol_NavHighlight, ImVec4(0, 0, 0, 0));
   const float zoom{state.zoom};
 
-  // static Fonts::Font lastAppliedFont{};
-  // Fonts::updateFont(lastAppliedFont, Fonts::editorFont);
+  // i ommited overlay font because it was a several glitches with Font Atlas
+  // that break editor canvas
   ImGui::PushFont(Fonts::settingsFont, Fonts::settingsFontSizePixels * zoom);
 
   const ImVec2 cursor{ImGui::GetCursorScreenPos()};

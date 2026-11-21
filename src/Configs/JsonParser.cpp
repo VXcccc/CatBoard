@@ -338,7 +338,14 @@ void from_json(const json &j, Misc &misc) {
 }
 
 void to_json(json &j, const Overlay &overlay) {
-  j = {{"x", overlay.x}, {"y", overlay.y}, {"scale", overlay.scale}};
+  j = {
+      {"x", overlay.x},
+      {"y", overlay.y},
+      {"scale", overlay.scale},
+      {"autoHide", overlay.autoHide},
+      {"hideAtTime", overlay.hideAtTime},
+      {"hideAnimSpeed", overlay.hideAnimSpeed},
+  };
 }
 
 void from_json(const json &j, Overlay &overlay) {
@@ -348,6 +355,12 @@ void from_json(const json &j, Overlay &overlay) {
     j.at("y").get_to(overlay.y);
   if (j.contains("scale"))
     j.at("scale").get_to(overlay.scale);
+  if (j.contains("autoHide"))
+    j.at("autoHide").get_to(overlay.autoHide);
+  if (j.contains("hideAtTime"))
+    j.at("hideAtTime").get_to(overlay.hideAtTime);
+  if (j.contains("hideAnimSpeed"))
+    j.at("hideAnimSpeed").get_to(overlay.hideAnimSpeed);
 }
 
 } // namespace Config

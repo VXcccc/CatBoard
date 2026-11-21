@@ -2,11 +2,13 @@
 
 #include "Constants.h"
 #include "imgui.h"
+#include <array>
 #include <bitset>
 #include <d3d11.h>
 #include <nlohmann/json.hpp>
 #include <string>
 #include <string_view>
+#include <unordered_map>
 #include <vector>
 using json = nlohmann::json;
 // forward declarations
@@ -15,12 +17,23 @@ struct State;
 using KeyBitSet = std::bitset<Consts::VK_COUNT>;
 } // namespace Keyboard
 
+namespace Config {
+struct Theme;
+}
+
 struct AppState;
 namespace Layouts {
 struct Layout;
 }
 
 namespace Images {
+struct ImageOpacity {
+  float mouse{};
+  float keys{};
+  bool updateImageOpacity(const Config::Theme &theme, float deltaTime,
+                          bool hideOverlay, int hideAnimSpeed);
+};
+
 struct Image {
   std::string backGroundFileName{"keyb"};
   std::string activeFileName{"keyw"};
@@ -50,6 +63,7 @@ struct Mouse {
   MouseButton mouse4{-51.0f, 5.0f, 5.0f, 41.0f, "m4b", "m4w"};
   MouseButton mouse5{-53.0f, -31.0f, 7.0f, 35.0f, "m5b", "m5w"};
   MouseButton bottom{};
+
 };
 
 struct Pack {
@@ -57,7 +71,10 @@ struct Pack {
   Image defaultKey{};
   std::vector<Image> explicitImages{};
   Mouse mouse{};
+
+  ImageOpacity opacity{};
 };
+
 
 struct Texture {
   ID3D11ShaderResourceView *srv{};
@@ -78,6 +95,8 @@ void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
 void refreshImagePacks();
 
 void drawSizeOfImages(const Pack &pack, const Layouts::Layout &layout);
+
+bool isMouseKeysHeld(const AppState &app);
 
 extern const Images::Pack defaultPack;
 extern std::vector<std::string> packs;

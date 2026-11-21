@@ -1,5 +1,6 @@
 #pragma once
 #include "AnalogKeyboard.h"
+#include "Config.h"
 #include "Constants.h"
 #include "imgui.h"
 #include <bitset>
@@ -15,6 +16,7 @@ class State;
 namespace Config {
 struct Theme;
 struct Settings;
+struct Overlay;
 } // namespace Config
 namespace Sound {
 struct PackVK;
@@ -47,6 +49,7 @@ struct State {
   bool released(int vk) const { return !down[vk] && prevDown[vk]; }
   bool inRange(int vk) const { return vk > 0 && vk < Consts::VK_COUNT; }
 
+  bool anyKeyHeld(const Layouts::Layout &layout) const;
   // visuals vector is synced with layout indicies
   void resyncVisuals(const Layouts::Layout &layout, const Config::Theme &theme);
 };
@@ -65,14 +68,15 @@ void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
 void updateActive(const Layouts::Layout &layout, Keyboard::State &state,
                   const Mouse::State &mouse, const Config::Settings &settings);
 
-bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &state,
-                     float deltaTime, const Config::Theme &theme);
+bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &kb,
+                     float deltaTime, const Config::Theme &theme,
+                     bool hideOverlay, int hideAnimSpeed);
 
 bool updateScale(const Layouts::Layout &layout, Keyboard::State &state,
                  float deltaTime, const Config::Theme &theme);
 
-bool updateAnalogAnimations(const Layouts::Layout &layout,
-                            Keyboard::State &kb, const Config::Theme &theme);
+bool updateAnalogAnimations(const Layouts::Layout &layout, Keyboard::State &kb,
+                            const Config::Theme &theme, float ovScale);
 
 void renderKeyboard(AppState &app);
 } // namespace Keyboard

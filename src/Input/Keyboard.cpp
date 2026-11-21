@@ -16,7 +16,6 @@
 
 namespace Keyboard {
 // forward declaration
-static bool animate(float &cur, float target, float t);
 
 void Keyboard::State::pollFullKeyboard() {
   prevDown = down;
@@ -33,6 +32,18 @@ void Keyboard::State::resyncVisuals(const Layouts::Layout &layout,
     v.colors.text = Helper::fromConfigColor(theme.idleText);
     v.colors.outline = Helper::fromConfigColor(theme.keyOutline.idleColor);
   }
+}
+
+bool Keyboard::State::anyKeyHeld(const Layouts::Layout &layout) const {
+  bool anyKeyHeld{false};
+  for (std::size_t i{0}; i < layout.keys.size(); ++i) {
+    auto &v{visuals[i]};
+    auto &key{layout.keys[i]};
+    if (v.active || v.analog.value > 0.0f) {
+      anyKeyHeld = true;
+    }
+  }
+  return anyKeyHeld;
 }
 
 bool isActive(const Layouts::Key &key, const Keyboard::State &kb,
@@ -191,6 +202,10 @@ static void updateFontSize(const Layouts::Key &key, const KeyVisual &v) {
   style.FontSizeBase *= v.scale;
 }
 
+static bool isAnalogAnimUp(const Analog::AnimType animType) {
+  return animType == Analog::AnimType::Up;
+}
+
 static void drawAnalogKey(ImDrawList *draw, const KeyVisual &v,
                           const Config::Theme &theme, const ImVec2 &topLeft,
                           const ImVec2 &bottomRight, float ovScale,
@@ -198,7 +213,7 @@ static void drawAnalogKey(ImDrawList *draw, const KeyVisual &v,
   if (!theme.analog.enabled)
     return;
 
-  const bool up{theme.analog.animType == Analog::AnimType::Up};
+  const bool up{isAnalogAnimUp(theme.analog.animType)};
 
   const float cutY{up ? v.analog.getCutY(bottomRight.y, topLeft.y)
                       : v.analog.getCutY(topLeft.y, bottomRight.y)};
@@ -225,7 +240,7 @@ static void drawAnalogText(ImDrawList *draw, const Layouts::Key &key,
   const auto &theme{config.theme};
   const float &ovScale{config.overlay.scale};
 
-  const bool up{theme.analog.animType == Analog::AnimType::Up};
+  const bool up{isAnalogAnimUp(theme.analog.animType)};
 
   const float cutY{up ? v.analog.getCutY(topLeft.y, bottomRight.y)
                       : v.analog.getCutY(bottomRight.y, topLeft.y)};
@@ -340,38 +355,29 @@ void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
   }
 }
 
-// animations
-constexpr float minAnimStep = 0.002f;
+static bool animateKeyColor(ImVec4 &cur, const ImVec4 &target, bool hide,
+                            float colorT, float hideT) {
+  const ImVec4 rgbTarget{target.x, target.y, target.z, cur.w};
+  bool moving{Helper::animateColor(cur, rgbTarget, colorT)};
 
-// basically lerping the color or scale
-static bool animate(float &cur, float target, float t) {
-  cur = std::lerp(cur, target, t);
-  if (std::abs(target - cur) < minAnimStep) {
-    cur = target;
-    return false;
-  }
-  return true;
-}
-
-static bool animateColor(ImVec4 &cur, const ImVec4 &target, float t) {
-  bool moving = false;
-  moving |= animate(cur.x, target.x, t);
-  moving |= animate(cur.y, target.y, t);
-  moving |= animate(cur.z, target.z, t);
-  moving |= animate(cur.w, target.w, t);
+  moving |= Helper::animate(cur.w, hide ? 0.0f : target.w, hideT);
   return moving;
 }
 
 bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &kb,
-                     float deltaTime, const Config::Theme &theme) {
+                     float deltaTime, const Config::Theme &theme,
+                     bool hideOverlay, int hideAnimSpeed) {
   const bool animEnabled{theme.animateColors && theme.animation &&
                          theme.animationSpeed > 0};
   const float speed{static_cast<float>(theme.animationSpeed) / 10.0f};
-  float t{1.0f - std::exp(-speed * deltaTime)};
+  const float hideSpeed{static_cast<float>(hideAnimSpeed) / 10.0f};
+
+  const float colorT{animEnabled ? 1.0f - std::exp(-speed * deltaTime) : 1.0f};
+  const float hideT{1.0f - std::exp(-hideSpeed * deltaTime)};
+
   bool animationActive{false};
 
   for (std::size_t i{0}; i < layout.keys.size(); ++i) {
-    // const auto &key{layout.keys[i]};
     auto &v{kb.visuals[i]};
     bool down{v.active};
 
@@ -382,15 +388,12 @@ bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &kb,
     ImVec4 outline{Helper::fromConfigColor(down ? theme.keyOutline.activeColor
                                                 : theme.keyOutline.idleColor)};
 
-    if (!animEnabled) {
-      v.colors.fill = fill;
-      v.colors.text = text;
-      v.colors.outline = outline;
-      continue;
-    }
-    animationActive |= animateColor(v.colors.fill, fill, t);
-    animationActive |= animateColor(v.colors.text, text, t);
-    animationActive |= animateColor(v.colors.outline, outline, t);
+    animationActive |=
+        animateKeyColor(v.colors.fill, fill, hideOverlay, colorT, hideT);
+    animationActive |=
+        animateKeyColor(v.colors.text, text, hideOverlay, colorT, hideT);
+    animationActive |=
+        animateKeyColor(v.colors.outline, outline, hideOverlay, colorT, hideT);
   }
   return animationActive;
 }
@@ -412,22 +415,36 @@ bool updateScale(const Layouts::Layout &layout, Keyboard::State &kb,
     }
 
     float targetScale{(down) ? theme.pressScale : 1.0f};
-    animationActive |= animate(v.scale, targetScale, t);
+    animationActive |= Helper::animate(v.scale, targetScale, t);
   }
   return animationActive;
 }
 
+static std::pair<ImVec2, ImVec2>
+getTopBottom(const ImVec2 &center, const ImVec2 &halfSize, float ovScale) {
+  ImVec2 topLeft((center.x - halfSize.x) * ovScale,
+                 (center.y - halfSize.y) * ovScale);
+  ImVec2 bottomRight((center.x + halfSize.x) * ovScale,
+                     (center.y + halfSize.y) * ovScale);
+  return std::pair<ImVec2, ImVec2>{topLeft, bottomRight};
+}
+
 bool updateAnalogAnimations(const Layouts::Layout &layout, Keyboard::State &kb,
-                            const Config::Theme &theme) {
+                            const Config::Theme &theme, float ovScale) {
   if (!theme.analog.enabled)
     return false;
 
   bool active{false};
   for (std::size_t i{0}; i < layout.keys.size(); ++i) {
     auto &v{kb.visuals[i]};
-    v.analog.value =
-        std::clamp(Analog::readKey(layout.keys[i].code), 0.0f, 1.0f);
-    active |= v.analog.value > 0.0f;
+    const auto &key{layout.keys[i]};
+
+    const float prev{v.analog.value};
+    const float cur{
+        std::clamp(Analog::readKey(layout.keys[i].code), 0.0f, 1.0f)};
+    v.analog.value = cur;
+
+    active |= (cur > 0.0f) || (cur != prev);
   }
   return active;
 }

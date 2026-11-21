@@ -148,8 +148,9 @@ Texture getOrLoadTexture(const std::string &fileName, const Pack &pack) {
   int h{0};
   if (LoadTextureFromFile(path.c_str(), &srv, &w, &h)) {
     g_textureCache[path] = Texture{srv, w, h};
-    return Texture{srv, w, h};
+    return g_textureCache[path];
   }
+  g_textureCache[path] = Texture{nullptr};
   return Texture{nullptr};
 }
 
@@ -253,14 +254,15 @@ void drawKeyboardImages(ImDrawList *draw, const AppState &app) {
     ImVec2 bottomRight{(key.x + key.w) * ovScale, (key.y + key.h) * ovScale};
     draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight,
                    ImVec2(0, 0), ImVec2(1, 1),
-                   IM_COL32(255, 255, 255, app.config.theme.keysImageOpacity));
+                   IM_COL32(255, 255, 255,
+                            Helper::toColorRGB(app.imagePack.opacity.keys)));
   }
 }
 
 void handleScroll(ImDrawList *draw, const MouseButton &scroll,
                   const ImVec2 &partCenter, bool up,
                   const ::Mouse::State &mouseState,
-                  const Config::Settings &config) {
+                  const Config::Settings &config, const Images::Pack &pack) {
   const auto &mouseTheme{config.theme.mouse};
   ImGui::PushFont(Fonts::overlayFont,
                   config.font.sizePixels * config.overlay.scale);
@@ -273,21 +275,47 @@ void handleScroll(ImDrawList *draw, const MouseButton &scroll,
     ImVec2 textSize{ImGui::CalcTextSize(label.c_str())};
     ImVec2 textPos{partCenter.x - (textSize.x * 0.5f),
                    partCenter.y - (textSize.y * 0.5f)};
-    ImU32 textColor{Helper::ToImU32(mouseTheme.scrollCounter)};
-    draw->AddText(textPos, textColor, label.c_str());
+    const auto textColor{mouseTheme.scrollCounter};
+    draw->AddText(textPos,
+                  Helper::ToImU32(Config::ColorRGBA{
+                      textColor[0], textColor[1], textColor[2],
+                      Helper::toColorRGB(pack.opacity.mouse)}),
+                  label.c_str());
   }
   ImGui::PopFont();
 }
 
-void drawMousePart(ImDrawList *draw, const ImVec2 &center,
+bool ImageOpacity::updateImageOpacity(const Config::Theme &theme,
+                                      float deltaTime, bool hideOverlay,
+                                      int hideAnimSpeed) {
+
+  const float hideSpeed{static_cast<float>(hideAnimSpeed) / 10.0f};
+  float t{1.0f - std::exp(-hideSpeed * deltaTime)};
+  bool animationActive{false};
+
+  float keysOpacity{Helper::fromColorRGB(theme.keysImageOpacity)};
+  float mouseOpacity{Helper::fromColorRGB(theme.mouse.imageOpacity)};
+
+  if (hideOverlay) {
+    keysOpacity = 0.0f;
+    mouseOpacity = 0.0f;
+  }
+
+  animationActive |= Helper::animate(keys, keysOpacity, t);
+  animationActive |= Helper::animate(mouse, mouseOpacity, t);
+
+  return animationActive;
+}
+
+bool drawMousePart(ImDrawList *draw, const ImVec2 &center,
                    const MouseButton &part, bool active, const Pack &pack,
                    const AppState &app) {
   const std::string &fileName{active ? part.buttonActive : part.buttonIdle};
   if (fileName.empty())
-    return;
+    return false;
   Texture texture{getOrLoadTexture(fileName, pack)};
   if (!texture.srv)
-    return;
+    return false;
 
   const auto &mouse{app.config.theme.mouse};
 
@@ -303,14 +331,17 @@ void drawMousePart(ImDrawList *draw, const ImVec2 &center,
   ImVec2 bottomRight{topLeft.x + ((part.w * mouse.imageScale) * ovScale),
                      topLeft.y + ((part.h * mouse.imageScale) * ovScale)};
 
-  draw->AddImage((ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight,
-                 ImVec2(0, 0), ImVec2(1, 1),
-                 IM_COL32(255, 255, 255, app.config.theme.mouse.imageOpacity));
+  draw->AddImage(
+      (ImTextureID)(intptr_t)texture.srv, topLeft, bottomRight, ImVec2(0, 0),
+      ImVec2(1, 1),
+      IM_COL32(255, 255, 255, Helper::toColorRGB(pack.opacity.mouse)));
   if (part == pack.mouse.scrollUp) {
-    handleScroll(draw, part, partCenter, true, app.mouse, app.config);
+    handleScroll(draw, part, partCenter, true, app.mouse, app.config, pack);
   } else if (part == pack.mouse.scrollDown) {
-    handleScroll(draw, part, partCenter, false, app.mouse, app.config);
+    handleScroll(draw, part, partCenter, false, app.mouse, app.config, pack);
   }
+
+  return true;
 }
 
 void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
@@ -318,24 +349,48 @@ void drawMouseImages(ImDrawList *draw, const ImVec2 &center,
   const Mouse &mouse{app.imagePack.mouse};
   const auto &mouseState{app.mouse};
   const auto &keysDown{app.keyboard.down};
+  const auto &imagePack{app.imagePack};
 
-  drawMousePart(draw, center, mouse.left, keysDown[VK_LBUTTON], app.imagePack,
+  drawMousePart(draw, center, mouse.left, keysDown[VK_LBUTTON], imagePack, app);
+  drawMousePart(draw, center, mouse.right, keysDown[VK_RBUTTON], imagePack,
                 app);
-  drawMousePart(draw, center, mouse.right, keysDown[VK_RBUTTON], app.imagePack,
+  drawMousePart(draw, center, mouse.mouse4, keysDown[VK_XBUTTON1], imagePack,
                 app);
-  drawMousePart(draw, center, mouse.mouse4, keysDown[VK_XBUTTON1],
-                app.imagePack, app);
-  drawMousePart(draw, center, mouse.mouse5, keysDown[VK_XBUTTON2],
-                app.imagePack, app);
-  drawMousePart(draw, center, mouse.bottom, false, app.imagePack, app);
+  drawMousePart(draw, center, mouse.mouse5, keysDown[VK_XBUTTON2], imagePack,
+                app);
+  drawMousePart(draw, center, mouse.bottom, false, imagePack, app);
   // fix middle
 
-  drawMousePart(draw, center, mouse.middle, keysDown[VK_MBUTTON], app.imagePack,
+  drawMousePart(draw, center, mouse.middle, keysDown[VK_MBUTTON], imagePack,
                 app);
 
   drawMousePart(draw, center, mouse.scrollUp, mouseState.isScrollingUp(),
-                app.imagePack, app);
+                imagePack, app);
   drawMousePart(draw, center, mouse.scrollDown, mouseState.isScrollingDown(),
-                app.imagePack, app);
+                imagePack, app);
+}
+
+static bool hasActiveImage(const MouseButton &part, const Pack &pack) {
+  if (part.buttonActive.empty())
+    return false;
+  return getOrLoadTexture(part.buttonActive, pack).srv != nullptr;
+}
+
+bool isMouseKeysHeld(const AppState &app) {
+  const auto &pack{app.imagePack};
+  const auto &m{pack.mouse};
+  const auto &down{app.keyboard.down};
+  const auto &ms{app.mouse};
+
+  const auto held{[&](const MouseButton &part, bool pressed) {
+    return pressed && hasActiveImage(part, pack);
+  }};
+
+  return held(m.left, down[VK_LBUTTON]) || held(m.right, down[VK_RBUTTON]) ||
+         held(m.middle, down[VK_MBUTTON]) ||
+         held(m.mouse4, down[VK_XBUTTON1]) ||
+         held(m.mouse5, down[VK_XBUTTON2]) ||
+         held(m.scrollUp, ms.isScrollingUp()) ||
+         held(m.scrollDown, ms.isScrollingDown());
 }
 } // namespace Images

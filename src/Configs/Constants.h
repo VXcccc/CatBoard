@@ -14,13 +14,13 @@ constexpr int CONFIG_VERSION{1};
 constexpr int CATBOARD_VERSION{APP_VERSION_INT};
 inline const std::string CATBOARD_VERSION_STR{APP_VERSION_STR};
 
-
 constexpr UINT WM_TRAYICON{WM_APP + 1};
 
 constexpr UINT ID_ABOUT{1002};
 constexpr UINT ID_EXIT{1003};
 constexpr UINT ID_DRAGMODE{1004};
 constexpr UINT ID_SETTINGS{1005};
+constexpr UINT ID_AUTOHIDE{1006};
 
 constexpr std::size_t VOICE_COUNT{32};
 
@@ -39,5 +39,9 @@ constexpr int VK_COUNT{256};
 
 inline const std::string EMPTY_HOTKEY_NAME{"None"};
 
-} // namespace Consts
+constexpr float MIN_ANIM_STEP{0.002f};
 
+// only those who can be active
+constexpr int IMAGE_MOUSE_BUTTONS_COUNT{7};
+
+} // namespace Consts

@@ -104,6 +104,21 @@ void fpsLimitter(
 void handleObsMode(AppState &app);
 void initDebugConsole();
 
+class Timer {
+private:
+  using Clock = std::chrono::steady_clock;
+  using Second = std::chrono::duration<double, std::ratio<1>>;
+
+  std::chrono::time_point<Clock> m_beg{Clock::now()};
+
+public:
+  void reset() { m_beg = Clock::now(); }
+
+  float elapsed() const {
+    return std::chrono::duration_cast<Second>(Clock::now() - m_beg).count();
+  }
+};
+
 namespace MainWindow {
 ID3D11Device *get_g_pd3dDevice() { return g_pd3dDevice; }
 
@@ -197,7 +212,6 @@ int main(int, char **) {
   }
 
   Sound::refreshSounds();
-
 
   if (!(Sound::initAudio())) {
     Helper::fatalError(L"Failed to init audio backends\nTry: vcpkg install "
@@ -338,6 +352,8 @@ int main(int, char **) {
   Config::Overlay prevOverlay{};
   Fonts::Font lastAppliedFont{};
 
+  Timer hideTimer{};
+
   // deltaTime
   LARGE_INTEGER freq;
   LARGE_INTEGER lastDeltaTime;
@@ -393,26 +409,30 @@ int main(int, char **) {
     // mouse poll
     app.mouse.consumePendingDelta();
 
-    const Mouse::Type &curType{app.config.theme.mouse.style.type};
-
     const auto &ovScale{app.config.overlay.scale};
 
-    if (app.config.theme.mouse.highlightM1)
-      app.mouse.setM1Highlighted(app.keyboard.down[VK_LBUTTON]);
-    else
-      app.mouse.setM1Highlighted(false);
+    if (app.config.theme.mouse.enabled) {
+      const Mouse::Type &curType{app.config.theme.mouse.style.type};
 
-    if (Mouse::isTypeCircle(curType)) {
-      app.mouse.updateMouseState(deltaTime, app.layout.mouse.radius,
-                                 app.config.theme.mouse, ovScale);
-    } else if (Mouse::isTypeRect(curType)) {
-      app.mouse.updateMouseState(deltaTime, (app.layout.mouse.width / 2),
-                                 (app.layout.mouse.height / 2),
-                                 app.config.theme.mouse, ovScale);
+      if (app.config.theme.mouse.highlightM1)
+        app.mouse.setM1Highlighted(app.keyboard.down[VK_LBUTTON]);
+      else
+        app.mouse.setM1Highlighted(false);
+
+      if (Mouse::isTypeCircle(curType)) {
+        app.mouse.updateMouseState(deltaTime, app.layout.mouse.radius,
+                                   app.config.theme.mouse, ovScale);
+      } else if (Mouse::isTypeRect(curType)) {
+        app.mouse.updateMouseState(deltaTime, (app.layout.mouse.width / 2),
+                                   (app.layout.mouse.height / 2),
+                                   app.config.theme.mouse, ovScale);
+      }
     }
 
     app.mouse.updateScroll(deltaTime);
-    app.mouse.updateTrail(deltaTime, app.config.theme.mouse, ovScale);
+
+    if (app.config.theme.mouse.trail.enable)
+      app.mouse.updateTrail(deltaTime, app.config.theme.mouse, ovScale);
 
     bool anyKeyChanged{app.keyboard.anyChanged()};
 
@@ -421,13 +441,24 @@ int main(int, char **) {
     bool scaleAnimating{Keyboard::updateScale(app.layout, app.keyboard,
                                               deltaTime, app.config.theme)};
 
-    bool colorAnimating{Keyboard::updateKeyColors(app.layout, app.keyboard,
-                                                  deltaTime, app.config.theme)};
+    bool keyColorsAnimating{Keyboard::updateKeyColors(
+        app.layout, app.keyboard, deltaTime, app.config.theme, app.hideOverlay,
+        app.config.overlay.hideAnimSpeed)};
+
+    bool mouseColorsAnimating{app.mouse.updateColors(
+        deltaTime, app.config.theme.mouse, app.hideOverlay,
+        app.config.overlay.hideAnimSpeed)};
+
+    bool imagePackOpacityAnimating{app.imagePack.opacity.updateImageOpacity(
+        app.config.theme, deltaTime, app.hideOverlay,
+        app.config.overlay.hideAnimSpeed)};
 
     bool analogAnimating{Keyboard::updateAnalogAnimations(
-        app.layout, app.keyboard, app.config.theme)};
+        app.layout, app.keyboard, app.config.theme, ovScale)};
 
-    bool animationActive{scaleAnimating || colorAnimating || analogAnimating};
+    bool animationActive{scaleAnimating || keyColorsAnimating ||
+                         mouseColorsAnimating || analogAnimating ||
+                         imagePackOpacityAnimating};
 
     Binds::handleBinds(s_hwnd, app);
 
@@ -442,15 +473,33 @@ int main(int, char **) {
     bool scrollActive{prevScrollState != currentScrollState};
     prevScrollState = currentScrollState;
 
-    bool mouseIndicatorActive{
+    const bool mouseIndicatorActive{
         std::abs(app.mouse.getOffsetX()) > app.mouse.getSensivity() ||
         std::abs(app.mouse.getOffsetY()) > app.mouse.getSensivity() ||
         scrollActive};
 
-    bool needsRender{anyKeyChanged || firstFrame || mouseIndicatorActive ||
-                     animationActive || overlayPropertiesChanged ||
-                     (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
-                     SettingsWindow::IsVisible()};
+    const bool needsRender{anyKeyChanged || firstFrame ||
+                           mouseIndicatorActive || animationActive ||
+                           overlayPropertiesChanged ||
+                           (g_ResizeWidth != 0 && g_ResizeHeight != 0) ||
+                           SettingsWindow::IsVisible()};
+    const bool anyKeyHeld{
+        app.keyboard.anyKeyHeld(app.layout) ||
+        (app.config.theme.mouse.imagesDisplay && Images::isMouseKeysHeld(app))};
+    const bool hasActivity{
+        anyKeyHeld || (app.config.theme.mouse.enabled && mouseIndicatorActive)};
+
+    // handling autoHide
+    if (app.config.overlay.autoHide) {
+      if (hasActivity) {
+        hideTimer.reset();
+        app.hideOverlay = false;
+      } else if (hideTimer.elapsed() > app.config.overlay.hideAtTime) {
+        app.hideOverlay = true;
+      }
+    } else {
+      app.hideOverlay = false;
+    }
 
     if (!needsRender) {
       SettingsWindow::RenderFrame(app);
@@ -478,11 +527,11 @@ int main(int, char **) {
     }
 
     // debug
-		ImGui::ShowMetricsWindow();
 #ifdef DEBUG_CATBOARD
     // ImGui::Text("Application average %.3f ms/frame (%.1f FPS)",
     //             1000.0f / io.Framerate, io.Framerate);
     ImGui::ShowDemoWindow();
+    ImGui::ShowMetricsWindow();
 #endif // !DEBUG_CATBOARD
 
     // ImGui::ShowDemoWindow();
