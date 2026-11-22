@@ -61,10 +61,8 @@
 #include <strsafe.h>
 
 #include <mmsystem.h>
-// #pragma comment(lib, "winmm.lib")
 
 #include <dcomp.h>
-// #pragma comment(lib, "dcomp.lib")
 
 #ifndef CREATE_WAITABLE_TIMER_HIGH_RESOLUTION
 #define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
@@ -187,7 +185,7 @@ int main(int, char **) {
     Helper::fatalError(L"Program already running");
 
   // debug
-  initDebugConsole();
+  // initDebugConsole();
 
   // the state holding all active variables;
   AppState app;

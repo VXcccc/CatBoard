@@ -29,20 +29,6 @@ void toggleAutoHide(AppState &app) {
   }
 }
 
-// maybe in future ill finish this function
-//
-//  void SetResizeMode(HWND hWnd, bool enabled) {
-//    LONG_PTR exStyle{GetWindowLongPtr(hWnd, GWL_EXSTYLE)};
-//    if (enabled) {
-//      exStyle &= ~WS_EX_TRANSPARENT;
-//    } else {
-//      exStyle |= WS_EX_TRANSPARENT;
-//    }
-//    SetWindowLongPtr(hWnd, GWL_EXSTYLE, exStyle);
-//    SetWindowPos(hWnd, nullptr, 0, 0, 0, 0,
-//                 SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
-//  }
-
 // fix obs mode
 void SetObsMode(HWND hWnd, bool enabled, const AppState &app) {
   int windowWidth{(int)(app.layout.windowWidth * MainWindow::getG_MainScale())};
@@ -87,7 +73,7 @@ bool overlayChanged(Config::Overlay &outPrevOv, const AppState &app) {
   if (changed) {
     MainWindow::ApplyOverlaySize(app);
     MainWindow::ApplyOverlayPosition(app);
-    // ik the title bar is flashing when you changing the size or pos in
+    // ik the title bar is flickering when you changing the size or pos in
     // settings, but idk how to deal with unfocus other way
     if (SettingsWindow::IsVisible()) {
       SettingsWindow::ForceForeground(SettingsWindow::GetHWND());

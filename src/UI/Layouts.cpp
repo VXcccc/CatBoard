@@ -709,7 +709,9 @@ static void applySuggestedLabels(LayoutEditState &state) {
     int i{static_cast<int>(id)};
     if (i >= 0 && i < (int)state.layout.keys.size()) {
       Key &key{state.layout.keys[static_cast<int>(id)]};
-      key.label = Helper::VkToName(key.code);
+      std::string_view suggLabel{Helper::VkToName(key.code)};
+      if (suggLabel != "Unknown")
+        key.label = suggLabel;
 
       std::string_view shiftLabel{Helper::VkToShiftLabel(key.code)};
       if (!shiftLabel.empty()) {

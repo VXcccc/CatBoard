@@ -97,7 +97,7 @@ static std::optional<PackVK> Load(const std::filesystem::path &packDir) {
     }
     return loaded;
   } catch (const std::exception &e) {
-    printf("%s", e.what());
+    // printf("%s\n", e.what());
     return std::nullopt;
   }
 }

@@ -149,6 +149,16 @@ static std::string getDisplayLabel(const Layouts::Key &key,
   }
 }
 
+static ImU32 mulAlpha(const ImVec4 &c, float ovAlpha) {
+  return Helper::ToImU32(ImVec4{c.x, c.y, c.z, c.w * ovAlpha});
+}
+
+static ImU32 mulAlpha(const Config::ColorRGBA &c, float ovAlpha) {
+  ImVec4 res{Helper::fromConfigColor(c)};
+  res.w *= ovAlpha;
+  return Helper::ToImU32(res);
+}
+
 static void drawText(ImDrawList *draw, const Layouts::Key &key,
                      const Keyboard::State &kb, float vScale, ImVec2 center,
                      Config::Settings &config, const Mouse::State &mouse,
@@ -156,6 +166,7 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
   const auto &theme{config.theme};
   const auto &imStyle{ImGui::GetStyle()};
   const float &ovScale{config.overlay.scale};
+  const float &ovAlpha{kb.overlayAlpha};
 
   const bool applyScaleToFont{vScale > 0.01f && theme.animation &&
                               theme.animType == Config::AnimType::Scale};
@@ -166,7 +177,7 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
 
   using ScrollDir = Mouse::State::ScrollDir;
 
-  const ImU32 textColor{Helper::ToImU32(Helper::toConfigColor(color))};
+  const ImU32 textColor{mulAlpha(color, ovAlpha)};
 
   std::string displayLabel{getDisplayLabel(key, kb, config.font, mouse)};
 
@@ -211,7 +222,7 @@ static bool isAnalogAnimUp(const Analog::AnimType animType) {
 static void drawAnalogKey(ImDrawList *draw, const KeyVisual &v,
                           const Config::Theme &theme, const ImVec2 &topLeft,
                           const ImVec2 &bottomRight, float ovScale,
-                          float rounding) {
+                          float rounding, float ovAlpha) {
   if (!theme.analog.enabled)
     return;
 
@@ -223,8 +234,8 @@ static void drawAnalogKey(ImDrawList *draw, const KeyVisual &v,
   const ImVec2 clipMin{topLeft.x, up ? cutY : topLeft.y};
   const ImVec2 clipMax{bottomRight.x, up ? bottomRight.y : cutY};
 
-  const ImU32 color{v.active ? Helper::ToImU32(theme.analog.pressedColor)
-                             : Helper::ToImU32(theme.analog.color)};
+  const ImU32 color{v.active ? mulAlpha(theme.analog.pressedColor, ovAlpha)
+                             : mulAlpha(theme.analog.color, ovAlpha)};
 
   if (clipMax.y > clipMin.y) {
     draw->PushClipRect(clipMin, clipMax, true);
@@ -241,6 +252,7 @@ static void drawAnalogText(ImDrawList *draw, const Layouts::Key &key,
                            const ImVec2 &bottomRight) {
   const auto &theme{config.theme};
   const float &ovScale{config.overlay.scale};
+  const float &ovAlpha{kb.overlayAlpha};
 
   const bool up{isAnalogAnimUp(theme.analog.animType)};
 
@@ -270,6 +282,9 @@ void renderKeyboard(AppState &app) {
   const auto &layout{app.layout};
   const auto &kb{app.keyboard};
   const auto &theme{app.config.theme};
+  const auto &ovAlpha{app.keyboard.overlayAlpha};
+  if (ovAlpha <= 0.0f)
+    return;
 
   if (theme.keysImagesDisplay) {
     Images::drawKeyboardImages(draw, app);
@@ -293,19 +308,19 @@ void renderKeyboard(AppState &app) {
     ImVec2 bottomRight((center.x + halfSize.x) * ovScale,
                        (center.y + halfSize.y) * ovScale);
 
-    ImU32 fill{Helper::ToImU32(Helper::toConfigColor(v.colors.fill))};
+    ImU32 fill{mulAlpha(v.colors.fill, ovAlpha)};
 
     float rounding{theme.keyRounding * ovScale};
 
     draw->AddRectFilled(topLeft, bottomRight, fill, rounding);
 
     if (theme.analog.enabled) {
-      drawAnalogKey(draw, v, theme, topLeft, bottomRight, ovScale, rounding);
+      drawAnalogKey(draw, v, theme, topLeft, bottomRight, ovScale, rounding,
+                    ovAlpha);
     }
 
     if (theme.keyOutline.enable) {
-      ImU32 outlineColor{
-          Helper::ToImU32(Helper::toConfigColor(v.colors.outline))};
+      ImU32 outlineColor{mulAlpha(v.colors.outline, ovAlpha)};
       float thickness{theme.keyOutline.thickness};
       draw->AddRect(topLeft, bottomRight, outlineColor, rounding, 0, thickness);
     }
@@ -357,15 +372,6 @@ void hadnleKeySounds(const Keyboard::State &kb, bool layoutKeysOnly,
   }
 }
 
-static bool animateKeyColor(ImVec4 &cur, const ImVec4 &target, bool hide,
-                            float colorT, float hideT) {
-  const ImVec4 rgbTarget{target.x, target.y, target.z, cur.w};
-  bool moving{Helper::animateColor(cur, rgbTarget, colorT)};
-
-  moving |= Helper::animate(cur.w, hide ? 0.0f : target.w, hideT);
-  return moving;
-}
-
 bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &kb,
                      float deltaTime, const Config::Theme &theme,
                      bool hideOverlay, int hideAnimSpeed) {
@@ -390,13 +396,12 @@ bool updateKeyColors(const Layouts::Layout &layout, Keyboard::State &kb,
     ImVec4 outline{Helper::fromConfigColor(down ? theme.keyOutline.activeColor
                                                 : theme.keyOutline.idleColor)};
 
-    animationActive |=
-        animateKeyColor(v.colors.fill, fill, hideOverlay, colorT, hideT);
-    animationActive |=
-        animateKeyColor(v.colors.text, text, hideOverlay, colorT, hideT);
-    animationActive |=
-        animateKeyColor(v.colors.outline, outline, hideOverlay, colorT, hideT);
+    animationActive |= Helper::animateColor(v.colors.fill, fill, colorT);
+    animationActive |= Helper::animateColor(v.colors.text, text, colorT);
+    animationActive |= Helper::animateColor(v.colors.outline, outline, colorT);
   }
+  animationActive |=
+      Helper::animate(kb.overlayAlpha, hideOverlay ? 0.0f : 1.0f, hideT);
   return animationActive;
 }
 

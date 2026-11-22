@@ -1,0 +1,93 @@
+{
+    "keys": [
+        {
+            "h": 50.0,
+            "keyCode": 87,
+            "label": "w",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 50.0,
+            "x": 140.0,
+            "y": 23.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 65,
+            "label": "a",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 50.0,
+            "x": 89.0,
+            "y": 74.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 83,
+            "label": "s",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 50.0,
+            "x": 140.0,
+            "y": 74.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 68,
+            "label": "d",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 50.0,
+            "x": 191.0,
+            "y": 74.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 32,
+            "label": "",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 170.0,
+            "x": 71.0,
+            "y": 125.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 162,
+            "label": "ctrl",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 60.0,
+            "x": 10.0,
+            "y": 125.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 160,
+            "label": "shift",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 78.0,
+            "x": 10.0,
+            "y": 74.0
+        },
+        {
+            "h": 50.0,
+            "keyCode": 81,
+            "label": "q",
+            "shiftLabel": "",
+            "type": 0,
+            "w": 50.0,
+            "x": 10.0,
+            "y": 23.0
+        }
+    ],
+    "mouse": {
+        "centerX": 355.0,
+        "centerY": 100.0,
+        "height": 150.0,
+        "radius": 37.0,
+        "width": 220.0
+    },
+    "windowHeight": 216,
+    "windowWidth": 480
+}

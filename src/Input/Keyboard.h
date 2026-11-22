@@ -43,6 +43,8 @@ struct State {
   KeyBitSet prevDown{};
   std::vector<KeyVisual> visuals{};
 
+	float overlayAlpha{1.0f};
+
   void pollFullKeyboard();
   bool anyChanged() const { return (down ^ prevDown).any(); }
   bool pressed(int vk) const { return down[vk] && !prevDown[vk]; }

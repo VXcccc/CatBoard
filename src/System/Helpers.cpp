@@ -110,8 +110,7 @@ ImU32 ToImU32(const Config::ColorRGBA &c) {
 }
 
 ImU32 ToImU32(const ImVec4 &c) {
-  return IM_COL32(Helper::toColorRGB(c.x), Helper::toColorRGB(c.y),
-                  Helper::toColorRGB(c.z), Helper::toColorRGB(c.w));
+	return ImGui::ColorConvertFloat4ToU32(c);
 }
 
 bool animate(float &cur, float target, float t) {

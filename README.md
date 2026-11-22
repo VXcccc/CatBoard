@@ -14,7 +14,6 @@ Some features are heavily inspired by the projects below **(check them out!)**:
 
 
 ## **Features**
-
 - **Customizable everything:** you can customize almost everything in this overlay (layout, hotkeys, style, font, image packs, sound packs etc.)
 - **Analog keyboard support** via the [Wooting Analog SDK](https://github.com/WootingKb/wooting-analog-sdk) Right now only wooting keyboards are supported, but I may add support for other keyboards in the future
 - **Mouse tracking** using the Windows Raw Input API

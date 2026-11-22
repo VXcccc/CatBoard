@@ -71,7 +71,7 @@ struct MouseTheme {
   float imageOffsetY{-50.0f};
 
   float fadeTime{0.6f};
-  float rounding{6.0f};
+  float rounding{0.0f};
 
   Trail trail{};
 

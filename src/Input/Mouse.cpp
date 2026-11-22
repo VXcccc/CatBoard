@@ -430,7 +430,7 @@ static ImU32 lerpColor(ImU32 colorA, ImU32 colorB, float t) {
   ImVec4 result{a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t,
                 a.z + (b.z - a.z) * t, a.w + (b.w - a.w) * t};
 
-  return ImGui::ColorConvertFloat4ToU32(result);
+  return Helper::ToImU32(result);
 }
 
 float getFade(const Mouse::State &mouseState) {

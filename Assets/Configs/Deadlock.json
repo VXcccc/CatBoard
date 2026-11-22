@@ -1,0 +1,330 @@
+{
+    "binds": [
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "Drag mode",
+            "type": 0,
+            "vkCode": 115
+        },
+        {
+            "empty": false,
+            "keyName": "F6",
+            "modifierKeys": [],
+            "name": "Toggle overlay",
+            "type": 1,
+            "vkCode": 117
+        },
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "Toggle settings",
+            "type": 2,
+            "vkCode": 120
+        },
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "AutoHide",
+            "type": 3,
+            "vkCode": 113
+        },
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "Exit",
+            "type": 4,
+            "vkCode": 123
+        }
+    ],
+    "configName": "Deadlock",
+    "font": {
+        "letterCase": {
+            "mode": 0,
+            "options": {
+                "capsInsensitiveKeys": false,
+                "capsLockDisplay": false,
+                "capsSensitiveKeys": false
+            }
+        },
+        "name": "Forevs-Regular",
+        "sizePixels": 40.0
+    },
+    "imagePack": {
+        "defaultKey": {
+            "activeFileName": "keyw",
+            "backGroundFileName": "keyb",
+            "vkCode": 0
+        },
+        "explicitImages": [
+            {
+                "activeFileName": "tabw",
+                "backGroundFileName": "tabb",
+                "vkCode": 9
+            },
+            {
+                "activeFileName": "tabw",
+                "backGroundFileName": "tabb",
+                "vkCode": 162
+            },
+            {
+                "activeFileName": "tabw",
+                "backGroundFileName": "tabb",
+                "vkCode": 164
+            },
+            {
+                "activeFileName": "tabw",
+                "backGroundFileName": "tabb",
+                "vkCode": 165
+            },
+            {
+                "activeFileName": "spacew",
+                "backGroundFileName": "spaceb",
+                "vkCode": 32
+            },
+            {
+                "activeFileName": "capw",
+                "backGroundFileName": "capsb",
+                "vkCode": 20
+            },
+            {
+                "activeFileName": "shiftw",
+                "backGroundFileName": "shiftb",
+                "vkCode": 160
+            }
+        ],
+        "mouse": {
+            "bottom": {
+                "buttonActive": "",
+                "buttonIdle": "",
+                "h": 1.0,
+                "w": 1.0,
+                "x": 0.0,
+                "y": 0.0
+            },
+            "left": {
+                "buttonActive": "leftbp",
+                "buttonIdle": "leftb",
+                "h": 219.0,
+                "w": 63.0,
+                "x": -31.0,
+                "y": 0.0
+            },
+            "middle": {
+                "buttonActive": "sw",
+                "buttonIdle": "sb",
+                "h": 38.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -67.5
+            },
+            "mouse4": {
+                "buttonActive": "m4w",
+                "buttonIdle": "m4b",
+                "h": 41.0,
+                "w": 5.0,
+                "x": -51.0,
+                "y": 5.0
+            },
+            "mouse5": {
+                "buttonActive": "m5w",
+                "buttonIdle": "m5b",
+                "h": 35.0,
+                "w": 7.0,
+                "x": -53.0,
+                "y": -31.0
+            },
+            "right": {
+                "buttonActive": "rightbp",
+                "buttonIdle": "rightb",
+                "h": 219.0,
+                "w": 62.0,
+                "x": 31.5,
+                "y": 0.0
+            },
+            "scrollDown": {
+                "buttonActive": "sdw",
+                "buttonIdle": "",
+                "h": 19.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -58.0
+            },
+            "scrollUp": {
+                "buttonActive": "suw",
+                "buttonIdle": "",
+                "h": 19.0,
+                "w": 12.0,
+                "x": 0.5,
+                "y": -77.0
+            }
+        },
+        "name": "DefaultImagePack"
+    },
+    "misc": {
+        "fps": 60,
+        "obsMode": false,
+        "saveOnClose": true,
+        "vsync": true
+    },
+    "overlay": {
+        "autoHide": false,
+        "hideAnimSpeed": 100,
+        "hideAtTime": 1.0,
+        "scale": 1.0,
+        "x": 0,
+        "y": 600
+    },
+    "selectedLayout": "Deadlock",
+    "soundPack": {
+        "enable": false,
+        "layoutKeysOnlySound": false,
+        "name": "eg-oreo",
+        "volume": 1.0
+    },
+    "theme": {
+        "activeFill": [
+            15,
+            39,
+            2,
+            255
+        ],
+        "activeText": [
+            237,
+            216,
+            179,
+            255
+        ],
+        "analog": {
+            "animType": 0,
+            "color": [
+                15,
+                39,
+                2,
+                255
+            ],
+            "enableHallText": true,
+            "enabled": false,
+            "pressedColor": [
+                15,
+                39,
+                2,
+                255
+            ]
+        },
+        "animType": 0,
+        "animateColors": false,
+        "animation": false,
+        "animationSpeed": 500,
+        "idleFill": [
+            0,
+            0,
+            0,
+            48
+        ],
+        "idleText": [
+            125,
+            114,
+            94,
+            255
+        ],
+        "keyOutline": {
+            "activeColor": [
+                237,
+                216,
+                179,
+                255
+            ],
+            "enable": true,
+            "idleColor": [
+                125,
+                114,
+                94,
+                255
+            ],
+            "thickness": 1.0
+        },
+        "keyRounding": 0.0,
+        "keysImageOpacity": 255,
+        "keysImagesDisplay": false,
+        "mouse": {
+            "decayRate": 8.0,
+            "enabled": true,
+            "fadeTime": 1.0,
+            "fill": [
+                0,
+                0,
+                0,
+                48
+            ],
+            "highlightColor": [
+                255,
+                255,
+                255,
+                255
+            ],
+            "highlightM1": false,
+            "highlightScale": 1.25,
+            "imageOpacity": 255,
+            "imageScale": 1.0,
+            "imagesDisplay": false,
+            "inner": [
+                237,
+                216,
+                179,
+                255
+            ],
+            "lerpColor": false,
+            "outer": [
+                125,
+                114,
+                94,
+                255
+            ],
+            "outerThickness": 1.0,
+            "rounding": 0.0,
+            "scrollCounter": [
+                0,
+                0,
+                0,
+                255
+            ],
+            "sensitivity": 0.30000001192092896,
+            "smallRadius": 3.0,
+            "style": {
+                "name": "Pan",
+                "type": 3
+            },
+            "trail": {
+                "color": [
+                    237,
+                    216,
+                    179,
+                    255
+                ],
+                "duration": 0.6000000238418579,
+                "enable": true,
+                "maxLength": 300.0,
+                "maxWidth": 3.0,
+                "minWidth": 1.0,
+                "style": {
+                    "name": "Catmull",
+                    "type": 1
+                },
+                "subdivisions": 5
+            }
+        },
+        "obsBackground": [
+            0,
+            255,
+            0,
+            255
+        ],
+        "pressScale": 1.100000023841858
+    },
+    "version": 100
+}
