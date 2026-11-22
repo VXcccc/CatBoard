@@ -89,12 +89,24 @@ void handleBinds(HWND hWnd, AppState &app) {
     return;
   }
 
+  const Bind *best = nullptr;
+
   for (const auto &bind : app.config.binds) {
-    if (app.keyboard.inRange(bind.vkCode) &&
-        app.keyboard.pressed(bind.vkCode) && !bind.empty &&
-        isModifersPressed(bind.modifierKeys, app)) {
-      handleBindType(bind.type, hWnd, app);
-    }
+    if (bind.empty)
+      continue;
+    if (!app.keyboard.inRange(bind.vkCode) ||
+        !app.keyboard.pressed(bind.vkCode))
+      continue;
+    if (!isModifersPressed(bind.modifierKeys, app))
+      continue;
+
+    if (!best || bind.modifierKeys.size() > best->modifierKeys.size())
+      best = &bind;
+  }
+
+  if (best) {
+    const BindType type = best->type;
+    handleBindType(type, hWnd, app);
   }
 }
 
@@ -103,7 +115,7 @@ bool isBindFree(int vk, const BindsVector &binds,
   for (const auto &existingBind : binds) {
     bool vkCodesEqual{vk == existingBind.vkCode};
     if (vkCodesEqual && !existingBind.empty &&
-        existingBind.modifierKeys.empty()) {
+        existingBind.modifierKeys.empty() && modifierKeys.empty()) {
       return false;
     } else if (!existingBind.modifierKeys.empty()) {
       if (modifierKeys == existingBind.modifierKeys && vkCodesEqual &&
@@ -119,7 +131,6 @@ static void makeEmpty(Bind &outBind) {
   outBind.empty = true;
   outBind.keyName = Consts::EMPTY_HOTKEY_NAME;
 }
-
 
 static bool isModifierVk(int vk) {
   return vk == VK_CONTROL || vk == VK_SHIFT || vk == VK_MENU ||

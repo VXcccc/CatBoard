@@ -179,7 +179,7 @@
         "x": 0,
         "y": 600
     },
-    "selectedLayout": "layout7tNoMouse",
+    "selectedLayout": "layout7t",
     "soundPack": {
         "enable": false,
         "layoutKeysOnlySound": false,
@@ -253,7 +253,7 @@
         "keysImagesDisplay": false,
         "mouse": {
             "decayRate": 8.0,
-            "enabled": true,
+            "enabled": false,
             "fadeTime": 0.6000000238418579,
             "fill": [
                 73,

@@ -8,17 +8,21 @@
   <br>
 </h1>
 
-<h4 align="center"><b>CatBoard is the next-gen input overlay written in C++ via ImGui, that rendered directly on your screen.</b>
+<h4 align="center"><b>CatBoard is the next-gen input overlay written in C++ via ImGui, that rendered directly on your screen</b>
 </h4>
 
-The main idea behind it is to share your inputs without OBS, so you can screenshare them on discord or see what you are pressing by yourself.
+<p align="center">
+  <img src="https://femboy.beauty/lRnUYD", width="740">
+</p>
+
+The main idea behind catboard is to share your inputs without OBS, so you can screenshare them on discord or see what are you pressing by yourself
 
 
 > [!NOTE]
-> This is my first C++ project, so bugs and bad code expected. Im gonna try my best at maintaining this project. Also fill free to contribute I appreciate any contribution, check [CONTRIBUTING.md](https://github.com/VXcccc/CatBoard/blob/main/CONTRIBUTING.md)  
+> This is my first C++ project, so bugs, problems with optimization, and bad code expected. Im gonna try my best at maintaining and improving this project. Also fill free to contribute I appreciate any contribution, check [CONTRIBUTING.md](https://github.com/VXcccc/CatBoard/blob/main/CONTRIBUTING.md)  
 
 ## **My major inspirations**
-Some features are heavily inspired by the projects below **(check them out!)**:
+Some features and styles are heavily inspired by the projects below **(check them out!)**:
 - [girlglock input-overlay](https://github.com/girlglock/input-overlay/)
 - [ThoNohT NohBoard](https://github.com/ThoNohT/NohBoard)
 - [conventoangelo OverKeys](https://github.com/conventoangelo/OverKeys)
@@ -31,10 +35,15 @@ Some features are heavily inspired by the projects below **(check them out!)**:
 - **Asmr sounds** working via [Mechvbies](https://github.com/hainguyents13/mechvibes) sound packs, you can [create your own](https://editor.mechvibes.com/) or [browse existing](https://mechvibes.com/sound-packs)
 - **OBS mode** is similliar to [NohBoard](https://github.com/ThoNohT/NohBoard) obs mode (simply adds a background to the application). In future, if possible, im going to try other methods of bringing my overlay into the OBS
 - **Auto hide** automatically hide your overlay when you inactive
+- **Image packs** if you want to configure them check how preinstalled image packs [config.json](/Assets/Images/DefaultImagePack/config.json) work.
 - **Cross-platform** in development
 
 
 ## **Installation**
+
+> [!WARNING]
+> Some evil strict anticheats may flag this application because they dont like overlays. Use it at your own risk!
+
 CatBoard can be installed through several methods
 
 ## **Fonts**
@@ -54,23 +63,35 @@ Also dont forget to add vcpkg to $env `setx VCPKG_ROOT "Your vcpkg path"`, or ju
 
 1. **Clone the repo**
 ```
-git clone --recursive https://github.com/<user>/CatBoard.git
-cd CatBoard
+git clone --recursive https://github.com/VXcccc/CatBoard.git
 ```
 
 2. **Build via CMake**
-- Debug:
+<details>
+<summary><b>debug build</b></summary>
+
 ```
 cmake --preset mingw-debug
 cmake --build --preset mingw-debug
 ```
-- Release:
+</details>
+
+<details>
+<summary><b>release build</b></summary>
+
 ```
 cmake --preset mingw-release
 cmake --build --preset mingw-release
 ```
-- Pack(optional):
+
+</details>
+
+<details>
+<summary><b>pack (optional)</b></summary>
+
 ```
 cpack --preset portable-zip
 cpack --preset installer
 ```
+
+</details>

@@ -911,7 +911,7 @@ void drawLayoutsTab(SettingsEditState &state,
                     Layouts::LayoutEditState &layoutEditState, AppState &app) {
 
   drawLayoutCombo(state, app);
-  if (ImGui::Button("Open layout folder")) {
+  if (ImGui::Button("Open layouts folder")) {
     Paths::openLayoutDirectory();
   }
 
@@ -925,16 +925,30 @@ void drawLayoutsTab(SettingsEditState &state,
   ImGui::SameLine();
 
   if (ImGui::Button("Delete layout")) {
-    if (state.selectedLayout != Layouts::defaultLayoutName &&
-        Layouts::layouts.size() > 1) {
-      state.layoutDeleteError.clear();
+    ImGui::OpenPopup("Delete layout");
+  }
 
-      Layouts::deleteLayout(state.selectedLayout);
-      Layouts::refreshLayouts();
-      validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
-    } else {
-      state.layoutDeleteError = "You can not delete default or last layout";
+  if (ImGui::BeginPopupModal("Delete layout", nullptr,
+                             ImGuiWindowFlags_AlwaysAutoResize)) {
+    ImGui::Text("Are you sure you want to delete %s layout",
+                Config::configs[state.currentLayout].c_str());
+    if (ImGui::Button("Yes", ImVec2(100, 0))) {
+      if (state.selectedLayout != Layouts::defaultLayoutName &&
+          Layouts::layouts.size() > 1) {
+        state.layoutDeleteError.clear();
+
+        Layouts::deleteLayout(state.selectedLayout);
+        Layouts::refreshLayouts();
+        validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
+      } else {
+        state.layoutDeleteError = "You can not delete default or last layout";
+      }
     }
+    ImGui::SameLine();
+    if (ImGui::Button("No", ImVec2(100, 0))) {
+      ImGui::CloseCurrentPopup();
+    }
+    ImGui::EndPopup();
   }
 
   if (!state.layoutDeleteError.empty()) {
@@ -1150,7 +1164,7 @@ void drawConfigsSection(SettingsEditState &state, AppState &app) {
     Helper::drawErrorInSettings(state.loadConfigError);
   }
 
-  if (ImGui::Button("Open config folder")) {
+  if (ImGui::Button("Open configs folder")) {
     Paths::openConfigDirectory();
   }
 
