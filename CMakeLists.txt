@@ -74,7 +74,6 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 				${imgui_SOURCE_DIR}
 				${imgui_SOURCE_DIR}/backends
-				${miniaudio_SOURCE_DIR}
 
 				${MINIAUDIO_DIR}
 				${MINIAUDIO_VORBIS_DIR}
@@ -82,11 +81,10 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 
 set(WOOTING_DIR  ${CMAKE_SOURCE_DIR}/ThirdParty/wooting-sdk)
 
-
 add_library(WootingAnalog SHARED IMPORTED)
 set_target_properties(WootingAnalog PROPERTIES
-				IMPORTED_LOCATION "${WOOTING_DIR}/debug/wooting_analog_sdk_dist.dll"
-				IMPORTED_IMPLIB   "${WOOTING_DIR}/debug/wooting_analog_sdk_dist.dll"
+				IMPORTED_LOCATION "${WOOTING_DIR}/release/wooting_analog_sdk_dist.dll"
+				IMPORTED_IMPLIB   "${WOOTING_DIR}/release/wooting_analog_sdk_dist.dll"
 				INTERFACE_INCLUDE_DIRECTORIES "${WOOTING_DIR}/includes"
 )
 target_link_libraries(${PROJECT_NAME} PRIVATE
@@ -111,6 +109,10 @@ add_custom_command(TARGET ${PROJECT_NAME} POST_BUILD
 				COMMAND ${CMAKE_COMMAND} -E copy_directory
 				"${CMAKE_SOURCE_DIR}/Assets/Configs"
 				"$<TARGET_FILE_DIR:${PROJECT_NAME}>/${ASSETS_DEST}/Configs"
+
+				COMMAND ${CMAKE_COMMAND} -E copy_if_different
+				"${WOOTING_DIR}/release/wooting_analog_sdk_dist.dll"
+				"$<TARGET_FILE_DIR:${PROJECT_NAME}>"
 )
 
 if(MINGW)
@@ -121,8 +123,9 @@ if(MINGW)
 endif()
 
 
+# CPACK
 install(TARGETS ${PROJECT_NAME} RUNTIME DESTINATION .)
-
+install(FILES ${WOOTING_DIR}/release/wooting_analog_sdk_dist.dll DESTINATION .)
 install(DIRECTORY
 				${CMAKE_SOURCE_DIR}/Assets/Layouts
 				${CMAKE_SOURCE_DIR}/Assets/Sounds
@@ -130,7 +133,6 @@ install(DIRECTORY
 				${CMAKE_SOURCE_DIR}/Assets/Configs
 				DESTINATION ${ASSETS_DEST}
 )
-install(DIRECTORY ${CMAKE_SOURCE_DIR}/Fonts DESTINATION .)
 
 set(CPACK_PACKAGE_NAME "CatBoard")
 set(CPACK_PACKAGE_VENDOR "VXcccc")
@@ -141,7 +143,7 @@ set(CPACK_STRIP_FILES ON)
 set(CPACK_RESOURCE_FILE_LICENSE "${CMAKE_SOURCE_DIR}/LICENSE")
 
 # NSIS SETUP
-set(CPACK_NSIS_INSTALL_ROOT "$PROGRAMFILES64")
+set(CPACK_NSIS_INSTALL_ROOT "$LOCALAPPDATA\\\\Programs")
 set(CPACK_NSIS_DISPLAY_NAME "CatBoard")
 set(CPACK_NSIS_PACKAGE_NAME "CatBoard")
 set(CPACK_NSIS_INSTALLED_ICON_NAME "CatBoard.exe")

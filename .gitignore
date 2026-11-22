@@ -3,7 +3,6 @@ build/
 Legacy/
 tests/
 todo.txt
-CMakePresets.json
 .clangd
 compile_commands.json
 
