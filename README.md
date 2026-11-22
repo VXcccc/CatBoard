@@ -11,6 +11,14 @@
 <h4 align="center"><b>CatBoard is the next-gen input overlay written in C++ via ImGui, that rendered directly on your screen</b>
 </h4>
 
+<div align="center">
+
+[![Release](https://img.shields.io/github/v/release/VXcccc/CatBoard?style=flat-square&color=5BCEFA)](https://github.com/VXcccc/CatBoard/releases)
+[![Downloads](https://img.shields.io/github/downloads/VXcccc/CatBoard/total?label=downloads&style=flat-square&color=F5A9B8)](https://github.com/VXcccc/CatBoard/releases)
+[![License](https://img.shields.io/github/license/VXcccc/CatBoard?style=flat-square&color=FFFFFF)](https://github.com/VXcccc/CatBoard/blob/main/LICENSE)
+
+</div>
+
 <p align="center">
   <img src="https://femboy.beauty/lRnUYD", width="740">
 </p>
@@ -44,7 +52,14 @@ Some features and styles are heavily inspired by the projects below **(check the
 > [!WARNING]
 > Some evil strict anticheats may flag this application because they dont like overlays. Use it at your own risk!
 
-CatBoard can be installed through several methods
+There are multiple ways to install CatBoard
+
+1. **Using installer**
+    - Download and run the latest [EXE installer](https://github.com/VXcccc/CatBoard/releases/latest).
+
+3. **Portable**
+   - Download and extract the [portable ZIP file](https://github.com/VXcccc/CatBoard/releases/latest)
+
 
 ## **Fonts**
 If a font specified in the config is missing, an error message will appear. Click the error message to copy it, then find and install the font manually.
@@ -56,7 +71,7 @@ Fonts used in default configs:
 - [The wild breath of zelda](https://www.dafont.com/the-wild-breath-of-zelda.font)
 
 
-## **Build guide**
+## **Building from scratch**
 ### Requirements:
 `Windows 10/11`,`CMake`,`GCC`,`Ninja`,`vcpkg`.  
 Also dont forget to add vcpkg to $env `setx VCPKG_ROOT "Your vcpkg path"`, or just simply change CMakePresets vcpkg path to the absolute path.
