@@ -1,6 +1,7 @@
 #include "Helpers.h"
 #include "Config.h"
 #include "Constants.h"
+#include "Paths.h"
 #include "Resource/ResourceConstants.h"
 #include "imgui.h"
 #include <algorithm>
@@ -19,7 +20,6 @@
 #include <winuser.h>
 
 namespace Helper {
-
 
 [[noreturn]] void fatalError(const wchar_t *message) {
   MessageBox(NULL, message, L"Catboard Fatal Error", MB_OK | MB_ICONERROR);
@@ -109,9 +109,7 @@ ImU32 ToImU32(const Config::ColorRGBA &c) {
   return IM_COL32(c[0], c[1], c[2], c[3]);
 }
 
-ImU32 ToImU32(const ImVec4 &c) {
-	return ImGui::ColorConvertFloat4ToU32(c);
-}
+ImU32 ToImU32(const ImVec4 &c) { return ImGui::ColorConvertFloat4ToU32(c); }
 
 bool animate(float &cur, float target, float t) {
   cur = std::lerp(cur, target, t);
@@ -183,19 +181,47 @@ void refresh(std::vector<std::string> &outCategory,
   }
 }
 
-// bool installDefault(const std::filesystem::path &source,
-//                     const std::filesystem::path &destination) {
-//   std::error_code ec;
-//
-//   if (std::filesystem::exists(destination, ec)) {
-//     return true;
-//   }
-//
-//   std::filesystem::copy(source, destination,
-//                         std::filesystem::copy_options::recursive, ec);
-//
-//   return !ec;
-// }
+bool installDefault(const std::filesystem::path &source,
+                    const std::filesystem::path &destination) {
+  std::error_code ec;
+
+  if (std::filesystem::exists(destination, ec)) {
+    return true;
+  }
+
+  std::filesystem::create_directories(destination, ec);
+  if (ec)
+    return false;
+
+  std::filesystem::copy(source, destination,
+                        std::filesystem::copy_options::recursive |
+                            std::filesystem::copy_options::skip_existing,
+                        ec);
+
+  return !ec;
+}
+
+bool installDefaults() {
+  if (Consts::IS_PORTABLE)
+    return true;
+
+  std::filesystem::create_directories(Paths::getAppDataDir());
+
+  bool everythingInstalled{false};
+
+  if (installDefault(Paths::getAssetsDir() / "Configs",
+                     Paths::configDirectory()) &&
+      installDefault(Paths::getAssetsDir() / "Layouts",
+                     Paths::layoutDirectory()) &&
+      installDefault(Paths::getAssetsDir() / "Sounds",
+                     Paths::soundsDirectory()) &&
+      installDefault(Paths::getAssetsDir() / "Images",
+                     Paths::imagesDirectory())) {
+    everythingInstalled = true;
+  }
+
+  return everythingInstalled;
+}
 
 bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
                ImGuiColorEditFlags flags) {

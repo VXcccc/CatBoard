@@ -71,9 +71,10 @@ bool isWindowsThemeLight();
 void applyDarkMode(HWND hwnd);
 
 
-// deprecated
-// bool installDefault(const std::filesystem::path &source,
-//                     const std::filesystem::path &destination);
+bool installDefault(const std::filesystem::path &source,
+                    const std::filesystem::path &destination);
+
+bool installDefaults();
 
 bool ColorEdit(const std::string &label, Config::ColorRGBA &outCol,
                ImGuiColorEditFlags flags = ImGuiColorEditFlags_NoInputs);

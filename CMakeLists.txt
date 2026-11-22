@@ -52,12 +52,19 @@ add_executable(${PROJECT_NAME} WIN32
 				${MINIAUDIO_VORBIS_DIR}/miniaudio_libvorbis.c
 )
 
+option(CATBOARD_PORTABLE "Portable build" OFF)
+if(CATBOARD_PORTABLE)
+	target_compile_definitions(${PROJECT_NAME} PRIVATE CATBOARD_PORTABLE)
+endif()
+
+math(EXPR APP_VERSION_INT_VALUE
+     "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
 
 target_compile_definitions(${PROJECT_NAME} PRIVATE
 		UNICODE
 		_UNICODE
 		APP_VERSION_STR="${PROJECT_VERSION}"
-		APP_VERSION_INT=${PROJECT_VERSION_MAJOR}${PROJECT_VERSION_MINOR}${PROJECT_VERSION_PATCH}
+		APP_VERSION_INT=${APP_VERSION_INT_VALUE}
 )
 
 
@@ -164,10 +171,12 @@ set(CPACK_NSIS_EXTRA_INSTALL_COMMANDS "
 		MessageBox MB_YESNO|MB_ICONQUESTION 'Create a desktop shortcut?' /SD IDNO IDNO +2
 		CreateShortCut '$DESKTOP\\\\CatBoard.lnk' '$INSTDIR\\\\CatBoard.exe'
 ")
+
 set(CPACK_NSIS_EXTRA_UNINSTALL_COMMANDS "
+		SetShellVarContext current
 		Delete '$DESKTOP\\\\CatBoard.lnk'
-		Delete '$INSTDIR\\\\ActiveConfig.json'
-		Delete '$INSTDIR\\\\UI.json'
+		MessageBox MB_YESNO|MB_ICONQUESTION|MB_DEFBUTTON2 'Also delete your user Assets?' /SD IDNO IDNO +2
+		RMDir /r '$APPDATA\\\\CatBoard'
 ")
 
 include(CPack)

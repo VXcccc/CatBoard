@@ -1,4 +1,5 @@
 #include "Paths.h"
+#include "Constants.h"
 #include "Fonts.h"
 #include <algorithm>
 #include <array>
@@ -12,8 +13,12 @@
 namespace Paths {
 namespace {
 std::filesystem::path categoryDirectory(std::string_view category) {
-  return getExecutableDir() / "Assets" / std::string{category};
+  if (Consts::IS_PORTABLE) {
+    return getExecutableDir() / "Assets" / std::string{category};
+  }
+  return getAppDataDir() / "Assets" / std::string{category};
 }
+
 
 std::filesystem::path categoryItemPath(std::string_view category,
                                        std::string_view name) {
@@ -32,6 +37,10 @@ void openCategoryDirectory(std::string_view category) {
   ShellExecute(NULL, L"open", path.c_str(), NULL, NULL, SW_SHOWDEFAULT);
 }
 } // namespace
+
+static std::filesystem::path userRoot() {
+  return Consts::IS_PORTABLE ? getExecutableDir() : getAppDataDir();
+}
 
 static std::filesystem::path
 getKnownFolder(const KNOWNFOLDERID &id,
@@ -84,10 +93,10 @@ std::filesystem::path getExecutableDir() {
 std::filesystem::path getAssetsDir() { return getExecutableDir() / ("Assets"); }
 
 std::filesystem::path getActiveConfigPath() {
-  return getExecutableDir() / "ActiveConfig.json";
+  return userRoot() / "ActiveConfig.json";
 }
 
-std::filesystem::path getUIJsonPath() { return getExecutableDir() / "UI.json"; }
+std::filesystem::path getUIJsonPath() { return userRoot() / "UI.json"; }
 
 std::filesystem::path configDirectory() { return categoryDirectory("Configs"); }
 std::filesystem::path layoutDirectory() { return categoryDirectory("Layouts"); }

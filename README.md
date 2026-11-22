@@ -27,7 +27,7 @@ The main idea behind catboard is to share your inputs without OBS, so you can sc
 
 
 > [!NOTE]
-> This is my first C++ project, so bugs, problems with optimization, and bad code expected. Im gonna try my best at maintaining and improving this project. Also fill free to contribute I appreciate any contribution, check [CONTRIBUTING.md](https://github.com/VXcccc/CatBoard/blob/main/CONTRIBUTING.md)  
+> This is my first C++ project, so bugs, problems with optimization and bad code expected. Im gonna try my best at maintaining and improving this project. Also fill free to contribute I appreciate any contribution, check [CONTRIBUTING.md](https://github.com/VXcccc/CatBoard/blob/main/CONTRIBUTING.md)  
 
 ## **My major inspirations**
 Some features and styles are heavily inspired by the projects below **(check them out!)**:
@@ -85,7 +85,7 @@ git clone --recursive https://github.com/VXcccc/CatBoard.git
 <details>
 <summary><b>debug build</b></summary>
 
-```
+```bash
 cmake --preset mingw-debug
 cmake --build --preset mingw-debug
 ```
@@ -94,19 +94,32 @@ cmake --build --preset mingw-debug
 <details>
 <summary><b>release build</b></summary>
 
-```
+```bash
 cmake --preset mingw-release
 cmake --build --preset mingw-release
 ```
-
 </details>
 
 <details>
 <summary><b>pack (optional)</b></summary>
 
-```
-cpack --preset portable-zip
+Installer:
+
+```bash
+cmake --preset mingw-release
+cmake --build --preset mingw-release
 cpack --preset installer
 ```
+
+Portable:
+
+```bash
+cmake --preset mingw-release-portable
+cmake --build --preset mingw-release-portable
+cpack --preset portable-zip
+```
+
+> Installer and portable are separate builds (`CATBOARD_PORTABLE` is set at compile time),
+> so each needs its own build before packing.
 
 </details>

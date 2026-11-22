@@ -182,7 +182,7 @@ int main(int, char **) {
 #endif
   CreateMutexA(0, FALSE, "Local\\CATBOARD");
   if (GetLastError() == ERROR_ALREADY_EXISTS)
-    Helper::fatalError(L"Program already running");
+    Helper::fatalError(L"CatBoard already running");
 
   // debug
   // initDebugConsole();
@@ -198,6 +198,10 @@ int main(int, char **) {
   if (!std::filesystem::exists(Paths::getAssetsDir())) {
     Helper::errorMesBox(L"Missing assets folder");
     Paths::createAssetsDirectory();
+  }
+
+  if (!Helper::installDefaults()) {
+    Helper::errorMesBox("Failed to install default Assets");
   }
 
   Config::refreshConfigs();
