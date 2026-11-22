@@ -15,17 +15,13 @@ Some features are heavily inspired by the projects below **(check them out!)**:
 
 ## **Features**
 
-- **Customizable everything**: you can customize almost everything in this overlay (layout, hotkeys, style, font, image packs, sound packs etc.)
-
+- **Customizable everything:** you can customize almost everything in this overlay (layout, hotkeys, style, font, image packs, sound packs etc.)
 - **Analog keyboard support** via the [Wooting Analog SDK](https://github.com/WootingKb/wooting-analog-sdk) Right now only wooting keyboards are supported, but I may add support for other keyboards in the future
-
 - **Mouse tracking** using the Windows Raw Input API
-
+- **Asmr sounds** working via [Mechvbies](https://github.com/hainguyents13/mechvibes) sound packs, you can [create your own](https://editor.mechvibes.com/) or [browse existing](https://mechvibes.com/sound-packs)
 - **OBS mode** is similliar to [NohBoard](https://github.com/ThoNohT/NohBoard) obs mode (simply adds a background to the application). In future, if possible, im going to try other methods of bringing my overlay into the OBS
+- **Auto hide** automatically hide your overlay when you inactive
 
-- **Drag mode** lets you move the overlay to any place you want.
-
-- **Auto hide** is in developemt
 
 ## **Installation**
 

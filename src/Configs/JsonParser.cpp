@@ -141,8 +141,11 @@ void from_json(const json &j, MouseTheme &mouseTheme) {
   if (j.contains("highlightColor"))
     j.at("highlightColor").get_to(mouseTheme.highlightColor);
 
-  if (j.contains("higlightScale"))
-    j.at("higlightScale").get_to(mouseTheme.higlightScale);
+  if (j.contains("highlightScale"))
+    j.at("highlightScale").get_to(mouseTheme.higlightScale);
+
+  if (j.contains("scrollCounter"))
+    j.at("scrollCounter").get_to(mouseTheme.scrollCounter);
 }
 
 void to_json(json &j, const AnimType &animType) {
@@ -677,3 +680,47 @@ void from_json(const json &j, Bind &bind) {
 }
 
 } // namespace Binds
+
+namespace Sound {
+
+void to_json(json &j, const KeyDef &keyDef) {
+  j = {
+      {"timing", keyDef.timing},
+  };
+}
+
+void from_json(const json &j, KeyDef &keyDef) {
+  const auto &timing = j.at("timing");
+
+  if (!timing.is_array() || timing.empty())
+    throw std::runtime_error("KeyDef: empty timing");
+
+  timing.at(0).get_to(keyDef.timing[0]);
+  if (timing.size() > 1) {
+    timing.at(1).get_to(keyDef.timing[1]);
+    keyDef.hasRelease = true;
+  } else {
+    keyDef.hasRelease = false;
+  }
+}
+
+void to_json(json &j, const Pack &pack) {
+  j = {
+      {"name", pack.name},
+      {"audio_file", pack.audio_file},
+      {"definitions", pack.definitions},
+  };
+}
+
+void from_json(const json &j, Pack &pack) {
+  if (j.contains("name"))
+    j.at("name").get_to(pack.name);
+
+  if (j.contains("audio_file"))
+    j.at("audio_file").get_to(pack.audio_file);
+
+  if (j.contains("definitions"))
+    j.at("definitions").get_to(pack.definitions);
+}
+
+} // namespace Soundasd

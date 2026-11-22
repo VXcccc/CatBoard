@@ -22,7 +22,7 @@ constexpr UINT ID_DRAGMODE{1004};
 constexpr UINT ID_SETTINGS{1005};
 constexpr UINT ID_AUTOHIDE{1006};
 
-constexpr std::size_t VOICE_COUNT{32};
+constexpr std::size_t VOICE_COUNT{16};
 
 constexpr ImVec4 defaultClearColor{0.0f, 0.0f, 0.0f, 0.0f};
 

@@ -107,3 +107,13 @@ void to_json(json &j, const Bind &bind);
 void from_json(const json &j, Bind &bind);
 
 } // namespace Binds
+
+namespace Sound {
+
+void to_json(json &j, const KeyDef &keyDef);
+void from_json(const json &j, KeyDef &keyDef);
+
+void to_json(json &j, const Pack &pack);
+void from_json(const json &j, Pack &pack);
+
+} // namespace Sound

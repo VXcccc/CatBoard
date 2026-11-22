@@ -187,7 +187,7 @@ int main(int, char **) {
     Helper::fatalError(L"Program already running");
 
   // debug
-  // initDebugConsole();
+  initDebugConsole();
 
   // the state holding all active variables;
   AppState app;

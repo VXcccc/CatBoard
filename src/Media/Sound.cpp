@@ -1,10 +1,12 @@
 // shoutout mechvibes https://github.com/hainguyents13/mechvibes
-#include "Helpers.h"
-#include "Paths.h"
-#include "Constants.h"
 #include "Sound.h"
+#include "Constants.h"
+#include "Helpers.h"
+#include "JsonParser.h"
+#include "Paths.h"
 #include "extras/decoders/libvorbis/miniaudio_libvorbis.h"
 #include "miniaudio.h"
+#include <cstdio>
 #include <fstream>
 #include <optional>
 #include <string>
@@ -72,7 +74,7 @@ void refreshSounds() {
   Helper::refresh(sounds, Paths::soundsDirectory(), "dir");
 }
 
-std::optional<PackVK> Load(const std::filesystem::path &packDir) {
+static std::optional<PackVK> Load(const std::filesystem::path &packDir) {
   std::ifstream file{packDir / "config.json"};
   if (!file) {
     return std::nullopt;
@@ -94,7 +96,8 @@ std::optional<PackVK> Load(const std::filesystem::path &packDir) {
       }
     }
     return loaded;
-  } catch (const std::exception &) {
+  } catch (const std::exception &e) {
+    printf("%s", e.what());
     return std::nullopt;
   }
 }
@@ -154,19 +157,15 @@ void playKey(int keyCode, bool is_down, const PackVK &pack) {
 
   const KeyDef &keyDef{it->second};
 
-  const auto &down{keyDef.keyDown()};
-  const auto &up{keyDef.keyUp()};
+  if (!is_down && !keyDef.hasRelease)
+    return;
 
-  double startms{};
-  double endms{};
+  const TimingRange &range{is_down ? keyDef.keyDown() : keyDef.keyUp()};
+  const double startms{range[0]};
+  const double endms{range[1]};
 
-  if (is_down) {
-    startms = down[0];
-    endms = down[1];
-  } else {
-    startms = up[0];
-    endms = up[1];
-  }
+  if (endms <= startms)
+    return;
 
   ma_sound *voice{findFreeVoice()};
   if (!voice) {
@@ -174,7 +173,7 @@ void playKey(int keyCode, bool is_down, const PackVK &pack) {
   }
 
   const ma_uint64 lengthFrames{msToFrames(endms - startms)};
-  const ma_uint64 now {ma_engine_get_time_in_pcm_frames(&g_engine)};
+  const ma_uint64 now{ma_engine_get_time_in_pcm_frames(&g_engine)};
 
   ma_sound_set_start_time_in_pcm_frames(voice, now);
   ma_sound_set_stop_time_in_pcm_frames(voice, now + lengthFrames);
@@ -184,7 +183,6 @@ void playKey(int keyCode, bool is_down, const PackVK &pack) {
 }
 
 void setMasterVolume(float volume) { ma_engine_set_volume(&g_engine, volume); }
-
 
 // the difference between Helper::VkToName function is that function uses code
 // from sound json file (these code names are used in mechvibes)
