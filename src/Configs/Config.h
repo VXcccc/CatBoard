@@ -41,7 +41,7 @@ struct Trail {
 
   float minWidth{1.0f};
   float maxWidth{3.0f};
-  int subdivisions{5};
+  int subdivisions{3};
 };
 
 struct MouseTheme {
@@ -129,14 +129,14 @@ struct Overlay {
   float scale{1.0f};
 
   bool autoHide{false};
-	float hideAtTime{1.0f};
-	int hideAnimSpeed{100};
+  float hideAtTime{1.0f};
+  int hideAnimSpeed{100};
 
   bool operator==(const Overlay &) const = default;
 };
 
 struct Misc {
-  bool vsync{true};
+  bool vsync{false};
   bool obsMode{false};
   int fps{60};
   bool saveOnClose{true};

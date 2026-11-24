@@ -1,4 +1,5 @@
 #include "Constants.h"
+#include <complex>
 #define _USE_MATH_DEFINES
 
 #include "AppState.h"

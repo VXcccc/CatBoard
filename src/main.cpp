@@ -14,6 +14,7 @@
 // See LICENSE for the full license text.
 
 #include "Paths.h"
+#include <cstdio>
 #include <filesystem>
 #include <libloaderapi.h>
 #include <minwindef.h>
@@ -68,7 +69,7 @@
 #define CREATE_WAITABLE_TIMER_HIGH_RESOLUTION 0x00000002
 #endif
 
-// Data
+// Backend data
 static ID3D11Device *g_pd3dDevice = nullptr;
 static ID3D11DeviceContext *g_pd3dDeviceContext = nullptr;
 static IDXGISwapChain1 *g_pSwapChain = nullptr;
@@ -80,42 +81,29 @@ static IDCompositionDevice *g_dcompDevice = nullptr;
 static IDCompositionTarget *g_dcompTarget = nullptr;
 static IDCompositionVisual *g_dcompVisual = nullptr;
 
+// Data
 static float g_main_scale{};
-
 static HANDLE g_fpsTimer = nullptr;
+static double g_vSyncRefreshRate{60.0};
 
-// Forward declarations of helper functions
+// Forward declarations of backend helper functions
 bool CreateDeviceD3D(HWND hWnd, const Layouts::Layout &layout);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-// user helper functions
+// forward delcaration of helper functions
 POINT getOverlayPosition(int windowWidth, int windowHeight,
                          const Config::Settings &config);
 bool RegisterRawMouseInput(HWND hwnd);
 float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
 void fpsLimitter(
     const std::chrono::time_point<std::chrono::steady_clock> &frameStart,
-    const Config::Settings &config);
+    const double &fps);
+double getMonitorRefreshRate();
 void handleObsMode(AppState &app);
 void initDebugConsole();
-
-class Timer {
-private:
-  using Clock = std::chrono::steady_clock;
-  using Second = std::chrono::duration<double, std::ratio<1>>;
-
-  std::chrono::time_point<Clock> m_beg{Clock::now()};
-
-public:
-  void reset() { m_beg = Clock::now(); }
-
-  float elapsed() const {
-    return std::chrono::duration_cast<Second>(Clock::now() - m_beg).count();
-  }
-};
 
 namespace MainWindow {
 ID3D11Device *get_g_pd3dDevice() { return g_pd3dDevice; }
@@ -171,9 +159,22 @@ ImVec4 getClearColor(const AppState &app) {
              ? Helper::fromConfigColor(app.config.theme.obsBackground)
              : Consts::defaultClearColor;
 }
-
 } // namespace MainWindow
 
+class Timer {
+private:
+  using Clock = std::chrono::steady_clock;
+  using Second = std::chrono::duration<double, std::ratio<1>>;
+
+  std::chrono::time_point<Clock> m_beg{Clock::now()};
+
+public:
+  void reset() { m_beg = Clock::now(); }
+
+  float elapsed() const {
+    return std::chrono::duration_cast<Second>(Clock::now() - m_beg).count();
+  }
+};
 // Main code
 int main(int, char **) {
   // timeBeginPeriod(1);
@@ -331,6 +332,7 @@ int main(int, char **) {
   if (!g_fpsTimer) {
     Helper::fatalError(L"Failed to create FPS timer");
   }
+  g_vSyncRefreshRate = getMonitorRefreshRate();
 
   // creating tray icon
   Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
@@ -362,14 +364,8 @@ int main(int, char **) {
   QueryPerformanceFrequency(&freq);
   QueryPerformanceCounter(&lastDeltaTime);
 
-  // debug
-  // SettingsWindow::Show();
-
   while (!done) {
     const auto frameStart{std::chrono::steady_clock::now()};
-    // Poll and handle messages (inputs, window resize, etc.)
-    // See the WndProc() function below for our to dispatch events to the Win32
-    // backend.
 
     Fonts::updateFont(lastAppliedFont, Fonts::overlayFont, app.config.font);
 
@@ -455,8 +451,11 @@ int main(int, char **) {
         app.config.theme, deltaTime, app.hideOverlay,
         app.config.overlay.hideAnimSpeed)};
 
-    bool analogAnimating{Keyboard::updateAnalogAnimations(
-        app.layout, app.keyboard, app.config.theme, ovScale)};
+    bool analogAnimating{};
+    if (app.config.theme.analog.enabled) {
+      analogAnimating = Keyboard::updateAnalogAnimations(
+          app.layout, app.keyboard, app.config.theme, ovScale);
+    }
 
     bool animationActive{scaleAnimating || keyColorsAnimating ||
                          mouseColorsAnimating || analogAnimating ||
@@ -505,7 +504,8 @@ int main(int, char **) {
 
     if (!needsRender) {
       SettingsWindow::RenderFrame(app);
-      fpsLimitter(frameStart, app.config);
+      fpsLimitter(frameStart, app.config.misc.vsync ? g_vSyncRefreshRate
+                                                    : app.config.misc.fps);
       continue;
     }
     firstFrame = false;
@@ -563,7 +563,8 @@ int main(int, char **) {
 
     // todo move it to seperate function
     //  fps limiter
-    fpsLimitter(frameStart, app.config);
+    if (!app.config.misc.vsync)
+      fpsLimitter(frameStart, app.config.misc.fps);
   }
 
   // Cleanup
@@ -623,15 +624,26 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
   return dt;
 }
 
-// used clancker for this maybe not the best practice idk
+double getMonitorRefreshRate() {
+  DWM_TIMING_INFO ti{};
+  ti.cbSize = (sizeof(ti));
+
+  if (FAILED(DwmGetCompositionTimingInfo(nullptr, &ti)))
+    return 60.0;
+  if (ti.rateRefresh.uiDenominator == 0)
+    return 60.0;
+
+  return static_cast<double>(ti.rateRefresh.uiNumerator) /
+         ti.rateRefresh.uiDenominator;
+}
+
+// maybe not the best practice idk
 void fpsLimitter(
     const std::chrono::time_point<std::chrono::steady_clock> &frameStart,
-    const Config::Settings &config) {
+    const double &fps) {
   using Clock = std::chrono::steady_clock;
   using HundredNanoseconds =
       std::chrono::duration<long long, std::ratio<1, 10000000>>;
-
-  const double fps{static_cast<double>(config.misc.fps)};
 
   if (fps <= 0.0 || g_fpsTimer == nullptr) {
     return;
@@ -846,6 +858,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       WM_RawMouseInputHandle(lParam, app->mouse);
     break;
   }
+    return 0;
   case WM_SIZE:
     if (wParam == SIZE_MINIMIZED)
       return 0;
@@ -871,7 +884,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       LRESULT position = DefWindowProc(hWnd, msg, wParam, lParam);
       return position == HTCLIENT ? HTCAPTION : position;
     }
-    break;
+    return 0;
   case WM_EXITSIZEMOVE: {
     // RECT rect;
     // GetWindowRect(hWnd, &rect);
@@ -881,6 +894,9 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
       Config::Apply(app->config);
     return 0;
   }
+  case WM_DISPLAYCHANGE:
+    g_vSyncRefreshRate = getMonitorRefreshRate();
+    return 0;
   case WM_DESTROY:
     if (app->config.misc.saveOnClose) {
       Config::Apply(app->config);

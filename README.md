@@ -46,6 +46,20 @@ Some features and styles are heavily inspired by the projects below **(check the
 - **Image packs** if you want to configure them check how preinstalled image packs [config.json](/Assets/Images/DefaultImagePack/config.json) work.
 - **Cross-platform** in development
 
+<details>
+<summary><b>Layout editor shortcuts</b></summary>
+
+| Shortcut | Action |
+|----------|--------|
+| `Ctrl+R` | Record key |
+| `Ctrl+C` / `Ctrl+V` | Copy / Paste |
+| `Ctrl+Z` | Undo |
+| `Ctrl+Shift+Z` | Redo |
+| `Delete` | Delete selected |
+| `Mouse3` | Pan canvas |
+
+</details>
+
 
 ## **Installation**
 

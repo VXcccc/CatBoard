@@ -19,7 +19,6 @@ std::filesystem::path categoryDirectory(std::string_view category) {
   return getAppDataDir() / "Assets" / std::string{category};
 }
 
-
 std::filesystem::path categoryItemPath(std::string_view category,
                                        std::string_view name) {
   return categoryDirectory(category) / (std::string{name} + ".json");

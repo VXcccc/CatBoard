@@ -810,6 +810,12 @@ void handleEditorShortcuts(LayoutEditState &state) {
     return;
   }
 
+  if (ImGui::IsKeyChordPressed(ImGuiMod_Ctrl | ImGuiKey_D)) {
+    copySelected(state);
+    pasteBuffer(state);
+    return;
+  }
+
   if (ImGui::IsKeyPressed(ImGuiKey_Delete) && !state.mouseCenterSelected) {
     saveUndoClearRedo(state);
     deleteSelectedKeys(state);

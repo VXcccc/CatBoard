@@ -1005,7 +1005,8 @@ void drawMiscSection(SettingsEditState &state, AppState &app) {
 
   ImGui::Checkbox("Enable V-Sync", &state.misc.vsync);
 
-  Helper::SliderInt("FPS", state.misc.fps, 5, 360, 5, 2000);
+  if (!state.misc.vsync)
+    Helper::SliderInt("FPS", state.misc.fps, 5, 360, 5, 2000);
 
   drawThemeCombo(state, app);
 }
