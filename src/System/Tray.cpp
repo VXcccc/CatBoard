@@ -21,13 +21,22 @@ public:
   ~TrayMenu() { DestroyMenu(m_hMenu); }
 
   void addItem(UINT id, const wchar_t *label, bool hasState = false,
-               bool checked = false) {
+               bool checked = false, bool mfsDefault = false) {
     MENUITEMINFO mii{};
     mii.cbSize = sizeof(mii);
     mii.fMask = MIIM_ID | MIIM_STRING | (hasState ? MIIM_STATE : 0);
     mii.wID = id;
-    mii.fState = checked ? MFS_CHECKED : MFS_UNCHECKED;
+    mii.fState = (checked ? MFS_CHECKED : MFS_UNCHECKED) |
+                 (mfsDefault ? MFS_DEFAULT : 0);
     mii.dwTypeData = const_cast<LPWSTR>(label);
+    InsertMenuItem(m_hMenu, GetMenuItemCount(m_hMenu), true, &mii);
+  }
+
+  void addSeparator() {
+    MENUITEMINFO mii{};
+    mii.cbSize = sizeof(mii);
+    mii.fMask = MIIM_TYPE;
+    mii.fType = MFT_SEPARATOR;
     InsertMenuItem(m_hMenu, GetMenuItemCount(m_hMenu), true, &mii);
   }
 
@@ -82,10 +91,16 @@ VOID APIENTRY DisplayContextMenu(HWND hWnd, const AppState &app) {
   GetCursorPos(&pt);
 
   TrayMenu menu;
+  menu.addItem(Consts::ID_TOGGLEOVERLAY,
+               MainWindow::IsVisible() ? L"CatBoard Active"
+                                       : L"CatBoard Hidden",
+               true, MainWindow::IsVisible(), true);
+  menu.addSeparator();
   menu.addItem(Consts::ID_DRAGMODE, L"Drag mode", true, app.dragMode);
   menu.addItem(Consts::ID_AUTOHIDE, L"Auto hide", true,
                app.config.overlay.autoHide);
   menu.addItem(Consts::ID_SETTINGS, L"Settings");
+  menu.addSeparator();
   menu.addItem(Consts::ID_EXIT, L"Exit");
   menu.showAt(hWnd, pt);
 }
@@ -117,6 +132,9 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
   UINT uId{static_cast<UINT>(LOWORD(wParam))};
 
   switch (uId) {
+  case Consts::ID_TOGGLEOVERLAY:
+    MainWindow::toggleOverlay(app);
+    return;
   case Consts::ID_SETTINGS:
     SettingsWindow::Show();
     return;
@@ -124,9 +142,9 @@ void On_WM_COMMAND(WPARAM wParam, LPARAM lParam, HWND hWnd, AppState &app) {
     app.dragMode = !app.dragMode;
     MainWindow::SetDragMode(hWnd, app.dragMode);
     return;
-	case Consts::ID_AUTOHIDE:
+  case Consts::ID_AUTOHIDE:
     MainWindow::toggleAutoHide(app);
-		return;
+    return;
   case Consts::ID_EXIT:
     PostMessageW(hWnd, WM_CLOSE, 0, 0);
     return;

@@ -196,9 +196,7 @@ static void drawText(ImDrawList *draw, const Layouts::Key &key,
       ImGui::PushFont(Fonts::iconFont, fontSizePx);
       const std::string curIcon{getScrollIcon(curDir, key)};
       const ImVec2 iconSize{ImGui::CalcTextSize(curIcon.c_str())};
-      // printf("%s iconSize: x: %.2f, y: %.2f ", curIcon.c_str(), textSize.x,
-      //        iconSize.y);
-      // printf("textPos: x: %.2f, y: %.2f\n", textPos.x, textPos.y);
+
       const ImVec2 iconPos{(curDir == ScrollDir::Up ? (textPos.x + textSize.x)
                                                     : (textPos.x - iconSize.x)),
                            ((center.y * ovScale) - (iconSize.y * 0.5f))};

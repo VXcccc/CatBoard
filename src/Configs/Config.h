@@ -133,6 +133,9 @@ struct Overlay {
   int hideAnimSpeed{100};
 
   bool operator==(const Overlay &) const = default;
+  bool isScaleOrPosDiff(const Overlay &o) const {
+    return !(x == o.x || y == o.y || scale == o.scale);
+  }
 };
 
 struct Misc {

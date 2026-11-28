@@ -101,7 +101,7 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime);
 void fpsLimitter(
     const std::chrono::time_point<std::chrono::steady_clock> &frameStart,
     const double &fps);
-double getMonitorRefreshRate();
+double getDXRefreshRate();
 void handleObsMode(AppState &app);
 void initDebugConsole();
 
@@ -332,7 +332,7 @@ int main(int, char **) {
   if (!g_fpsTimer) {
     Helper::fatalError(L"Failed to create FPS timer");
   }
-  g_vSyncRefreshRate = getMonitorRefreshRate();
+  g_vSyncRefreshRate = getDXRefreshRate();
 
   // creating tray icon
   Tray::g_nid = Tray::init(s_hwnd, wc.hInstance);
@@ -508,6 +508,7 @@ int main(int, char **) {
                                                     : app.config.misc.fps);
       continue;
     }
+
     firstFrame = false;
 
     // Start the Dear ImGui frame
@@ -624,7 +625,7 @@ float getDeltaTime(const LARGE_INTEGER &freq, LARGE_INTEGER &outLastDeltaTime) {
   return dt;
 }
 
-double getMonitorRefreshRate() {
+double getDXRefreshRate() {
   DWM_TIMING_INFO ti{};
   ti.cbSize = (sizeof(ti));
 
@@ -895,7 +896,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     return 0;
   }
   case WM_DISPLAYCHANGE:
-    g_vSyncRefreshRate = getMonitorRefreshRate();
+    g_vSyncRefreshRate = getDXRefreshRate();
     return 0;
   case WM_DESTROY:
     if (app->config.misc.saveOnClose) {

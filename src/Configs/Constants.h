@@ -27,6 +27,7 @@ constexpr UINT ID_EXIT{1003};
 constexpr UINT ID_DRAGMODE{1004};
 constexpr UINT ID_SETTINGS{1005};
 constexpr UINT ID_AUTOHIDE{1006};
+constexpr UINT ID_TOGGLEOVERLAY{1007};
 
 constexpr std::size_t VOICE_COUNT{16};
 

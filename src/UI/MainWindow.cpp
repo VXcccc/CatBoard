@@ -68,7 +68,7 @@ void SetObsMode(HWND hWnd, bool enabled, const AppState &app) {
 }
 
 bool overlayChanged(Config::Overlay &outPrevOv, const AppState &app) {
-  const bool changed{outPrevOv != app.config.overlay};
+  const bool changed{app.config.overlay.isScaleOrPosDiff(outPrevOv)};
 
   if (changed) {
     MainWindow::ApplyOverlaySize(app);

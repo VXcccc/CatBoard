@@ -931,19 +931,17 @@ void drawLayoutsTab(SettingsEditState &state,
   if (ImGui::BeginPopupModal("Delete layout", nullptr,
                              ImGuiWindowFlags_AlwaysAutoResize)) {
     ImGui::Text("Are you sure you want to delete %s layout",
-                Config::configs[state.currentLayout].c_str());
+                state.selectedLayout.c_str());
     if (ImGui::Button("Yes", ImVec2(100, 0))) {
-      if (state.selectedLayout != Layouts::defaultLayoutName &&
-          Layouts::layouts.size() > 1) {
-        state.layoutDeleteError.clear();
+      state.layoutDeleteError.clear();
 
-        Layouts::deleteLayout(state.selectedLayout);
-        Layouts::refreshLayouts();
-        validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
-      } else {
-        state.layoutDeleteError = "You can not delete default or last layout";
-      }
+      Layouts::deleteLayout(state.selectedLayout);
+      Layouts::refreshLayouts();
+      validateCurrentIndex(state.currentLayout, std::size(Layouts::layouts));
+
+      ImGui::CloseCurrentPopup();
     }
+
     ImGui::SameLine();
     if (ImGui::Button("No", ImVec2(100, 0))) {
       ImGui::CloseCurrentPopup();

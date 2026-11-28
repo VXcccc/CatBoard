@@ -1,5 +1,47 @@
 {
-    "configName": "osuClassic",
+    "binds": [
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "Drag mode",
+            "type": 0,
+            "vkCode": 115
+        },
+        {
+            "empty": false,
+            "keyName": "F6",
+            "modifierKeys": [],
+            "name": "Toggle overlay",
+            "type": 1,
+            "vkCode": 117
+        },
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "Toggle settings",
+            "type": 2,
+            "vkCode": 120
+        },
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "AutoHide",
+            "type": 3,
+            "vkCode": 113
+        },
+        {
+            "empty": true,
+            "keyName": "None",
+            "modifierKeys": [],
+            "name": "Exit",
+            "type": 4,
+            "vkCode": 123
+        }
+    ],
+    "configName": "Osu",
     "font": {
         "letterCase": {
             "mode": 0,
@@ -10,7 +52,7 @@
             }
         },
         "name": "courbd",
-        "sizePixels": 50.0
+        "sizePixels": 1.0
     },
     "imagePack": {
         "defaultKey": {
@@ -124,35 +166,56 @@
         "name": "DefaultImagePack"
     },
     "misc": {
-        "fps": 120,
+        "fps": 60,
         "obsMode": false,
-        "vsync": true
+        "saveOnClose": true,
+        "vsync": false
     },
     "overlay": {
+        "autoHide": true,
+        "hideAnimSpeed": 100,
+        "hideAtTime": 5.0,
         "scale": 1.0,
         "x": 0,
-        "y": 600
+        "y": 756
     },
-    "selectedLayout": "OsuClassic",
+    "selectedLayout": "Osu",
     "soundPack": {
         "enable": false,
-        "layoutKeysOnlySound": false,
-        "name": "cherrymx-red-abs",
+        "layoutKeysOnlySound": true,
+        "name": "cherrymx-black-abs",
         "volume": 1.0
     },
     "theme": {
         "activeFill": [
-            255,
-            255,
-            255,
+            26,
+            167,
+            174,
             255
         ],
         "activeText": [
-            0,
-            0,
-            0,
+            26,
+            167,
+            174,
             255
         ],
+        "analog": {
+            "animType": 0,
+            "color": [
+                255,
+                255,
+                255,
+                255
+            ],
+            "enableHallText": true,
+            "enabled": false,
+            "pressedColor": [
+                26,
+                167,
+                174,
+                255
+            ]
+        },
         "animType": 0,
         "animateColors": false,
         "animation": false,
@@ -164,19 +227,19 @@
             255
         ],
         "idleText": [
-            255,
-            255,
-            255,
+            0,
+            0,
+            0,
             255
         ],
         "keyOutline": {
             "activeColor": [
-                0,
-                0,
-                0,
+                26,
+                167,
+                174,
                 255
             ],
-            "enable": false,
+            "enable": true,
             "idleColor": [
                 255,
                 255,
@@ -191,12 +254,12 @@
         "mouse": {
             "decayRate": 8.0,
             "enabled": true,
-            "fadeTime": 0.6000000238418579,
+            "fadeTime": 1.0,
             "fill": [
                 26,
                 26,
                 26,
-                200
+                0
             ],
             "highlightColor": [
                 255,
@@ -204,15 +267,15 @@
                 255,
                 255
             ],
-            "highlightM1": true,
+            "highlightM1": false,
             "highlightScale": 1.25,
             "imageOpacity": 255,
             "imageScale": 1.0,
             "imagesDisplay": false,
             "inner": [
-                255,
-                255,
-                255,
+                243,
+                243,
+                39,
                 255
             ],
             "lerpColor": false,
@@ -222,8 +285,8 @@
                 0,
                 255
             ],
-            "outerThickness": 4.079999923706055,
-            "rounding": 6.0,
+            "outerThickness": 2.0,
+            "rounding": 0.0,
             "scrollCounter": [
                 0,
                 0,
@@ -233,14 +296,14 @@
             "sensitivity": 0.18000000715255737,
             "smallRadius": 3.4600000381469727,
             "style": {
-                "name": "Wrap",
-                "type": 2
+                "name": "Pan",
+                "type": 3
             },
             "trail": {
                 "color": [
-                    255,
-                    255,
-                    255,
+                    243,
+                    243,
+                    39,
                     255
                 ],
                 "duration": 0.6000000238418579,
@@ -263,5 +326,5 @@
         ],
         "pressScale": 1.2000000476837158
     },
-    "version": 1
+    "version": 100
 }
